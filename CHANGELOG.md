@@ -5,7 +5,7 @@
 - Diagnostics: the combat probe also records group events (party
   deaths and reconnects, your casts' targets, and which group members'
   buffs changed), to plan in-combat rebuff tracking.
-- Project logo and CurseForge publishing guide.
+- Project logo (Nyte Lyte: a paladin's light in the night).
 
 ## 0.5.4
 
