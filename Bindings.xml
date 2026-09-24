@@ -1,0 +1,8 @@
+<Bindings>
+	<Binding name="NLPT_CYCLE_SPEC" header="NYTELYTEPALADINTOOLKIT" category="ADDONS">
+		NyteLytePaladinToolkit.SpecProfile:Cycle()
+	</Binding>
+	<Binding name="NLPT_TOGGLE_LOCK" category="ADDONS">
+		NyteLytePaladinToolkit.Frames:ToggleLock()
+	</Binding>
+</Bindings>

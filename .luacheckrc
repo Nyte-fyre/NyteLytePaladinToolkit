@@ -9,6 +9,8 @@ ignore = {
 globals = {
 	"NyteLytePaladinToolkit", "NyteLytePaladinToolkitDB",
 	"SLASH_NYTELYTEPALADINTOOLKIT1", "SLASH_NYTELYTEPALADINTOOLKIT2", "SlashCmdList",
+	"BINDING_HEADER_NYTELYTEPALADINTOOLKIT", "BINDING_NAME_NLPT_CYCLE_SPEC", "BINDING_NAME_NLPT_TOGGLE_LOCK",
+	"StaticPopupDialogs",
 }
 
 read_globals = {
@@ -21,7 +23,8 @@ read_globals = {
 	-- functions
 	"CreateFrame", "GetBuildInfo", "GetLocale", "GetNumSpellTabs", "GetSpellBookItemName", "GetSpellTabInfo",
 	"GetTime", "InCombatLockdown", "IsInGroup", "IsInRaid", "UnitClass", "UnitExists", "UnitLevel", "UnitName",
-	"UnitRace",
+	"UnitRace", "GetRealmName", "UnitHealth", "StaticPopup_Show", "GetFlyoutInfo", "GetFlyoutSlotInfo",
 	-- frames and fonts
 	"ChatFontNormal", "UIParent", "UISpecialFrames",
+	"C_Secrets", "C_ClassTalents",
 }

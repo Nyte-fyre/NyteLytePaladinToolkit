@@ -134,6 +134,23 @@ function Compat.GetSpellName(spellID)
 	return info and info.name
 end
 
+function Compat.GetSpellTexture(spellID)
+	local fn = Compat.Resolve("C_Spell.GetSpellTexture")
+	if fn and spellID then
+		local ok, tex = pcall(fn, spellID)
+		return ok and tex or nil
+	end
+	return nil
+end
+
+-- Talent points spent per tree: { holy = n, prot = n, ret = n }, or nil and
+-- a reason. Forever's talents live in C_Traits; how its three trees map to
+-- trait nodes is not known yet (needs a probe from a level 10+ character with
+-- points spent), so this reports "unknown" rather than guessing.
+function Compat.GetTalentPointsByTree()
+	return nil, "talent tree mapping not verified yet"
+end
+
 -- Adds the spells inside a spellbook flyout (Forever groups Blessings and
 -- Auras into flyouts) to list.
 local function addFlyoutSpells(list, flyoutID, skillLine)
