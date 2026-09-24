@@ -124,7 +124,7 @@ slash("cd reset")
 
 -- Spec switch rebuilds; module toggles apply live.
 slash("prot")
-assert(CD:IconCount() >= 1, "prot list built")
+assert(CD.enabled and CD:IconCount() == 0, "prot list rebuilt (no Prot defensives learned in the mocks)")
 P.Config:SetModuleEnabled("CooldownHUD", "prot", false)
 assert(not CD.enabled, "disabled live")
 P.Config:SetModuleEnabled("CooldownHUD", "prot", true)

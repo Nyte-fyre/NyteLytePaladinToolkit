@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0-dev - M3: Protection and Retribution
+
+- Tank Kit (on for Protection by default): a big flashing "Righteous Fury
+  missing" warning plus a sound on zone-in and ready checks; large cooldown
+  icons for Judgement, Consecration, Holy Strike, Hammer of Justice and
+  Templar's Bulwark, with Judgement labelled TAUNT while Seal of Fury is up;
+  an Iron Creed indicator with time left. No threat display (restricted).
+- Seal Tracker: Twist of Light's Echo shown next to the Seal (Ret), with
+  the replaced Seal's icon and time left. State only, never advice.
+- In combat, your own casts keep these current while buffs are hidden:
+  Righteous Fury refreshes, Echo from swapping away from Command /
+  Righteousness / Fury / Justice, Iron Creed from Holy Strike with
+  Righteous Fury (all marked * when predicted).
+- Default bars: Prot's defensives only (the rotation lives in the Tank
+  Kit); Ret adds Crusade, Cleanse/Purify (group only). Unedited lists
+  upgrade automatically.
+- Settings: Echo, Righteous Fury warning and sound options.
+
 ## 0.2.0-dev - M2: Holy MVP
 
 - Buff Sentinel: icons for a missing Seal, Aura, Blessing or (Prot)

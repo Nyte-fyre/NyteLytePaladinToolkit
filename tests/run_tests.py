@@ -133,7 +133,7 @@ def main():
         try:
             lua = new_runtime(flags)
             lua.execute(CHECKS)
-            for extra in ("m1_flows.lua", "m2_flows.lua", "logic_spec.lua"):
+            for extra in ("m1_flows.lua", "m2_flows.lua", "m3_flows.lua", "logic_spec.lua"):
                 lua.execute(read(os.path.join(ROOT, "tests", extra)))
             r = lua.globals().RESULT
             errors = lua.eval("#NyteLytePaladinToolkit.errorList + #MOCK.errorsRaised")

@@ -199,6 +199,15 @@ end
 function frameMethods:GetText()
 	return self._text
 end
+function frameMethods:Show()
+	self._shown = true
+end
+function frameMethods:Hide()
+	self._shown = false
+end
+function frameMethods:IsShown()
+	return self._shown ~= false
+end
 function frameMethods:SetChecked(v)
 	self._checked = v and true or false
 end
