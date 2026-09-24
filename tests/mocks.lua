@@ -96,6 +96,9 @@ end
 function UnitName()
 	return "Tester"
 end
+function GetRealmName()
+	return "Beta Realm"
+end
 function UnitExists()
 	return true
 end
@@ -158,7 +161,8 @@ for _, e in ipairs({
 	"ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LOGOUT", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
 	"CHAT_MSG_ADDON", "UNIT_AURA", "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_TALENT_UPDATE",
 	"CHARACTER_POINTS_CHANGED", "GROUP_ROSTER_UPDATE", "READY_CHECK", "ENCOUNTER_START", "ENCOUNTER_END",
-	"UNIT_SPELLCAST_SUCCEEDED",
+	"UNIT_SPELLCAST_SUCCEEDED", "LEARNED_SPELL_IN_SKILL_LINE", "ACTIVE_TALENT_GROUP_CHANGED", "TRAIT_CONFIG_UPDATED",
+	"PLAYER_ENTERING_WORLD",
 }) do
 	KNOWN_EVENTS[e] = true
 end
@@ -192,6 +196,21 @@ end
 function frameMethods:GetText()
 	return self._text
 end
+function frameMethods:SetChecked(v)
+	self._checked = v and true or false
+end
+function frameMethods:GetChecked()
+	return self._checked
+end
+function frameMethods:GetCenter()
+	return 520, 400
+end
+function frameMethods:GetWidth()
+	return 1024
+end
+function frameMethods:GetHeight()
+	return 768
+end
 function frameMethods:CreateFontString()
 	return MOCK.newFrame("FontString")
 end
@@ -224,6 +243,22 @@ function MOCK.fire(event, ...)
 	end
 end
 UIParent = MOCK.newFrame("Frame")
+StaticPopupDialogs = {}
+function StaticPopup_Show(name)
+	MOCK.popup = name
+end
+MOCK.settingsOpened = 0
+Settings = {
+	RegisterCanvasLayoutCategory = function(panel, name)
+		return { ID = 42, name = name, GetID = function(self)
+			return self.ID
+		end }
+	end,
+	RegisterAddOnCategory = function() end,
+	OpenToCategory = function()
+		MOCK.settingsOpened = MOCK.settingsOpened + 1
+	end,
+}
 UISpecialFrames = {}
 ChatFontNormal = {}
 SlashCmdList = {}
@@ -310,6 +345,9 @@ C_Spell = {
 	end,
 	GetSpellCooldownDuration = function()
 		return setmetatable({}, durationMT)
+	end,
+	GetSpellTexture = function()
+		return 135920
 	end,
 	IsSpellUsable = function()
 		return true, false

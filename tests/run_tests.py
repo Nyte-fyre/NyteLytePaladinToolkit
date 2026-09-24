@@ -1,6 +1,7 @@
 """Loads NyteLytePaladinToolkit against mocked WoW APIs (tests/mocks.lua) under Lua 5.1 and
-drives the M0 flows: login, /ptk probe, /ptk probe combat through a fake
-combat, and the other slash commands. Fails on any Lua error, any error the
+drives the M0 flows (login, /ptk probe, /ptk probe combat through a fake
+combat), then tests/m1_flows.lua (spec switching, frames, settings,
+export/import) and tests/logic_spec.lua (pure logic). Fails on any Lua error, any error the
 addon captured, or any secret value that reached NyteLytePaladinToolkitDB.
 
 Needs lupa (pip install lupa). Run: python tests/run_tests.py
@@ -132,15 +133,19 @@ def main():
         try:
             lua = new_runtime(flags)
             lua.execute(CHECKS)
+            for extra in ("m1_flows.lua", "logic_spec.lua"):
+                lua.execute(read(os.path.join(ROOT, "tests", extra)))
             r = lua.globals().RESULT
-            ok = r.errorsCaptured == 0 and r.errorsRaised == 0
+            errors = lua.eval("#NyteLytePaladinToolkit.errorList + #MOCK.errorsRaised")
+            ok = errors == 0
+            first = lua.eval("MOCK.errorsRaised[1] or (NyteLytePaladinToolkit.errorList[1] and NyteLytePaladinToolkit.errorList[1].msg)")
             status = "PASS" if ok else "FAIL"
             print(f"[{status}] {name}: decision={r.decision}, unresolved={r.unresolved}, "
                   f"probe text {r.probeTextLength} chars, combat UnitHealth={r.combatUnitHealth}, "
                   f"combat Judgement start={r.combatCooldown}")
             if not ok:
                 failed += 1
-                print("   first error:", r.firstError)
+                print("   first error:", first)
         except Exception as e:  # Lua error surfaced to Python
             failed += 1
             print(f"[FAIL] {name}: {e}")

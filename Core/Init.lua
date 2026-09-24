@@ -170,6 +170,19 @@ function PK:Fire(msg, ...)
 	end
 end
 
+-- Runs fn once, `delay` seconds after the last call with the same key.
+-- Collapses bursts of events (e.g. several SPELLS_CHANGED in a row).
+local debounceGen = {}
+function PK:Debounce(key, delay, fn)
+	local gen = (debounceGen[key] or 0) + 1
+	debounceGen[key] = gen
+	C_Timer.After(delay, function()
+		if debounceGen[key] == gen then
+			PK.SafeCall(fn)
+		end
+	end)
+end
+
 -- Modules --------------------------------------------------------------------
 -- PK:RegisterModule(name, { OnEnable, OnDisable, OnSpecChanged, defaults,
 -- alwaysOn }). M0 only enables alwaysOn modules; the per-spec matrix
@@ -230,7 +243,11 @@ SlashCmdList.NYTELYTEPALADINTOOLKIT = function(msg)
 	for w in (msg or ""):lower():gmatch("%S+") do
 		words[#words + 1] = w
 	end
-	local c = commands[words[1] or ""]
+	if not words[1] and PK.Settings then
+		PK.Settings:Open()
+		return
+	end
+	local c = commands[words[1]]
 	if not c then
 		printHelp()
 		return
