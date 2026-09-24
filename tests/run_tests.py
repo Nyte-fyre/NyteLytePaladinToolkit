@@ -73,11 +73,15 @@ slash("probe combat")
 MOCK.combat = true
 slash("probe")               -- refused in combat, must not error
 MOCK.fire("PLAYER_REGEN_DISABLED")
+MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-1", 20271)
+MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "target", "Cast-2", 1)
+MOCK.fire("UNIT_AURA", "player", { isFullUpdate = false, addedAuras = { { name = MOCK.secret(), spellId = MOCK.secret() } },
+  removedAuraInstanceIDs = { 7 } })
 MOCK.runTimers()
 MOCK.combat = false
 MOCK.fire("PLAYER_REGEN_ENABLED")
 local c = NyteLytePaladinToolkitDB.probeCombat
-assert(c and #c.samples == 5, "expected 5 combat samples, got " .. tostring(c and #c.samples))
+assert(c and #c.samples == 6 and #c.events == 2, "expected 6 combat samples and 2 events, got " .. tostring(c and #c.samples))
 
 slash("debug on")
 NyteLytePaladinToolkit:Debug("hello %s", "world")

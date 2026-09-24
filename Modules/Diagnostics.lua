@@ -889,9 +889,71 @@ local function combatSample(label)
 	cap.samples[#cap.samples + 1] = s
 end
 
+-- Logs the player's own casts and aura updates while armed, to learn what
+-- event payloads stay readable in combat. A few casts also trigger a sample
+-- half a second later, to catch cooldowns while they are running.
+local MAX_EVENTS = 40
+local castSamples = 0
+
+local function describeAuraUpdate(info)
+	if Compat.IsSecret(info) or type(info) ~= "table" then
+		return Describe(info)
+	end
+	local out = describeFields(info)
+	if type(out) ~= "table" then
+		return out
+	end
+	local added = info.addedAuras
+	if type(added) == "table" and not Compat.IsSecret(added) then
+		out.addedAuras = {}
+		for i = 1, math.min(#added, 3) do
+			out.addedAuras[i] = describeFields(added[i])
+		end
+	end
+	for _, key in ipairs({ "removedAuraInstanceIDs", "updatedAuraInstanceIDs" }) do
+		local ids = info[key]
+		if type(ids) == "table" and not Compat.IsSecret(ids) then
+			local parts = {}
+			for i = 1, math.min(#ids, 6) do
+				parts[i] = tostring(Describe(ids[i]))
+			end
+			out[key] = table.concat(parts, ",")
+		end
+	end
+	return out
+end
+
+local function logCombatEvent(_, event, unit, a, b)
+	local cap = PK.db.probeCombat
+	if not cap or #cap.events >= MAX_EVENTS then
+		return
+	end
+	-- Out of combat everything is readable already; keep the slots for combat.
+	if not Compat.InCombat() or Compat.IsSecret(unit) or unit ~= "player" then
+		return
+	end
+	local row = { t = GetTime(), event = event, inCombat = Compat.InCombat() }
+	if event == "UNIT_SPELLCAST_SUCCEEDED" then
+		row.castGUID = Describe(a)
+		row.spellID = Describe(b)
+		if row.inCombat and castSamples < 3 then
+			castSamples = castSamples + 1
+			local label = "0.5s after cast " .. castSamples .. " (spellID " .. tostring(row.spellID) .. ")"
+			C_Timer.After(0.5, function()
+				combatSample(label)
+			end)
+		end
+	else
+		row.updateInfo = describeAuraUpdate(a)
+	end
+	cap.events[#cap.events + 1] = row
+end
+
 local function disarm()
 	PK:UnregisterEvent("PLAYER_REGEN_DISABLED", combatWatcher)
 	PK:UnregisterEvent("PLAYER_REGEN_ENABLED", combatWatcher)
+	PK:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED", combatWatcher)
+	PK:UnregisterEvent("UNIT_AURA", combatWatcher)
 end
 
 local function arm()
@@ -900,8 +962,11 @@ local function arm()
 		return
 	end
 	lastResolved = buildResolved()
-	PK.db.probeCombat = { armedAt = time(), samples = {} }
+	PK.db.probeCombat = { armedAt = time(), samples = {}, events = {} }
+	castSamples = 0
 	combatSample("baseline (out of combat)")
+	PK:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", combatWatcher, logCombatEvent)
+	PK:RegisterEvent("UNIT_AURA", combatWatcher, logCombatEvent)
 	PK:RegisterEvent("PLAYER_REGEN_DISABLED", combatWatcher, function()
 		combatSample("t+0")
 		C_Timer.After(2, function()
@@ -917,7 +982,7 @@ local function arm()
 		PK.db.probeCombat.finishedAt = time()
 		PK:Print("combat probe captured " .. #PK.db.probeCombat.samples .. " samples. Type /reload to save it.")
 	end)
-	PK:Print("combat probe armed. Attack a target dummy for about 10 seconds, then leave combat.")
+	PK:Print("combat probe armed. Fight a target dummy for about 15 seconds: cast your Seal, Judgement and Holy Strike, then leave combat.")
 end
 
 -- Output --------------------------------------------------------------------------
