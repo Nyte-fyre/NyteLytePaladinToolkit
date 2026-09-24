@@ -1,0 +1,9 @@
+package-as: PaladinKit
+
+ignore:
+  - tests
+  - tools
+  - docs
+  - CLAUDE.md
+  - .luacheckrc
+  - .gitignore
