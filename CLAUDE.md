@@ -286,9 +286,9 @@ Threat meters, damage meters, boss mods, party health/heal alerts, enemy debuff/
 
 These override the matching parts of sections 9, 12 and 5 above.
 
-- **Repo:** `<Desktop>\NyteLytePaladinToolkit`, repo root = addon folder.
+- **Repo:** a `NyteLytePaladinToolkit` folder on the owner's Desktop; repo root = addon folder. Public at github.com/Nyte-fyre/NyteLytePaladinToolkit, so never commit local user paths or account names.
 - **Installed via a junction:** `C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns\NyteLytePaladinToolkit` → repo (`tools\install.ps1`). Edits are live after `/reload`.
-- **Read results from disk, don't ask for pastes.** `/ptk probe` and `/ptk probe combat` save to `NyteLytePaladinToolkitDB.probe` / `.probeCombat`; captured Lua errors go to `NyteLytePaladinToolkitDB.errors`. After the owner types `/reload`, read `C:\Program Files (x86)\World of Warcraft\_classic_beta_\WTF\Account\<account>\SavedVariables\NyteLytePaladinToolkit.lua` (the account folder seen so far is `<account>`). The copy window is the fallback.
+- **Read results from disk, don't ask for pastes.** `/ptk probe` and `/ptk probe combat` save to `NyteLytePaladinToolkitDB.probe` / `.probeCombat`; captured Lua errors go to `NyteLytePaladinToolkitDB.errors`. After the owner types `/reload`, read `C:\Program Files (x86)\World of Warcraft\_classic_beta_\WTF\Account\<account>\SavedVariables\NyteLytePaladinToolkit.lua` (`tests/read_sv.py` finds it automatically). The copy window is the fallback.
 - **Tests:** `python tests/run_tests.py` (lupa, Lua 5.1) instead of busted; mocks in `tests/mocks.lua`, with secret values modeled as proxies that error on compare, math and concat. Keep it passing before asking the owner to test. Put pure logic in files that don't touch WoW APIs so it can be tested directly.
 - **Lint:** `.luacheckrc` is kept current; luacheck isn't installed yet.
 - **Architecture:** Core (Init, Compat, Secrets, Config, SpecProfile, CombatQueue) → Services (SpellRegistry, AuraService, CooldownService, Comm) → pure Logic → UI widgets → Modules. Only Services call version-sensitive APIs, and only through Compat. Modules only render what Services publish. Every safe read has three states: value / SECRET / UNAVAILABLE.
