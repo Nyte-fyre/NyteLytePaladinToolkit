@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0-dev - M2: Holy MVP
+
+- Buff Sentinel: icons for a missing Seal, Aura, Blessing or (Prot)
+  Righteous Fury; long buffs pulse with time left when about to expire
+  (2 min by default). Sound when something newly goes missing (out of
+  combat). `/ptk check` prints every check, and a ready check does too.
+- Seal Tracker: active Seal with a draining time bar; smaller for Holy.
+- Cooldown HUD: your spec's cooldown row with swipes that keep working in
+  combat, greyed when unusable; unlearned spells hidden. Edit with
+  `/ptk cd list|add|remove|reset`.
+- Combat blindness handled: Forever hides your buffs in combat, so the
+  addon keeps the last known state, keeps counting timers down, reads your
+  Paladin aura from the stance bar, and predicts a Seal you cast in combat
+  (shown with *). A Seal it truly can't see shows grey instead of a false
+  "missing" alarm.
+- Settings: Options column (sound, show all buffs, Righteous Fury warnings,
+  Seal bar, unlearned spells, vertical cooldown bar).
+
 ## 0.1.0-dev - M1: core
 
 - Settings saved per character profile, with defaults that never overwrite

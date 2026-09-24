@@ -74,7 +74,7 @@ end
 function Config.BuildDefaults()
 	local layout = {}
 	for _, spec in ipairs({ "holy", "prot", "ret" }) do
-		layout[spec] = deepCopy(Presets.layout)
+		layout[spec] = Presets.LayoutFor(spec)
 	end
 	return {
 		specMode = "auto",
@@ -83,6 +83,7 @@ function Config.BuildDefaults()
 		layout = layout,
 		cooldownLists = deepCopy(Presets.cooldownLists),
 		alerts = { sound = true, expiringThresholdSec = 120 },
+		moduleSettings = deepCopy(Presets.moduleSettings),
 		blessing = { assignments = {}, autoSuggest = true },
 	}
 end
@@ -170,7 +171,7 @@ function Config:GetLayout(spec, module)
 		return nil
 	end
 	if not l[module] then
-		l[module] = deepCopy(Presets.layout[module] or { point = "CENTER", x = 0, y = 0 })
+		l[module] = Presets.LayoutFor(spec)[module] or { point = "CENTER", x = 0, y = 0, scale = 1 }
 	end
 	return l[module]
 end
@@ -184,8 +185,14 @@ function Config:SetLayout(spec, module, point, x, y)
 end
 
 function Config:ResetLayout(spec)
-	PK.profile.layout[spec] = deepCopy(Presets.layout)
+	PK.profile.layout[spec] = Presets.LayoutFor(spec)
 	PK:Fire("PK_LAYOUT_CHANGED", nil, spec)
+end
+
+-- Module options ------------------------------------------------------------------------------
+
+function Config:GetModuleSettings(module)
+	return PK.profile.moduleSettings[module]
 end
 
 -- Export / import ------------------------------------------------------------------------------

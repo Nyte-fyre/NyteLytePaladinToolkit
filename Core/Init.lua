@@ -220,7 +220,7 @@ end
 -- Slash commands -------------------------------------------------------------
 local commands, commandOrder = {}, {}
 
--- fn(args) gets the remaining lowercased words as a list.
+-- fn(args, rawArgs): the words after the command, lowercased and as typed.
 function PK:RegisterCommand(word, fn, help)
 	commands[word] = { fn = fn, help = help }
 	commandOrder[#commandOrder + 1] = word
@@ -239,9 +239,10 @@ end
 SLASH_NYTELYTEPALADINTOOLKIT1 = "/ptk"
 SLASH_NYTELYTEPALADINTOOLKIT2 = "/paladintoolkit"
 SlashCmdList.NYTELYTEPALADINTOOLKIT = function(msg)
-	local words = {}
-	for w in (msg or ""):lower():gmatch("%S+") do
-		words[#words + 1] = w
+	local words, raw = {}, {}
+	for w in (msg or ""):gmatch("%S+") do
+		raw[#raw + 1] = w
+		words[#words + 1] = w:lower()
 	end
 	if not words[1] and PK.Settings then
 		PK.Settings:Open()
@@ -253,7 +254,8 @@ SlashCmdList.NYTELYTEPALADINTOOLKIT = function(msg)
 		return
 	end
 	table.remove(words, 1)
-	PK.SafeCall(c.fn, words)
+	table.remove(raw, 1)
+	PK.SafeCall(c.fn, words, raw)
 end
 
 PK:RegisterCommand("help", printHelp, "list commands")

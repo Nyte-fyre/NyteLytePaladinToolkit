@@ -48,6 +48,9 @@ end
 function GetTime()
 	return now + 0.5
 end
+function MOCK.advance(sec)
+	now = now + sec
+end
 function date()
 	return "2026-09-23 12:00:00"
 end
@@ -162,7 +165,7 @@ for _, e in ipairs({
 	"CHAT_MSG_ADDON", "UNIT_AURA", "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_TALENT_UPDATE",
 	"CHARACTER_POINTS_CHANGED", "GROUP_ROSTER_UPDATE", "READY_CHECK", "ENCOUNTER_START", "ENCOUNTER_END",
 	"UNIT_SPELLCAST_SUCCEEDED", "LEARNED_SPELL_IN_SKILL_LINE", "ACTIVE_TALENT_GROUP_CHANGED", "TRAIT_CONFIG_UPDATED",
-	"PLAYER_ENTERING_WORLD",
+	"PLAYER_ENTERING_WORLD", "UPDATE_SHAPESHIFT_FORM", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES",
 }) do
 	KNOWN_EVENTS[e] = true
 end
@@ -218,9 +221,17 @@ function frameMethods:CreateTexture()
 	return MOCK.newFrame("Texture")
 end
 local noop = function() end
+-- Unknown Capitalized keys are treated as widget methods (no-ops); other
+-- keys are plain fields and read as nil, as on real frames.
 local frameMT = {
 	__index = function(_, k)
-		return frameMethods[k] or noop
+		if frameMethods[k] then
+			return frameMethods[k]
+		end
+		if type(k) == "string" and k:find("^%u") then
+			return noop
+		end
+		return nil
 	end,
 }
 function MOCK.newFrame(kind)

@@ -4,8 +4,8 @@ An all-in-one Paladin addon for **World of Warcraft: Forever**: buff and seal
 tracking, cooldowns, and PallyPower-style blessing coordination, tuned for
 Holy, Protection or Retribution.
 
-**Status: early development (M1: core).** Settings, spec switching, movable
-frames and profile export/import work; the buff/seal/cooldown modules come next.
+**Status: early development (M2: Holy MVP).** Buff Sentinel, Seal Tracker and
+Cooldown HUD work; Prot/Ret extras (M3) and the Blessing Manager (M4) come next.
 
 ## Install (Forever beta)
 
@@ -26,6 +26,8 @@ clone, `tools\install.ps1` does this (set `WOW_ADDONS_DIR` for other paths).
 | `/ptk auto` / `holy` / `prot` / `ret` | Choose spec mode |
 | `/ptk spec` | Show the active spec and what Auto detected |
 | `/ptk unlock` / `lock` / `reset` | Move frames, lock them, reset positions |
+| `/ptk check` | Check your Seal, Aura, Blessing and Righteous Fury |
+| `/ptk cd` | List / `add <spell>` / `remove <spell>` / `reset` this spec's cooldowns |
 | `/ptk export` / `import` | Copy your profile as text / paste one in |
 | `/ptk probe` | Records what the client supports and shows it in a copyable window |
 | `/ptk probe combat` | Arms a capture for your next fight (hit a target dummy ~10s) |

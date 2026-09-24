@@ -33,11 +33,56 @@ Presets.cooldownLists = {
 		"HAMMER_OF_JUSTICE", "REPENTANCE", "LAY_ON_HANDS" },
 }
 
--- Default anchor positions (relative to UIParent CENTER), same for every spec.
+-- Default anchor positions (offsets from the screen center, UIParent units).
 Presets.layout = {
-	BuffSentinel = { point = "CENTER", x = 0, y = -120 },
-	SealTracker = { point = "CENTER", x = 0, y = -150 },
-	CooldownHUD = { point = "CENTER", x = 0, y = -190 },
-	BlessingManager = { point = "CENTER", x = 300, y = 0 },
-	TankKit = { point = "CENTER", x = 0, y = 120 },
+	BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 },
+	SealTracker = { point = "CENTER", x = 0, y = -150, scale = 1 },
+	CooldownHUD = { point = "CENTER", x = 0, y = -190, scale = 1 },
+	BlessingManager = { point = "CENTER", x = 300, y = 0, scale = 1 },
+	TankKit = { point = "CENTER", x = 0, y = 120, scale = 1 },
+}
+
+-- Per-spec tweaks on top of Presets.layout.
+Presets.layoutOverrides = {
+	holy = { SealTracker = { scale = 0.8 } }, -- Seal matters less for Holy: smaller
+}
+
+-- Full default layout for one spec.
+function Presets.LayoutFor(spec)
+	local out = {}
+	for module, l in pairs(Presets.layout) do
+		local copy = {}
+		for k, v in pairs(l) do
+			copy[k] = v
+		end
+		local o = Presets.layoutOverrides[spec] and Presets.layoutOverrides[spec][module]
+		if o then
+			for k, v in pairs(o) do
+				copy[k] = v
+			end
+		end
+		out[module] = copy
+	end
+	return out
+end
+
+-- Module options (per profile, shared by all specs).
+Presets.moduleSettings = {
+	BuffSentinel = {
+		showAll = false, -- also show buffs that are fine, not just problems
+		checkSeal = true,
+		checkAura = true,
+		checkBlessing = true, -- warn if you have no Blessing at all
+		rfSpecs = { holy = false, prot = true, ret = false }, -- warn about Righteous Fury in these specs
+		iconSize = 32,
+	},
+	SealTracker = { showBar = true, iconSize = 30 },
+	CooldownHUD = {
+		iconSize = 36,
+		spacing = 4,
+		direction = "RIGHT", -- RIGHT | LEFT | DOWN | UP
+		perRow = 12,
+		showUnknown = false, -- show spells you haven't learned (greyed out)
+		dimUnusable = true,
+	},
 }
