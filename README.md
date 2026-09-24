@@ -52,7 +52,8 @@ addon follows Blizzard's rules:
 
 ## Install
 
-1. Download the latest `NyteLytePaladinToolkit-<version>.zip`.
+1. Download the latest `NyteLytePaladinToolkit-<version>.zip` from
+   [Releases](https://github.com/Nyte-fyre/NyteLytePaladinToolkit/releases).
 2. Unzip it into your AddOns folder, so the result is
    `...\Interface\AddOns\NyteLytePaladinToolkit\NyteLytePaladinToolkit.toc`.
    - Beta: `World of Warcraft\_classic_beta_\Interface\AddOns\`
@@ -95,6 +96,9 @@ spec mode, Lock/unlock frames, Open Blessing grid.
   yet. If they can't be read, the buff button won't treat them as missing.
 
 ## Diagnostics and bug reports
+
+Report bugs and ideas at
+[github.com/Nyte-fyre/NyteLytePaladinToolkit/issues](https://github.com/Nyte-fyre/NyteLytePaladinToolkit/issues).
 
 `/console scriptErrors 1` shows Lua errors. `/ptk probe` records what your
 client supports, and `/ptk probe combat` does the same during your next fight.

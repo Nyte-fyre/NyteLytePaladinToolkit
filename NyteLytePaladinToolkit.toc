@@ -4,6 +4,7 @@
 ## Author: Nyte-fyre
 ## Version: 0.5.0
 ## X-License: MIT
+## X-Website: https://github.com/Nyte-fyre/NyteLytePaladinToolkit
 ## SavedVariables: NyteLytePaladinToolkitDB
 ## IconTexture: Interface\Icons\Spell_Holy_HolyBolt
 
