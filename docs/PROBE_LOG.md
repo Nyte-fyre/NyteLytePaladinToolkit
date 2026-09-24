@@ -229,3 +229,19 @@ covering spellbook flyouts (Blessings/Auras) and the C_Traits talent trees.
   do restores the file itself.
 - Talent detection verified live: 2 points in Holy -> Auto = Holy, via
   talent points.
+
+## Reload after the restart (2026-09-24, same client run)
+
+- **`/reload` stopped loading saved variables too.** The session that
+  started 2s after the 02:51:38 save had `loads = 1` again. The file on disk
+  parses fine, and the client keeps writing it (and the Blizzard_* files) on
+  schedule. It just isn't read back: once the bug triggers, the whole client
+  run seems to ignore account-wide addon saved variables. Before the full
+  restart, `/reload` loaded fine 11 times in a row.
+- Experiment added in 0.5.2: a per-character copy of the profile
+  (`## SavedVariablesPerCharacter: NyteLytePaladinToolkitCharDB`, a separate
+  file under `WTF\Account\<account>\<realm>\<character>\SavedVariables`).
+  If the account file comes back empty but the character file loaded, the
+  profile is restored automatically. `probe.savedVariables.charBackupAt` and
+  `restoredFromCharacter` show whether it worked. The character folder on the
+  beta is named after a realm ID (`70\Nyte-Fyre`), not the realm name.
