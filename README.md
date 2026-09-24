@@ -28,7 +28,10 @@ Protection or Retribution**, with every part switchable per spec.
   - An assignment grid for every paladin in the group.
   - Auto-suggest, and syncing between paladins who run the addon.
   - A buff button: **one press casts your assigned Blessing on the next
-    person missing it.** It never casts on its own.
+    person who needs it**: missing first, then about to expire, then (by
+    default) the lowest timer, so repeated presses refresh the oldest
+    Blessings. It shows the target's class icon and name, and it never
+    casts on its own.
 - **Profile export/import** as one text string. It's the workaround for the
   beta's settings-reset bug, and a way to share setups.
 

@@ -54,11 +54,16 @@ if not MOCK_NO_AURAS then
 	-- Once you have it (with plenty of time left), nothing to do.
 	table.insert(MOCK.auras, { name = "Blessing of Might", spellId = 19740, duration = 3600, expirationTime = GetTime() + 3000 })
 	P.Roster:Scan()
-	assert(button:GetAttribute("type") == nil, "all blessed: button disarmed")
+	-- Default: nobody needs it, so the lowest timer (you) gets refreshed.
+	assert(button:GetAttribute("unit") == "player" and BM.next.reason == "lowest", "refreshes the lowest timer")
+	P.Config:GetModuleSettings("BlessingManager").refreshLowest = false
+	BM:UpdateButton()
+	assert(button:GetAttribute("type") == nil and BM.next == nil, "refreshLowest off: all blessed, disarmed")
+	P.Config:GetModuleSettings("BlessingManager").refreshLowest = true
 	-- Under 5 minutes left counts as missing again.
 	MOCK.auras[#MOCK.auras].expirationTime = GetTime() + 200
 	P.Roster:Scan()
-	assert(button:GetAttribute("unit") == "player", "refresh when under 5 minutes")
+	assert(button:GetAttribute("unit") == "player" and BM.next.reason == "expiring", "refresh when under 5 minutes")
 	table.remove(MOCK.auras)
 end
 
@@ -122,6 +127,12 @@ if not MOCK_NO_AURAS then
 	P.Roster:Scan()
 	assert(button:GetAttribute("unit") == "party2", "targets Stabby, got " .. tostring(button:GetAttribute("unit")))
 	assert(button:GetAttribute("spell") == "Blessing of Might")
+	assert(BM.next.reason == "missing" and BM.next.class == "ROGUE", "next: the rogue, missing")
+	-- Everyone buffed: the one with the least time left is next.
+	MOCK.unitAuras.party2 = { { name = "Blessing of Might", spellId = 19740, duration = 3600, expirationTime = GetTime() + 900 } }
+	P.Roster:Scan()
+	assert(button:GetAttribute("unit") == "party2" and BM.next.reason == "lowest", "lowest timer: Stabby (15m) before you (50m)")
+	MOCK.unitAuras.party2 = nil
 	table.remove(MOCK.auras)
 end
 

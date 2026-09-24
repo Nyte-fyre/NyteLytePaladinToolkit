@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.3
+
+- Buff button shows who's next: class icon, class-colored name, and
+  "missing", time left, or "refresh (52m)". The icon is the Blessing you're
+  about to cast (it changes as you learn more Blessings).
+- New (on by default): when nobody is missing your Blessing, the button
+  targets the lowest timer, so every press refreshes the oldest Blessing.
+  Missing ones still come first, then ones under 5 minutes. Toggle it in
+  settings ("Buff button: refresh the lowest timer...").
+- Tooltip spells out the next press.
+
 ## 0.5.2
 
 - Works around Forever's beta settings bug: your profile is also saved to a

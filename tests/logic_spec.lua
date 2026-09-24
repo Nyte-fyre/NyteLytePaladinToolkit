@@ -139,16 +139,31 @@ assert(not BL.ApplyRow(A, "Ay", { classes = {}, seq = 1, ts = 50 }, { sender = "
 assert(not BL.ApplyRow(A, "Ay", { classes = {}, seq = 2, ts = 4 }, { sender = "Ay" }), "same seq, older ts loses")
 assert(not BL.ApplyRow(A, "Ay", { classes = {}, seq = 2, ts = 5 }, { sender = "Ay" }), "tie: leader's version wins")
 
--- Blessings: next missing
+-- Blessings: picking the buff button's target
+local now = 1000
+local MIGHT = "BLESSING_MIGHT"
+local assign = { Me = { classes = { ROGUE = MIGHT, WARRIOR = MIGHT } } }
 local members = {
 	{ unit = "party1", name = "Dead", class = "ROGUE", usable = false, buffs = {} },
 	{ unit = "party2", name = "Blind", class = "ROGUE", usable = true, buffs = nil },
 	{ unit = "party3", name = "Mage", class = "MAGE", usable = true, buffs = {} },
 	{ unit = "party4", name = "Rogue", class = "ROGUE", usable = true, buffs = {} },
+	{ unit = "party5", name = "Warr", class = "WARRIOR", usable = true, buffs = { [MIGHT] = now + 100 } },
 }
-local assign = { Me = { classes = { ROGUE = "BLESSING_MIGHT" } } }
-local who, key = BL.NextMissing(assign, "Me", members)
-assert(who.name == "Rogue" and key == "BLESSING_MIGHT", "skips dead, unreadable and unassigned")
-assert(BL.CountMissing(assign, "Me", members) == 2, "count includes the dead rogue")
+local who, key, left, why = BL.PickTarget(assign, "Me", members, now, 300, true)
+assert(who.name == "Rogue" and key == MIGHT and left == nil and why == "missing", "missing first; skips dead/unreadable/unassigned")
+assert(BL.CountNeeding(assign, "Me", members, now, 300) == 3, "dead rogue, rogue, and the expiring warrior")
+members[4].buffs = { [MIGHT] = now + 3000 }
+who, key, left, why = BL.PickTarget(assign, "Me", members, now, 300, false)
+assert(who.name == "Warr" and left == 100 and why == "expiring", "then the one about to expire")
+members[5].buffs = { [MIGHT] = now + 2000 }
+assert(BL.PickTarget(assign, "Me", members, now, 300, false) == nil, "nobody needs it and refreshLowest off")
+local _
+who, _, left, why = BL.PickTarget(assign, "Me", members, now, 300, true)
+assert(who.name == "Warr" and left == 2000 and why == "lowest", "refreshLowest: the lowest timer")
+members[5].buffs = { [MIGHT] = 0 }
+who = BL.PickTarget(assign, "Me", members, now, 300, true)
+assert(who.name == "Rogue", "permanent buffs never count as lowest")
+assert(BL.Remaining({ buffs = { [MIGHT] = now - 5 } }, MIGHT, now) == nil, "expired = missing")
 
 LOGIC_OK = true
