@@ -6,6 +6,7 @@
 ## X-License: MIT
 ## X-Website: https://github.com/Nyte-fyre/NyteLytePaladinToolkit
 ## SavedVariables: NyteLytePaladinToolkitDB
+## SavedVariablesPerCharacter: NyteLytePaladinToolkitCharDB
 ## IconTexture: Interface\Icons\Spell_Holy_HolyBolt
 
 # Interface 16001 = WoW Forever (retail-based client, WOW_PROJECT_ID 1),

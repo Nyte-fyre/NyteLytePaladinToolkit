@@ -172,7 +172,29 @@ function Config:Init(db)
 	self.db = Config.Migrate(db)
 	self.charKey = characterKey()
 	local name = db.profileKeys[self.charKey] or "Default"
+	-- Forever's beta sometimes doesn't load the account-wide file at all. If
+	-- it came back empty but this character's backup file loaded, restore
+	-- the profile from it.
+	local backup = NyteLytePaladinToolkitCharDB
+	if PK.svState and not PK.svState.existedAtLoad and type(backup) == "table" and type(backup.profile) == "table" then
+		name = type(backup.profileName) == "string" and backup.profileName or name
+		db.profiles[name] = Config.DeepCopy(backup.profile)
+		PK.svState.restoredFromCharacter = true
+	end
 	self:SetProfile(name, true)
+end
+
+-- Copies the current profile into the per-character file on every save
+-- (logout and /reload), as a second copy that the beta bug may spare.
+function Config:SaveCharacterBackup()
+	if not PK.profile then
+		return
+	end
+	NyteLytePaladinToolkitCharDB = {
+		savedAt = time(),
+		profileName = self.profileName,
+		profile = PK.profile,
+	}
 end
 
 -- Switches this character to profile `name`, creating it from defaults if new.
@@ -282,4 +304,8 @@ end
 
 PK:On("PK_DB_READY", Config, function(_, _, db)
 	Config:Init(db)
+end)
+
+PK:RegisterEvent("PLAYER_LOGOUT", Config, function()
+	Config:SaveCharacterBackup()
 end)
