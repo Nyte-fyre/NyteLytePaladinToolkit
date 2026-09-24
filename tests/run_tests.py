@@ -1,7 +1,7 @@
-"""Loads PaladinKit against mocked WoW APIs (tests/mocks.lua) under Lua 5.1 and
-drives the M0 flows: login, /pk probe, /pk probe combat through a fake
+"""Loads NyteLytePaladinToolkit against mocked WoW APIs (tests/mocks.lua) under Lua 5.1 and
+drives the M0 flows: login, /ptk probe, /ptk probe combat through a fake
 combat, and the other slash commands. Fails on any Lua error, any error the
-addon captured, or any secret value that reached PaladinKitDB.
+addon captured, or any secret value that reached NyteLytePaladinToolkitDB.
 
 Needs lupa (pip install lupa). Run: python tests/run_tests.py
 """
@@ -12,7 +12,7 @@ import sys
 from lupa.lua51 import LuaRuntime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TOC = os.path.join(ROOT, "PaladinKit.toc")
+TOC = os.path.join(ROOT, "NyteLytePaladinToolkit.toc")
 
 
 def toc_files():
@@ -38,26 +38,26 @@ def new_runtime(flags):
     loader = lua.eval("""function(src, name, ns)
         local f, err = loadstring(src, "@" .. name)
         if not f then error(err) end
-        f("PaladinKit", ns)
+        f("NyteLytePaladinToolkit", ns)
     end""")
     ns = lua.table()
     for rel in toc_files():
-        loader(read(os.path.join(ROOT, rel)), "PaladinKit/" + rel.replace(os.sep, "/"), ns)
+        loader(read(os.path.join(ROOT, rel)), "NyteLytePaladinToolkit/" + rel.replace(os.sep, "/"), ns)
     return lua
 
 
 CHECKS = r"""
-local function slash(msg) SlashCmdList.PALADINKIT(msg) end
+local function slash(msg) SlashCmdList.NYTELYTEPALADINTOOLKIT(msg) end
 
-MOCK.fire("ADDON_LOADED", "PaladinKit")
+MOCK.fire("ADDON_LOADED", "NyteLytePaladinToolkit")
 MOCK.fire("PLAYER_LOGIN")
-assert(PaladinKitDB and PaladinKitDB.meta.loads == 1, "db not initialised")
-assert(PaladinKit.svState.existedAtLoad == false, "fresh install should report no SV at load")
+assert(NyteLytePaladinToolkitDB and NyteLytePaladinToolkitDB.meta.loads == 1, "db not initialised")
+assert(NyteLytePaladinToolkit.svState.existedAtLoad == false, "fresh install should report no SV at load")
 
 slash("")
 slash("help")
 slash("probe")
-local p = PaladinKitDB.probe
+local p = NyteLytePaladinToolkitDB.probe
 assert(p, "no probe saved")
 assert(p.client.interface == 16001, "interface")
 assert(next(p.stepErrors) == nil or MOCK_EXPECT_STEP_ERRORS, "step errors: " .. tostring(next(p.stepErrors)))
@@ -76,11 +76,11 @@ MOCK.fire("PLAYER_REGEN_DISABLED")
 MOCK.runTimers()
 MOCK.combat = false
 MOCK.fire("PLAYER_REGEN_ENABLED")
-local c = PaladinKitDB.probeCombat
+local c = NyteLytePaladinToolkitDB.probeCombat
 assert(c and #c.samples == 5, "expected 5 combat samples, got " .. tostring(c and #c.samples))
 
 slash("debug on")
-PaladinKit:Debug("hello %s", "world")
+NyteLytePaladinToolkit:Debug("hello %s", "world")
 slash("debug show")
 slash("debug clear")
 slash("show")
@@ -100,13 +100,13 @@ local function walk(t, path)
     if type(v) == "table" then walk(v, path .. "." .. tostring(k)) end
   end
 end
-walk(PaladinKitDB, "PaladinKitDB")
+walk(NyteLytePaladinToolkitDB, "NyteLytePaladinToolkitDB")
 
 RESULT = {
-  errorsCaptured = #PaladinKit.errorList,
+  errorsCaptured = #NyteLytePaladinToolkit.errorList,
   errorsRaised = #MOCK.errorsRaised,
-  firstError = MOCK.errorsRaised[1] or (PaladinKit.errorList[1] and PaladinKit.errorList[1].msg),
-  probeTextLength = #PaladinKit.modules.Diagnostics.ProbeText(),
+  firstError = MOCK.errorsRaised[1] or (NyteLytePaladinToolkit.errorList[1] and NyteLytePaladinToolkit.errorList[1].msg),
+  probeTextLength = #NyteLytePaladinToolkit.modules.Diagnostics.ProbeText(),
   decision = p.spec and p.spec.decision.spec .. " via " .. p.spec.decision.method,
   unresolved = p.registry and #p.registry.unresolved or -1,
   combatUnitHealth = c.samples[3].units["UnitHealth(player)"].value,

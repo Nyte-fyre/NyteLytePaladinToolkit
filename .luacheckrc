@@ -7,8 +7,8 @@ ignore = {
 }
 
 globals = {
-	"PaladinKit", "PaladinKitDB",
-	"SLASH_PALADINKIT1", "SLASH_PALADINKIT2", "SlashCmdList",
+	"NyteLytePaladinToolkit", "NyteLytePaladinToolkitDB",
+	"SLASH_NYTELYTEPALADINTOOLKIT1", "SLASH_NYTELYTEPALADINTOOLKIT2", "SlashCmdList",
 }
 
 read_globals = {

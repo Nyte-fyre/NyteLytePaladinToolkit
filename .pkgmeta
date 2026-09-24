@@ -1,4 +1,4 @@
-package-as: PaladinKit
+package-as: NyteLytePaladinToolkit
 
 ignore:
   - tests
