@@ -84,8 +84,10 @@ spec mode, Lock/unlock frames, Open Blessing grid.
 
 ## Known limitations (beta)
 
-- Forever's beta has a reported bug where saved settings don't load on a
-  fresh client start. Use `/ptk export` now and then.
+- Forever's beta has a confirmed bug: after a full client restart, saved
+  settings often don't load (`/reload` is fine). The addon says so in chat
+  when it happens. Keep a `/ptk export` string somewhere safe and restore
+  it with `/ptk import`.
 - Beta characters are capped at level 20. Some later spells and talents
   (Seal of Fury, and the buffs from Twist of Light and Iron Creed) couldn't be
   verified yet. Their names and durations are best guesses that correct

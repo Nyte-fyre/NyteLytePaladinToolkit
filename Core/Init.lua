@@ -327,6 +327,17 @@ PK:RegisterEvent("PLAYER_LOGIN", lifecycle, function()
 		end
 	end
 	PK:Fire("PK_READY")
+
+	-- Forever's beta can start the client without loading saved settings
+	-- (confirmed 2026-09-24: existedAtLoad was false after a full restart).
+	-- Say so, instead of letting a reset setup look like an addon bug.
+	if PK.svState and not PK.svState.existedAtLoad then
+		C_Timer.After(6, function()
+			PK:Print("no saved settings were found, so defaults are in use. First time? Welcome, type /ptk to set up. "
+				.. "If you had settings before, Forever's beta sometimes doesn't load them after a full restart: "
+				.. "restore yours with /ptk import (paste a string from /ptk export).")
+		end)
+	end
 end)
 
 PK:RegisterEvent("PLAYER_LOGOUT", lifecycle, function()

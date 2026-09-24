@@ -2,6 +2,9 @@
 
 ## 0.5.1
 
+- When no saved settings were loaded (confirmed Forever beta bug after a
+  full client restart), a chat notice explains it and points to
+  `/ptk import`.
 - Auto spec detection now uses your talent points. Forever has one talent
   tree with Holy, Protection and Retribution side by side, and the addon
   counts the points spent in each column.
