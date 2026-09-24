@@ -4,8 +4,9 @@ An all-in-one Paladin addon for **World of Warcraft: Forever**: buff and seal
 tracking, cooldowns, and PallyPower-style blessing coordination, tuned for
 Holy, Protection or Retribution.
 
-**Status: early development (M2: Holy MVP).** Buff Sentinel, Seal Tracker and
-Cooldown HUD work; Prot/Ret extras (M3) and the Blessing Manager (M4) come next.
+**Status: early development (M3).** Buff Sentinel, Seal Tracker (with Twist of
+Light Echo), Cooldown HUD and Tank Kit work for Holy, Protection and
+Retribution; the Blessing Manager (M4) comes next.
 
 ## Install (Forever beta)
 

@@ -5,13 +5,16 @@ local _, PK = ...
 -- predicted from your own cast (marked with *) while buffs can't be read.
 -- Judgement no longer consumes Seals in Forever, so there is no
 -- "consumed" state. Holy defaults to a smaller frame (layout scale 0.8).
+-- Ret: Twist of Light's Echo shows as a small icon after the bar, with the
+-- replaced Seal's icon and time left (predicted in combat, marked *). It only
+-- shows state; it never suggests when to twist.
 
 local AS = PK.AuraService
 local Frames = PK.Frames
 local M = PK:RegisterModule("SealTracker", {})
 
 local BAR_WIDTH = 130
-local container, icon, bar, nameText, timeText
+local container, icon, bar, nameText, timeText, echoIcon, echoLabel
 local current
 
 local function settings()
@@ -58,6 +61,13 @@ local function build()
 	timeText = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	timeText:SetPoint("RIGHT", bar, "RIGHT", -3, 0)
 
+	echoIcon = Frames:AcquireIcon(container, 24)
+	echoIcon:SetPoint("LEFT", bar, "RIGHT", 6, 0)
+	echoLabel = echoIcon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	echoLabel:SetPoint("BOTTOM", echoIcon, "TOP", 0, 1)
+	echoLabel:SetText("Echo")
+	echoIcon:Hide()
+
 	-- Redraw the bar ~10 times a second from the known expiration time.
 	local elapsed = 0
 	container:SetScript("OnUpdate", function(_, dt)
@@ -70,7 +80,24 @@ local function build()
 	end)
 end
 
+function M:UpdateEcho()
+	if not echoIcon then
+		return
+	end
+	local echo, source = PK.AuraService:GetEcho()
+	if settings().showEcho and echo then
+		local left = AS:Remaining(echo)
+		echoIcon.icon:SetTexture(echo.icon or 134400)
+		echoIcon:SetText(((left and left ~= math.huge) and string.format("%.0f", left) or "")
+			.. (source == "predicted" and "*" or ""))
+		echoIcon:Show()
+	else
+		echoIcon:Hide()
+	end
+end
+
 function M:UpdateTimer()
+	self:UpdateEcho()
 	if not current then
 		return
 	end
@@ -105,6 +132,13 @@ function M:Render()
 		bar:Hide()
 	end
 	anchor:SetSize(size + (s.showBar and (BAR_WIDTH + 4) or 0), size)
+	echoIcon:ClearAllPoints()
+	if s.showBar then
+		echoIcon:SetPoint("LEFT", bar, "RIGHT", 6, 0)
+	else
+		echoIcon:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+	end
+	self:UpdateEcho()
 
 	if not knowsSeal() then
 		container:Hide()

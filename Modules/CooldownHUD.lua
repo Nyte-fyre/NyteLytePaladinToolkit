@@ -15,11 +15,9 @@ local _, PK = ...
 -- you're in a party or raid (e.g. Cleanse, useless when solo leveling).
 
 local Compat = PK.Compat
-local Secrets = PK.Secrets
 local Frames = PK.Frames
 local M = PK:RegisterModule("CooldownHUD", {})
 
-local GCD_MAX = 1.6
 local icons = {}
 
 local function settings()
@@ -130,43 +128,10 @@ function M:Update()
 	end
 	local s = settings()
 	for _, icon in ipairs(icons) do
-		local id = icon.spellID
 		if not icon.known then
 			icon:SetState("unusable")
 		else
-			local info = Compat.GetSpellCooldown(id)
-			local activeState, isActive = Secrets.Field(info, "isActive")
-			local gcdState, isOnGCD = Secrets.Field(info, "isOnGCD")
-			local start = Secrets.SafeNumber(select(2, Secrets.Field(info, "startTime")))
-			local duration = Secrets.SafeNumber(select(2, Secrets.Field(info, "duration")))
-			local onCooldown
-			if activeState == Secrets.VALUE then
-				-- isActive/isOnGCD are readable even in combat.
-				onCooldown = isActive == true and not (gcdState == Secrets.VALUE and isOnGCD == true)
-			elseif start and duration then
-				onCooldown = duration > GCD_MAX
-			else
-				onCooldown = nil -- unknown: let the duration object decide
-			end
-			if onCooldown == false then
-				icon.cooldown:Clear()
-			elseif start and duration then
-				icon:SetCooldownNumbers(start, duration)
-			else
-				-- Secret numbers: the client draws the swipe from a duration object.
-				local drawn = icon:SetCooldownFromDuration(Compat.GetSpellCooldownDuration(id, true))
-				if onCooldown == nil then
-					onCooldown = drawn
-				end
-			end
-			local usable = Compat.IsSpellUsable(id)
-			if onCooldown then
-				icon:SetState("cooldown")
-			elseif usable == false and s.dimUnusable then
-				icon:SetState("unusable")
-			else
-				icon:SetState("ready")
-			end
+			icon:RefreshCooldown(s.dimUnusable)
 		end
 	end
 end

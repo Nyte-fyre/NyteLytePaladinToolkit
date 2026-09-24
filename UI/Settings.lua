@@ -48,6 +48,21 @@ local OPTIONS = {
 	end, function(v)
 		ms("SealTracker").showBar = v
 	end },
+	{ "Seal Tracker: Twist of Light Echo (Ret)", function()
+		return ms("SealTracker").showEcho
+	end, function(v)
+		ms("SealTracker").showEcho = v
+	end },
+	{ "Tank Kit: big Righteous Fury warning", function()
+		return ms("TankKit").rfWarning
+	end, function(v)
+		ms("TankKit").rfWarning = v
+	end },
+	{ "Tank Kit: Righteous Fury sound (zone-in, ready check)", function()
+		return ms("TankKit").rfSound
+	end, function(v)
+		ms("TankKit").rfSound = v
+	end },
 	{ "Cooldown HUD: show unlearned spells", function()
 		return ms("CooldownHUD").showUnknown
 	end, function(v)
@@ -118,7 +133,7 @@ end
 
 local function Build()
 	panel = CreateFrame("Frame")
-	panel:SetSize(620, 600)
+	panel:SetSize(620, 680)
 	panel.name = PK.displayName
 
 	local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")

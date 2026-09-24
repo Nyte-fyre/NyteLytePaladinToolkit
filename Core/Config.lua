@@ -4,7 +4,7 @@ local _, PK = ...
 -- profile export/import.
 --
 -- NyteLytePaladinToolkitDB = {
---   version = 2,
+--   version = 3,
 --   profileKeys = { ["Char-Realm"] = "Default" },
 --   profiles = { Default = { specMode, locked, modules, layout, cooldownLists, alerts, blessing } },
 --   meta, probe, probeCombat, errors, debugLog, debug  -- diagnostics, not part of profiles
@@ -17,7 +17,7 @@ local Presets = PK.Presets
 local Config = {}
 PK.Config = Config
 
-local DB_VERSION = 2
+local DB_VERSION = 3
 Config.DB_VERSION = DB_VERSION
 
 -- Table helpers ----------------------------------------------------------------------
@@ -105,6 +105,13 @@ function Config.Migrate(db)
 			Config.UpgradeDefaultLists(profile)
 		end
 		v = 2
+	end
+	if v < 3 then
+		-- Prot/Ret default lists changed (Tank Kit took over Prot's rotation).
+		for _, profile in pairs(db.profiles) do
+			Config.UpgradeDefaultLists(profile)
+		end
+		v = 3
 	end
 	db.version = v
 	return db

@@ -8,9 +8,10 @@ local _, PK = ...
 --  * In combat, if a scan comes back empty or secret, the snapshot is
 --    "frozen": the last known buffs are kept, and their timers keep
 --    counting down from the expiration times read before combat.
---  * While frozen, the player's own Seal casts (if the cast event's spell ID
---    is readable) update a predicted Seal, and the active Paladin aura comes
---    from the stance bar, which stays readable in combat.
+--  * While frozen, the player's own casts (readable in combat, probe #2)
+--    update predictions: Seal, Righteous Fury, Twist of Light Echo, Iron
+--    Creed. The active Paladin aura comes from the stance bar, which stays
+--    readable in combat.
 -- Fires PK_AURAS_UPDATED after every change.
 
 local Compat = PK.Compat
@@ -18,7 +19,7 @@ local Secrets = PK.Secrets
 local AS = { auras = {}, frozen = false }
 PK.AuraService = AS
 
--- Durations learned from readable auras, used to predict Seals cast in combat.
+-- Durations learned from readable auras, used for predictions in combat.
 local learnedDuration = {}
 local DEFAULT_SEAL_DURATION = 30
 
@@ -78,6 +79,8 @@ function AS:Scan()
 		self.auras = auras
 		self.frozen = false
 		self.predictedSeal = nil
+		self.echo = nil
+		self.ironCreed = nil
 	end
 	self.stanceSpellID = Compat.GetActiveStanceSpell()
 	PK:Fire("PK_AURAS_UPDATED")
@@ -195,33 +198,121 @@ PK:RegisterEvent("UNIT_AURA", AS, function(_, _, unit)
 	end
 end)
 
--- Own casts in combat: predict the Seal so the tracker keeps working while blind.
+-- Predictions while blind ------------------------------------------------------------------
+-- Forever hides your buffs in combat but not your own casts (probe #2), so
+-- casts update the frozen snapshot: a new Seal replaces the old one,
+-- Righteous Fury is refreshed, Twist of Light's Echo and Iron Creed are
+-- inferred from the rules in their tooltips. Predicted auras carry
+-- predicted = true and are shown with a * by the modules.
+
+-- Unverified Forever durations; replaced by the real ones once seen out of combat.
+local DEFAULT_DURATION = { TWIST_ECHO = 10, IRON_CREED = 6 }
+
+-- Seals whose replacement grants Twist of Light's Echo (Ret talent).
+local TWISTABLE = { SEAL_COMMAND = true, SEAL_RIGHTEOUSNESS = true, SEAL_FURY = true, SEAL_JUSTICE = true }
+
+local function registryKeyFor(spellID)
+	for key, r in pairs(PK.SpellRegistry.byKey) do
+		if r.spellID == spellID then
+			return key, r
+		end
+	end
+	return nil
+end
+
+local function predictedAura(spellID, name, icon, durationKey)
+	local duration = learnedDuration[spellID] or DEFAULT_DURATION[durationKey or ""] or DEFAULT_SEAL_DURATION
+	return {
+		name = name or "?",
+		spellID = spellID,
+		icon = icon,
+		duration = duration,
+		expirationTime = GetTime() + duration,
+		predicted = true,
+	}
+end
+
+local function removeWhere(predicate)
+	for i = #AS.auras, 1, -1 do
+		if predicate(AS.auras[i]) then
+			table.remove(AS.auras, i)
+		end
+	end
+end
+
+function AS:PredictCast(spellID)
+	local key, r = registryKeyFor(spellID)
+	if not key then
+		return false
+	end
+	local info = Compat.GetSpellInfo(spellID)
+	local name, icon = (info and info.name) or r.name, (info and info.iconID) or r.icon
+	local registry = PK.SpellRegistry
+
+	if r.category == "seal" then
+		local previous = self:GetSeal()
+		local seals = idsForCategory("seal")
+		removeWhere(function(a)
+			return seals[a.spellID] or a.name:sub(1, 8) == "Seal of "
+		end)
+		self.predictedSeal = predictedAura(spellID, name, icon)
+		-- Twist of Light: swapping away from a twistable Seal grants Echo.
+		if previous and previous.spellID ~= spellID and registry:IsKnown("TWIST_OF_LIGHT") then
+			local prevKey = registryKeyFor(previous.spellID)
+			if prevKey and TWISTABLE[prevKey] then
+				local echo = registry:Get("TWIST_ECHO")
+				self.echo = predictedAura(echo and echo.spellID or 0, "Echo", previous.icon, "TWIST_ECHO")
+				self.echo.replacedSeal = previous.name
+			end
+		end
+		return true
+	elseif key == "RIGHTEOUS_FURY" then
+		removeWhere(function(a)
+			return a.spellID == spellID
+		end)
+		self.auras[#self.auras + 1] = predictedAura(spellID, name, icon)
+		return true
+	elseif key == "HOLY_STRIKE" and registry:IsKnown("IRON_CREED") and self:GetByKey("RIGHTEOUS_FURY") then
+		-- Iron Creed: Holy Strike with Righteous Fury active grants damage reduction.
+		local ic = registry:Get("IRON_CREED")
+		self.ironCreed = predictedAura(ic.spellID, ic.name or "Iron Creed", ic.icon, "IRON_CREED")
+		return true
+	end
+	return false
+end
+
+-- Twist of Light's Echo: the real buff when readable, else the prediction.
+-- The returned aura has replacedSeal when predicted.
+function AS:GetEcho()
+	local aura = self:GetByKey("TWIST_ECHO")
+	if aura then
+		return aura, "aura"
+	end
+	if self.echo and self:Remaining(self.echo) then
+		return self.echo, "predicted"
+	end
+	return nil
+end
+
+function AS:GetIronCreed()
+	local aura = self:GetByKey("IRON_CREED")
+	if aura then
+		return aura, "aura"
+	end
+	if self.ironCreed and self:Remaining(self.ironCreed) then
+		return self.ironCreed, "predicted"
+	end
+	return nil
+end
+
 PK:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", AS, function(_, _, unit, _, spellID)
 	if Compat.IsSecret(unit) or unit ~= "player" or not AS.frozen then
 		return
 	end
 	local id = Secrets.SafeNumber(spellID)
-	if not id or not idsForCategory("seal")[id] then
-		return
+	if id and AS:PredictCast(id) then
+		PK:Fire("PK_AURAS_UPDATED")
 	end
-	local info = Compat.GetSpellInfo(id)
-	local duration = learnedDuration[id] or DEFAULT_SEAL_DURATION
-	AS.predictedSeal = {
-		name = info and info.name or "Seal",
-		spellID = id,
-		icon = info and info.iconID,
-		duration = duration,
-		expirationTime = GetTime() + duration,
-		predicted = true,
-	}
-	-- Only one Seal at a time: drop the old one from the frozen snapshot.
-	local seals = idsForCategory("seal")
-	for i = #AS.auras, 1, -1 do
-		if seals[AS.auras[i].spellID] then
-			table.remove(AS.auras, i)
-		end
-	end
-	PK:Fire("PK_AURAS_UPDATED")
 end)
 
 PK:RegisterEvent("UPDATE_SHAPESHIFT_FORM", AS, queueScan)

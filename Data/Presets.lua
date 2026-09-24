@@ -30,6 +30,14 @@ Presets.previousCooldownLists = {
 		{ "HOLY_SHOCK", "DIVINE_FAVOR", "LAY_ON_HANDS", "DIVINE_SHIELD", "BLESSING_PROTECTION",
 			"BLESSING_FREEDOM", "CLEANSE", "PURIFY", "CONSECRATION", "HOLY_STRIKE", "LIGHTS_VIGIL" },
 	},
+	prot = {
+		{ "JUDGEMENT", "CONSECRATION", "HOLY_STRIKE", "HAMMER_OF_JUSTICE", "TEMPLARS_BULWARK",
+			"LAY_ON_HANDS", "BLESSING_PROTECTION", "DIVINE_PROTECTION", "DIVINE_SHIELD" },
+	},
+	ret = {
+		{ "HOLY_STRIKE", "JUDGEMENT", "HAMMER_OF_WRATH", "EXORCISM", "CONSECRATION",
+			"HAMMER_OF_JUSTICE", "REPENTANCE", "LAY_ON_HANDS" },
+	},
 }
 
 Presets.cooldownLists = {
@@ -37,10 +45,12 @@ Presets.cooldownLists = {
 	holy = { "HOLY_SHOCK", "DIVINE_FAVOR", "LAY_ON_HANDS", "DIVINE_SHIELD", "BLESSING_PROTECTION",
 		"BLESSING_FREEDOM", "HAMMER_OF_JUSTICE", "CONSECRATION", "HOLY_STRIKE", "LIGHTS_VIGIL",
 		"CLEANSE@group", "PURIFY@group" },
-	prot = { "JUDGEMENT", "CONSECRATION", "HOLY_STRIKE", "HAMMER_OF_JUSTICE", "TEMPLARS_BULWARK",
-		"LAY_ON_HANDS", "BLESSING_PROTECTION", "DIVINE_PROTECTION", "DIVINE_SHIELD" },
-	ret = { "HOLY_STRIKE", "JUDGEMENT", "HAMMER_OF_WRATH", "EXORCISM", "CONSECRATION",
-		"HAMMER_OF_JUSTICE", "REPENTANCE", "LAY_ON_HANDS" },
+	-- Prot's core rotation (Judgement/taunt, Consecration, Holy Strike, HoJ,
+	-- Templar's Bulwark) is shown big in the Tank Kit, so it isn't repeated here.
+	prot = { "LAY_ON_HANDS", "DIVINE_PROTECTION", "DIVINE_SHIELD", "BLESSING_PROTECTION",
+		"BLESSING_FREEDOM", "CLEANSE@group", "PURIFY@group" },
+	ret = { "HOLY_STRIKE", "JUDGEMENT", "HAMMER_OF_WRATH", "EXORCISM", "CONSECRATION", "CRUSADE",
+		"HAMMER_OF_JUSTICE", "REPENTANCE", "LAY_ON_HANDS", "CLEANSE@group", "PURIFY@group" },
 }
 
 -- Default anchor positions (offsets from the screen center, UIParent units).
@@ -86,7 +96,18 @@ Presets.moduleSettings = {
 		rfSpecs = { holy = false, prot = true, ret = false }, -- warn about Righteous Fury in these specs
 		iconSize = 32,
 	},
-	SealTracker = { showBar = true, iconSize = 30 },
+	SealTracker = {
+		showBar = true,
+		iconSize = 30,
+		showEcho = true, -- Twist of Light Echo (Ret talent) next to the Seal
+	},
+	TankKit = {
+		iconSize = 44,
+		spells = { "JUDGEMENT", "CONSECRATION", "HOLY_STRIKE", "HAMMER_OF_JUSTICE", "TEMPLARS_BULWARK" },
+		rfWarning = true, -- big on-screen Righteous Fury warning
+		rfSound = true, -- sound on zone-in / ready check if Righteous Fury is missing
+		showIronCreed = true,
+	},
 	CooldownHUD = {
 		iconSize = 36,
 		spacing = 4,

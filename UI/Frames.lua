@@ -224,6 +224,49 @@ function IconMixin:SetCooldownNumbers(start, duration)
 	end
 end
 
+local GCD_MAX = 1.6
+
+-- Reads this icon's spell cooldown and draws it. Combat-safe: isActive and
+-- isOnGCD stay readable in combat on Forever, numbers are used only when
+-- readable, and otherwise the client draws the swipe from a duration
+-- object. Sets state ready/cooldown/unusable and returns it.
+function IconMixin:RefreshCooldown(dimUnusable)
+	local id = self.spellID
+	if not id then
+		return self.state
+	end
+	local info = Compat.GetSpellCooldown(id)
+	local activeState, isActive = Secrets.Field(info, "isActive")
+	local gcdState, isOnGCD = Secrets.Field(info, "isOnGCD")
+	local start = Secrets.SafeNumber(select(2, Secrets.Field(info, "startTime")))
+	local duration = Secrets.SafeNumber(select(2, Secrets.Field(info, "duration")))
+	local onCooldown
+	if activeState == Secrets.VALUE then
+		onCooldown = isActive == true and not (gcdState == Secrets.VALUE and isOnGCD == true)
+	elseif start and duration then
+		onCooldown = duration > GCD_MAX
+	end
+	if onCooldown == false then
+		self.cooldown:Clear()
+	elseif start and duration then
+		self:SetCooldownNumbers(start, duration)
+	else
+		local drawn = self:SetCooldownFromDuration(Compat.GetSpellCooldownDuration(id, true))
+		if onCooldown == nil then
+			onCooldown = drawn
+		end
+	end
+	local usable = Compat.IsSpellUsable(id)
+	if onCooldown then
+		self:SetState("cooldown")
+	elseif usable == false and dimUnusable then
+		self:SetState("unusable")
+	else
+		self:SetState("ready")
+	end
+	return self.state
+end
+
 function IconMixin:SetText(text)
 	self.text:SetText(text or "")
 end
