@@ -1,5 +1,8 @@
--- Minimal mocked WoW API, shaped like what WoW Forever's beta client is
--- reported/confirmed to have. It checks our logic and our secret-value
+-- Minimal mocked WoW API, shaped like what WoW Forever's beta client showed
+-- in the first /ptk probe (build 1.60.1.69977, 2026-09-24): player health,
+-- power and absorbs are secret even out of combat; in combat, cooldown
+-- start/duration/modRate are secret but isActive/isEnabled are not, and the
+-- player's own aura queries return nothing. It checks our logic and our secret-value
 -- discipline, not the real client. Secret values are proxies that error on
 -- comparison, arithmetic and concatenation, like Midnight-style secrets.
 
@@ -106,19 +109,19 @@ function InCombatLockdown()
 	return MOCK.combat
 end
 function UnitHealth()
-	return MOCK.maybeSecret(900)
+	return MOCK.secret()
 end
 function UnitHealthMax()
 	return MOCK.maybeSecret(1000)
 end
 function UnitPower()
-	return MOCK.maybeSecret(500)
+	return MOCK.secret()
 end
 function UnitPowerMax()
 	return 600
 end
 function UnitGetTotalAbsorbs()
-	return MOCK.maybeSecret(0)
+	return MOCK.secret()
 end
 function GetShapeshiftForm()
 	return 1
@@ -238,6 +241,7 @@ MOCK.book = {
 	{ name = "Righteous Fury", spellID = 25780, itemType = 1 },
 	{ name = "Holy Shock", spellID = 20473, itemType = 1 },
 	{ name = "Blessing of Kings", spellID = 20217, itemType = 2 },
+	{ name = "Blessings", actionID = 264, itemType = 4 },
 	{ name = "Flash of Light", spellID = 19750, itemType = 1 },
 }
 if not MOCK_NO_SPELLBOOK then
@@ -253,10 +257,23 @@ if not MOCK_NO_SPELLBOOK then
 		end,
 		GetSpellBookItemInfo = function(i)
 			local b = MOCK.book[i]
-			return b and { name = b.name, spellID = b.spellID, itemType = b.itemType, isPassive = false, subName = "" }
+			return b and { name = b.name, spellID = b.spellID, actionID = b.actionID or b.spellID, itemType = b.itemType,
+				isPassive = false, subName = "" }
 		end,
 	}
 end
+MOCK.flyouts = { [264] = { name = "Blessings", slots = {
+	{ 19740, true, "Blessing of Might" }, { 19742, false, "Blessing of Wisdom" },
+} } }
+function GetFlyoutInfo(id)
+	local f = MOCK.flyouts[id]
+	return f.name, "", #f.slots, true
+end
+function GetFlyoutSlotInfo(id, slot)
+	local s = MOCK.flyouts[id].slots[slot]
+	return s[1], s[1], s[2], s[3]
+end
+
 function IsPlayerSpell(id)
 	for _, b in ipairs(MOCK.book) do
 		if b.spellID == id then
@@ -267,7 +284,7 @@ function IsPlayerSpell(id)
 end
 
 -- Spells, cooldowns, duration objects -----------------------------------------------
-local durationMT = { __index = {
+local durationMT = { __metatable = false, __index = {
 	GetRemainingDuration = function()
 		return MOCK.maybeSecret(4)
 	end,
@@ -307,7 +324,7 @@ if not MOCK_NO_AURAS then
 	C_UnitAuras = {
 		GetAuraDataByIndex = function(_, i)
 			local a = MOCK.auras[i]
-			if not a then
+			if not a or MOCK.combat then
 				return nil
 			end
 			return {
@@ -316,7 +333,23 @@ if not MOCK_NO_AURAS then
 				auraInstanceID = i,
 			}
 		end,
+		GetUnitAuraInstanceIDs = function()
+			local ids = {}
+			for i in ipairs(MOCK.auras) do
+				ids[i] = i
+			end
+			return ids
+		end,
+		GetAuraDataByAuraInstanceID = function(_, id)
+			return MOCK.combat and MOCK.secret() or MOCK.auras[id]
+		end,
+		GetAuraDuration = function()
+			return setmetatable({}, durationMT)
+		end,
 		GetPlayerAuraBySpellID = function(id)
+			if MOCK.combat then
+				return nil
+			end
 			for _, a in ipairs(MOCK.auras) do
 				if a.spellId == id then
 					return { name = a.name, duration = MOCK.maybeSecret(a.duration) }
@@ -338,5 +371,55 @@ C_ChatInfo = {
 	SendAddonMessage = function(prefix, text, channel, target)
 		MOCK.sent[#MOCK.sent + 1] = { prefix = prefix, text = text, channel = channel, target = target }
 		return 0
+	end,
+}
+
+-- Secrets, restrictions, talents ---------------------------------------------------------
+issecrettable = function()
+	return false
+end
+C_Secrets = {
+	HasSecretRestrictions = function()
+		return true
+	end,
+	ShouldAurasBeSecret = function()
+		return MOCK.combat
+	end,
+	GetSpellAuraSecrecy = function()
+		return 1
+	end,
+}
+C_RestrictedActions = {
+	IsAddOnRestrictionActive = function()
+		return false
+	end,
+}
+Enum.SecretAspect = { Name = 1, Value = 2 }
+C_ClassTalents = {
+	GetActiveConfigID = function()
+		return 7516683
+	end,
+}
+C_Traits = {
+	GetConfigInfo = function()
+		return { ID = 7516683, name = "Paladin", treeIDs = { 900 } }
+	end,
+	GetTreeInfo = function()
+		return { ID = 900 }
+	end,
+	GetTreeCurrencyInfo = function()
+		return { { quantity = 0, maxQuantity = 0, spent = 0 } }
+	end,
+	GetTreeNodes = function()
+		return { 1, 2 }
+	end,
+	GetNodeInfo = function(_, nodeID)
+		return { ID = nodeID, posX = nodeID * 100, posY = 0, ranksPurchased = 0, maxRanks = 5, entryIDs = { nodeID + 10 } }
+	end,
+	GetEntryInfo = function(_, entryID)
+		return { definitionID = entryID + 10 }
+	end,
+	GetDefinitionInfo = function()
+		return { spellID = 20473 }
 	end,
 }

@@ -124,9 +124,44 @@ function Compat.IsSpellKnown(spellID)
 	return nil
 end
 
+function Compat.GetSpellName(spellID)
+	local fn = Compat.Resolve("C_Spell.GetSpellName")
+	if fn then
+		local ok, name = pcall(fn, spellID)
+		return ok and name or nil
+	end
+	local info = Compat.GetSpellInfo(spellID)
+	return info and info.name
+end
+
+-- Adds the spells inside a spellbook flyout (Forever groups Blessings and
+-- Auras into flyouts) to list.
+local function addFlyoutSpells(list, flyoutID, skillLine)
+	local info, slotInfo = _G.GetFlyoutInfo, _G.GetFlyoutSlotInfo
+	if not (info and slotInfo and flyoutID) then
+		return
+	end
+	local ok, flyoutName, _, numSlots = pcall(info, flyoutID)
+	if not ok or type(numSlots) ~= "number" then
+		return
+	end
+	for slot = 1, numSlots do
+		local ok2, spellID, _, isKnown, spellName = pcall(slotInfo, flyoutID, slot)
+		if ok2 and spellID then
+			list[#list + 1] = {
+				name = spellName or Compat.GetSpellName(spellID),
+				spellID = spellID,
+				itemType = isKnown and "Spell" or "FutureSpell",
+				flyout = flyoutName,
+				skillLine = skillLine,
+			}
+		end
+	end
+end
+
 -- Lists every spellbook entry for the player, including not-yet-learned
--- ("future") spells. Returns list, method, err.
--- Entry: { name, spellID, subName, itemType, isPassive, skillLine }.
+-- ("future") spells and the contents of flyouts. Returns list, method, err.
+-- Entry: { name, spellID, subName, itemType, isPassive, skillLine, flyout }.
 function Compat.ScanSpellbook()
 	local list = {}
 	local C = _G.C_SpellBook
@@ -155,6 +190,9 @@ function Compat.ScanSpellbook()
 								isOffSpec = item.isOffSpec,
 								skillLine = info.name,
 							}
+							if list[#list].itemType == "Flyout" then
+								addFlyoutSpells(list, item.actionID, info.name)
+							end
 						end
 					end
 				end

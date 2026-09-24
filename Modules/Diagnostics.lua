@@ -79,60 +79,6 @@ local function describeFields(t)
 	return out
 end
 
--- Lists method names of an object (a table mixin or a userdata with a
--- metatable). Returns a sorted list or a string explaining why not.
-local function listMethods(obj)
-	if Compat.IsSecret(obj) then
-		return "<secret>"
-	end
-	local names = {}
-	local function collect(t)
-		if type(t) ~= "table" then
-			return
-		end
-		for k, v in pairs(t) do
-			if type(k) == "string" and type(v) == "function" then
-				names[k] = true
-			end
-		end
-	end
-	if type(obj) == "table" then
-		collect(obj)
-	end
-	local ok, mt = pcall(getmetatable, obj)
-	if ok and type(mt) == "table" then
-		collect(mt.__index)
-	elseif ok and mt ~= nil then
-		names["<metatable: " .. tostring(Describe(mt)) .. ">"] = true
-	end
-	return sortedKeys(names)
-end
-
--- Calls every no-argument getter on obj (Get*/Is*/Has*) and describes the
--- results. Used on cooldown duration objects to see what they expose.
-local function sampleGetters(obj, methods)
-	if type(methods) ~= "table" then
-		return nil
-	end
-	local out = {}
-	for _, name in ipairs(methods) do
-		if name:find("^Get") or name:find("^Is") or name:find("^Has") then
-			local ok, fn = pcall(function()
-				return obj[name]
-			end)
-			if ok and type(fn) == "function" then
-				local r = tryCall(fn, obj)
-				if type(r) == "table" then
-					out[name] = r[1] == nil and "nil" or r[1]
-				else
-					out[name] = r
-				end
-			end
-		end
-	end
-	return out
-end
-
 -- Serializes a probe table as indented text for the copy window.
 local function dump(value, indent, lines, depth)
 	indent = indent or ""
@@ -229,7 +175,8 @@ local NAMESPACES = {
 	"C_Spell", "C_SpellBook", "C_UnitAuras", "C_Secrets", "C_CurveUtil", "C_DurationUtil",
 	"C_ChatInfo", "C_ClassTalents", "C_Traits", "C_SpecializationInfo", "C_Talent", "Settings",
 }
-local NAMESPACE_PATTERNS = { "Talent", "Spec", "Trait", "Cooldown", "Aura", "Secret", "Duration", "Restrict" }
+local NAMESPACE_PATTERNS = { "Talent", "Spec", "Trait", "Cooldown", "Aura", "Secret", "Duration", "Restrict", "Swing",
+	"CombatLog", "EncounterEvents" }
 
 local EVENTS = {
 	"PLAYER_TALENT_UPDATE", "CHARACTER_POINTS_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED",
@@ -379,9 +326,9 @@ local function probeSpellbook()
 	local book, method, err = Compat.ScanSpellbook()
 	local lines = {}
 	for i, item in ipairs(book) do
-		lines[i] = string.format("%s | id=%s | %s%s%s | %s", tostring(item.name), tostring(item.spellID),
+		lines[i] = string.format("%s | id=%s | %s%s%s | %s%s", tostring(item.name), tostring(item.spellID),
 			tostring(item.itemType or "?"), item.isPassive and " passive" or "", item.isOffSpec and " offspec" or "",
-			tostring(item.skillLine))
+			tostring(item.skillLine), item.flyout and (" | in flyout " .. tostring(item.flyout)) or "")
 	end
 	return { method = method, error = err, count = #book, entries = lines }, book
 end
@@ -521,6 +468,227 @@ local function probeAuras()
 	return out
 end
 
+-- Describes exactly what an API returned: nil, a secret, a secret table, a
+-- readable table, or an error. Used to see WHY combat aura reads come back empty.
+local function rawKind(ok, v)
+	if not ok then
+		return "error: " .. tostring(v)
+	end
+	if Compat.IsSecret(v) then
+		return "<secret value>"
+	end
+	if type(v) == "table" then
+		local st = Compat.Resolve("issecrettable")
+		if st then
+			local ok2, r = pcall(st, v)
+			if ok2 and r then
+				return "<secret table>"
+			end
+		end
+		return describeFields(v)
+	end
+	return Describe(v)
+end
+
+-- Every other way to read the player's buffs, to learn which ones work in combat.
+local function probeAuraPaths()
+	local U = C_UnitAuras
+	if not U then
+		return "no C_UnitAuras"
+	end
+	local out = {}
+	out.byIndex1 = rawKind(pcall(U.GetAuraDataByIndex, "player", 1, "HELPFUL"))
+	if U.GetBuffDataByIndex then
+		out.buffByIndex1 = rawKind(pcall(U.GetBuffDataByIndex, "player", 1))
+	end
+	if U.GetAuraDataBySpellName then
+		out.bySpellName = rawKind(pcall(U.GetAuraDataBySpellName, "player", "Devotion Aura", "HELPFUL"))
+	end
+	if U.GetUnitAuraBySpellID then
+		out.unitAuraBySpellID = rawKind(pcall(U.GetUnitAuraBySpellID, "player", 465))
+	end
+	if U.GetUnitAuraInstanceIDs then
+		local ok, ids = pcall(U.GetUnitAuraInstanceIDs, "player", "HELPFUL")
+		out.instanceIDs = rawKind(ok, ids)
+		if ok and type(ids) == "table" and not Compat.IsSecret(ids) then
+			out.perInstance = {}
+			for i, id in ipairs(ids) do
+				if i > 6 then
+					break
+				end
+				local row = {}
+				if Compat.IsSecret(id) then
+					row.id = "<secret>"
+				else
+					row.id = id
+					row.data = rawKind(pcall(U.GetAuraDataByAuraInstanceID, "player", id))
+					if U.GetAuraDuration then
+						local okD, d = pcall(U.GetAuraDuration, "player", id)
+						row.duration = okD and Describe(d) or ("error: " .. tostring(d))
+					end
+					if U.DoesAuraHaveExpirationTime then
+						row.hasExpiration = rawKind(pcall(U.DoesAuraHaveExpirationTime, "player", id))
+					end
+				end
+				out.perInstance[#out.perInstance + 1] = row
+			end
+		end
+	end
+	return out
+end
+
+-- Asks C_Secrets directly what it considers secret right now.
+local function probeSecrecy(resolved)
+	local S = C_Secrets
+	if not S then
+		return "no C_Secrets"
+	end
+	local out = {
+		HasSecretRestrictions = tryCall(S.HasSecretRestrictions),
+		ShouldAurasBeSecret = tryCall(S.ShouldAurasBeSecret),
+		ShouldCooldownsBeSecret = tryCall(S.ShouldCooldownsBeSecret),
+		ShouldUnitHealthMaxBeSecret = tryCall(S.ShouldUnitHealthMaxBeSecret, "player"),
+		ShouldUnitPowerBeSecret = tryCall(S.ShouldUnitPowerBeSecret, "player"),
+		ShouldUnitPowerMaxBeSecret = tryCall(S.ShouldUnitPowerMaxBeSecret, "player"),
+		spells = {},
+	}
+	for _, entry in ipairs(PK.Spells.list) do
+		local r = resolved and resolved[entry.key]
+		if r and r.known and r.spellID then
+			local id = r.spellID
+			out.spells[r.name or entry.names[1]] = {
+				auraSecrecy = tryCall(S.GetSpellAuraSecrecy, id),
+				cooldownSecrecy = tryCall(S.GetSpellCooldownSecrecy, id),
+				auraSecret = tryCall(S.ShouldSpellAuraBeSecret, id),
+				cooldownSecret = tryCall(S.ShouldSpellCooldownBeSecret, id),
+			}
+		end
+	end
+	return out
+end
+
+-- Addon restriction state and any Enum names describing secrecy or restrictions.
+local function probeRestrictions()
+	local out = {
+		addonChatRestricted = tryPath("C_ChatInfo.AreOutgoingAddonChatMessagesRestricted"),
+		restrictionActive = tryPath("C_RestrictedActions.IsAddOnRestrictionActive"),
+		restrictionState = tryPath("C_RestrictedActions.GetAddOnRestrictionState"),
+		enums = {},
+	}
+	if type(Enum) == "table" then
+		for name, values in pairs(Enum) do
+			if type(name) == "string" and type(values) == "table"
+				and (name:find("Secre") or name:find("Restrict") or name:find("Aura")) then
+				local parts = {}
+				for k, v in pairs(values) do
+					parts[#parts + 1] = tostring(k) .. "=" .. tostring(v)
+				end
+				table.sort(parts)
+				out.enums[name] = table.concat(parts, ", ")
+			end
+		end
+	end
+	return out
+end
+
+-- Talent trees through C_Traits: one line per node with position, rank and spell.
+local function probeTraits()
+	local T, CT = C_Traits, C_ClassTalents
+	if not (T and CT and CT.GetActiveConfigID) then
+		return "no C_Traits / C_ClassTalents"
+	end
+	local okC, configID = pcall(CT.GetActiveConfigID)
+	if not okC or type(configID) ~= "number" then
+		return "no active config: " .. tostring(configID)
+	end
+	local out = { configID = configID, trees = {} }
+	local okI, info = pcall(T.GetConfigInfo, configID)
+	if not okI or type(info) ~= "table" or type(info.treeIDs) ~= "table" then
+		return out
+	end
+	for _, treeID in ipairs(info.treeIDs) do
+		local tree = {}
+		out.trees["tree" .. tostring(treeID)] = tree
+		tree.info = rawKind(pcall(T.GetTreeInfo, configID, treeID))
+		local okCur, currencies = pcall(T.GetTreeCurrencyInfo, configID, treeID, false)
+		if okCur and type(currencies) == "table" then
+			tree.currencies = {}
+			for i, c in ipairs(currencies) do
+				tree.currencies[i] = describeFields(c)
+			end
+		end
+		local okN, nodes = pcall(T.GetTreeNodes, treeID)
+		if okN and type(nodes) == "table" then
+			tree.nodeCount = #nodes
+			tree.nodes = {}
+			for i, nodeID in ipairs(nodes) do
+				if i > 120 then
+					break
+				end
+				local okNode, node = pcall(T.GetNodeInfo, configID, nodeID)
+				if okNode and type(node) == "table" then
+					local spellName, spellID = "?", nil
+					local entryID = (node.activeEntry and node.activeEntry.entryID) or (node.entryIDs and node.entryIDs[1])
+					if entryID then
+						local okE, entry = pcall(T.GetEntryInfo, configID, entryID)
+						if okE and type(entry) == "table" and entry.definitionID then
+							local okD, def = pcall(T.GetDefinitionInfo, entry.definitionID)
+							if okD and type(def) == "table" then
+								spellID = def.spellID or def.overriddenSpellID
+								spellName = def.overrideName or (spellID and Compat.GetSpellName(spellID)) or "?"
+							end
+						end
+					end
+					tree.nodes[#tree.nodes + 1] = string.format("%s | x=%s y=%s | rank %s/%s | %s (%s)%s",
+						tostring(nodeID), tostring(node.posX), tostring(node.posY), tostring(node.ranksPurchased),
+						tostring(node.maxRanks), tostring(spellName), tostring(spellID),
+						node.subTreeID and (" | subTree " .. tostring(node.subTreeID)) or "")
+				end
+			end
+		else
+			tree.nodes = okN and Describe(nodes) or ("error: " .. tostring(nodes))
+		end
+	end
+	return out
+end
+
+-- Duration objects are userdata with a protected metatable, so methods can't
+-- be listed; look up likely names directly instead.
+local DURATION_METHODS = {
+	"GetRemainingDuration", "GetElapsedDuration", "GetTotalDuration", "GetStartTime", "GetEndTime",
+	"GetModRate", "GetRemainingPercent", "GetElapsedPercent", "EvaluateRemainingPercent",
+	"EvaluateElapsedPercent", "EvaluateRemainingDuration", "IsZero", "IsActive", "IsPaused",
+	"HasSecretValues", "IsSecret", "GetDuration", "GetExpirationTime",
+}
+
+local function durationMethodsByName(dur)
+	local found = {}
+	for _, name in ipairs(DURATION_METHODS) do
+		local ok, fn = pcall(function()
+			return dur[name]
+		end)
+		if ok and type(fn) == "function" then
+			found[#found + 1] = name
+		end
+	end
+	return found
+end
+
+local function sampleDurationGetters(dur)
+	local out = {}
+	for _, name in ipairs(durationMethodsByName(dur)) do
+		if name:find("^Get") or name:find("^Is") or name:find("^Has") then
+			local r = tryCall(dur[name], dur)
+			if type(r) == "table" then
+				out[name] = r[1] == nil and "nil" or r[1]
+			else
+				out[name] = r
+			end
+		end
+	end
+	return out
+end
+
 -- Addon message prefix + a whisper to ourselves. The reply arrives
 -- asynchronously and is written into probe.comm.received.
 local PREFIX = "NLPT"
@@ -586,11 +754,11 @@ local function probeCooldowns(resolved, withGetters)
 			local dur = Compat.GetSpellCooldownDuration(id)
 			row.durationObject = Describe(dur)
 			if type(dur) ~= "nil" and not out.durationMethods then
-				out.durationMethods = listMethods(dur)
+				out.durationMethods = durationMethodsByName(dur)
 			end
 			if withGetters and type(dur) ~= "nil" and sampled < 4 then
 				sampled = sampled + 1
-				row.durationGetters = sampleGetters(dur, listMethods(dur))
+				row.durationGetters = sampleDurationGetters(dur)
 			end
 			out.spells[r.name or entry.names[1]] = row
 		end
@@ -645,6 +813,9 @@ local function runProbe()
 		{ "widgets", probeWidgets },
 		{ "shapeshift", probeShapeshift },
 		{ "playerAuras", probeAuras },
+		{ "auraPaths", probeAuraPaths },
+		{ "restrictions", probeRestrictions },
+		{ "traits", probeTraits },
 		{ "units", probeUnits },
 		{ "comm", probeComm },
 	}
@@ -671,6 +842,7 @@ local function runProbe()
 		p.spec = probeSpec(resolved)
 		p.cooldowns = probeCooldowns(resolved, true)
 		p.auraLookups = probeAuraLookups(resolved)
+		p.secrecy = probeSecrecy(resolved)
 	end)
 	if not ok then
 		p.stepErrors.spells = tostring(err)
@@ -698,6 +870,11 @@ local function combatSample(label)
 		{ "playerAuras", probeAuras },
 		{ "units", probeUnits },
 		{ "shapeshift", probeShapeshift },
+		{ "auraPaths", probeAuraPaths },
+		{ "restrictions", probeRestrictions },
+		{ "secrecy", function()
+			return probeSecrecy(lastResolved or {})
+		end },
 		{ "cooldowns", function()
 			return probeCooldowns(lastResolved or {}, label ~= "after")
 		end },
