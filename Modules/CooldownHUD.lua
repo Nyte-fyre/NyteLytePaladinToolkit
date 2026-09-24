@@ -7,9 +7,12 @@ local _, PK = ...
 -- Combat-safe by design: probe #1 showed cooldown start/duration are secret
 -- in combat but isActive stays readable, so the swipe is always drawn from
 -- the client's duration object (display-only) and numbers are only used when
--- they're readable. Spells you haven't learned are hidden unless
--- "showUnknown" is on. Entries are registry keys (e.g. "HOLY_SHOCK") or
--- "name:<Spell Name>" for spells outside the registry.
+-- they're readable. Probe #2 showed isActive and isOnGCD stay readable in
+-- combat, so "on cooldown" = isActive and not just the global cooldown.
+-- Spells you haven't learned are hidden unless "showUnknown" is on.
+-- Entries are registry keys (e.g. "HOLY_SHOCK") or "name:<Spell Name>" for
+-- spells outside the registry; a "@group" suffix shows the spell only while
+-- you're in a party or raid (e.g. Cleanse, useless when solo leveling).
 
 local Compat = PK.Compat
 local Secrets = PK.Secrets
@@ -27,11 +30,25 @@ local function currentList()
 	return PK.profile.cooldownLists[PK.SpecProfile:GetSpec()] or {}
 end
 
+-- "PURIFY@group" -> "PURIFY", true
+local function splitEntry(entry)
+	local base, flag = entry:match("^(.-)@(%a+)$")
+	if base then
+		return base, flag == "group"
+	end
+	return entry, false
+end
+
+local function inGroup()
+	return (IsInGroup and IsInGroup()) or (IsInRaid and IsInRaid()) or false
+end
+
 -- Resolves a list entry to { spellID, name, icon, known } or nil.
 local function resolveEntry(entry)
 	if type(entry) ~= "string" then
 		return nil
 	end
+	entry = splitEntry(entry)
 	local custom = entry:match("^name:(.+)$")
 	if custom then
 		local info = Compat.GetSpellInfo(custom)
@@ -80,9 +97,11 @@ function M:Rebuild()
 		Frames:ReleaseIcon(icon)
 	end
 	icons = {}
+	local grouped = inGroup()
 	for _, entry in ipairs(currentList()) do
 		local spell = resolveEntry(entry)
-		if spell and spell.spellID and (spell.known or s.showUnknown) then
+		local _, groupOnly = splitEntry(entry)
+		if spell and spell.spellID and (spell.known or s.showUnknown) and (grouped or not groupOnly) then
 			local icon = Frames:AcquireIcon(anchor, s.iconSize)
 			icon:SetSpell(spell.spellID)
 			icon.known = spell.known
@@ -117,23 +136,28 @@ function M:Update()
 		else
 			local info = Compat.GetSpellCooldown(id)
 			local activeState, isActive = Secrets.Field(info, "isActive")
+			local gcdState, isOnGCD = Secrets.Field(info, "isOnGCD")
 			local start = Secrets.SafeNumber(select(2, Secrets.Field(info, "startTime")))
 			local duration = Secrets.SafeNumber(select(2, Secrets.Field(info, "duration")))
 			local onCooldown
-			if start and duration then
-				-- Readable numbers (out of combat): skip the global cooldown.
+			if activeState == Secrets.VALUE then
+				-- isActive/isOnGCD are readable even in combat.
+				onCooldown = isActive == true and not (gcdState == Secrets.VALUE and isOnGCD == true)
+			elseif start and duration then
 				onCooldown = duration > GCD_MAX
-				if onCooldown then
-					icon:SetCooldownNumbers(start, duration)
-				else
-					icon.cooldown:Clear()
-				end
-			elseif activeState == Secrets.VALUE and isActive == false then
-				onCooldown = false
-				icon.cooldown:Clear()
 			else
-				-- Secret numbers: let the client draw it from a duration object.
-				onCooldown = icon:SetCooldownFromDuration(Compat.GetSpellCooldownDuration(id, true))
+				onCooldown = nil -- unknown: let the duration object decide
+			end
+			if onCooldown == false then
+				icon.cooldown:Clear()
+			elseif start and duration then
+				icon:SetCooldownNumbers(start, duration)
+			else
+				-- Secret numbers: the client draws the swipe from a duration object.
+				local drawn = icon:SetCooldownFromDuration(Compat.GetSpellCooldownDuration(id, true))
+				if onCooldown == nil then
+					onCooldown = drawn
+				end
 			end
 			local usable = Compat.IsSpellUsable(id)
 			if onCooldown then
@@ -162,6 +186,9 @@ function M:OnEnable()
 	PK:RegisterEvent("SPELL_UPDATE_CHARGES", self, update)
 	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, update)
 	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, update)
+	PK:RegisterEvent("GROUP_ROSTER_UPDATE", self, function()
+		PK:Debounce("CooldownHUD.group", 0.5, rebuild)
+	end)
 	self:Rebuild()
 end
 
@@ -170,7 +197,7 @@ function M:OnDisable()
 	PK:Off("PK_PROFILE_CHANGED", self)
 	PK:Off("PK_SETTINGS_CHANGED", self)
 	for _, ev in ipairs({ "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES",
-		"PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED" }) do
+		"PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "GROUP_ROSTER_UPDATE" }) do
 		PK:UnregisterEvent(ev, self)
 	end
 	for _, icon in ipairs(icons) do
@@ -185,6 +212,15 @@ end
 
 function M:IconCount()
 	return #icons
+end
+
+-- spellID -> icon state, for tests and debugging.
+function M:IconStates()
+	local out = {}
+	for _, icon in ipairs(icons) do
+		out[icon.spellID] = icon.state
+	end
+	return out
 end
 
 -- /ptk cd list | add <spell name> | remove <spell name> | reset ----------------------------------
@@ -202,12 +238,18 @@ local function findRegistryKey(name)
 end
 
 local function entryLabel(entry)
-	local custom = entry:match("^name:(.+)$")
+	local base, groupOnly = splitEntry(entry)
+	local suffix = groupOnly and " |cff80c0ff(group only)|r" or ""
+	local custom = base:match("^name:(.+)$")
 	if custom then
-		return custom
+		return custom .. suffix
 	end
-	local e = PK.Spells.byKey[entry]
-	return e and e.names[1] or entry
+	local e = PK.Spells.byKey[base]
+	return (e and e.names[1] or base) .. suffix
+end
+
+local function plainLabel(entry)
+	return (entryLabel(entry):gsub(" |c.*$", ""))
 end
 
 PK:RegisterCommand("cd", function(args, raw)
@@ -219,8 +261,8 @@ PK:RegisterCommand("cd", function(args, raw)
 	if sub == "add" and name ~= "" then
 		local key = findRegistryKey(name) or ("name:" .. name)
 		for _, e in ipairs(list) do
-			if e == key then
-				PK:Print(entryLabel(key) .. " is already on the list.")
+			if splitEntry(e) == key then
+				PK:Print(entryLabel(e) .. " is already on the list.")
 				return
 			end
 		end
@@ -229,9 +271,22 @@ PK:RegisterCommand("cd", function(args, raw)
 	elseif sub == "remove" and name ~= "" then
 		local key = findRegistryKey(name) or ("name:" .. name)
 		for i, e in ipairs(list) do
-			if e == key or entryLabel(e):lower() == lname then
+			if splitEntry(e) == key or plainLabel(e):lower() == lname then
 				table.remove(list, i)
-				PK:Print("removed " .. entryLabel(e) .. ".")
+				PK:Print("removed " .. plainLabel(e) .. ".")
+				PK:Fire("PK_SETTINGS_CHANGED")
+				return
+			end
+		end
+		PK:Print("not on the list: " .. name)
+		return
+	elseif sub == "group" and name ~= "" then
+		local key = findRegistryKey(name) or ("name:" .. name)
+		for i, e in ipairs(list) do
+			local base, groupOnly = splitEntry(e)
+			if base == key or plainLabel(e):lower() == lname then
+				list[i] = groupOnly and base or (base .. "@group")
+				PK:Print(plainLabel(e) .. (groupOnly and " now shows all the time." or " now shows only in a group."))
 				PK:Fire("PK_SETTINGS_CHANGED")
 				return
 			end
@@ -248,8 +303,8 @@ PK:RegisterCommand("cd", function(args, raw)
 			names[#names + 1] = entryLabel(e) .. ((spell and spell.known) and "" or " |cff808080(not learned)|r")
 		end
 		PK:Print(PK.SpecProfile.LABELS[spec] .. " cooldowns: " .. (#names > 0 and table.concat(names, ", ") or "none"))
-		PK:Print("change with /ptk cd add <spell>, /ptk cd remove <spell>, /ptk cd reset")
+		PK:Print("change with /ptk cd add <spell>, remove <spell>, group <spell> (toggle group-only), reset")
 		return
 	end
 	PK:Fire("PK_SETTINGS_CHANGED")
-end, "list | add <spell> | remove <spell> | reset - edit this spec's cooldown bar")
+end, "list | add <spell> | remove <spell> | group <spell> | reset - edit this spec's cooldown bar")

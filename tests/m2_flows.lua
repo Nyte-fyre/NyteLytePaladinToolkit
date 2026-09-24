@@ -81,6 +81,36 @@ assert(CD:IconCount() == 2, "unknown spells without spell IDs stay hidden")
 P.Config:GetModuleSettings("CooldownHUD").showUnknown = false
 P:Fire("PK_SETTINGS_CHANGED")
 
+-- Global cooldown vs real cooldown (isOnGCD is readable in combat on Forever).
+for _, combat in ipairs({ false, true }) do
+	MOCK.combat = combat
+	MOCK.cooldowns[900001] = { active = true, gcd = true } -- Holy Strike (mock ID): only the GCD
+	MOCK.cooldowns[20473] = { active = true, gcd = false } -- Holy Shock: real cooldown
+	CD:Update()
+	local st = CD:IconStates()
+	assert(st[900001] == "ready", "GCD must not count as a cooldown (combat=" .. tostring(combat) .. ")")
+	assert(st[20473] == "cooldown", "real cooldown shown (combat=" .. tostring(combat) .. ")")
+	MOCK.cooldowns[20473] = { active = false, gcd = false }
+	CD:Update()
+	assert(CD:IconStates()[20473] == "ready", "inactive = ready")
+end
+MOCK.combat = false
+MOCK.cooldowns = {}
+
+-- Group-only entries (Purify is "@group" in the Holy defaults).
+MOCK.inGroup = true
+MOCK.fire("GROUP_ROSTER_UPDATE")
+MOCK.runTimers()
+assert(CD:IconCount() == 3, "Purify shows in a group, got " .. CD:IconCount())
+MOCK.inGroup = false
+MOCK.fire("GROUP_ROSTER_UPDATE")
+MOCK.runTimers()
+assert(CD:IconCount() == 2, "Purify hidden solo")
+slash("cd group Holy Strike")
+assert(CD:IconCount() == 1, "Holy Strike made group-only")
+slash("cd group holy strike")
+assert(CD:IconCount() == 2, "Holy Strike back to always")
+
 -- /ptk cd editing
 slash("cd")
 slash("cd add Judgement")

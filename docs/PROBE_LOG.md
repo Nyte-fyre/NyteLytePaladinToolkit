@@ -96,3 +96,51 @@ Zero Lua errors. Probe and combat capture both saved.
 - On a fresh install `existedAtLoad` was false (correct). After `/reload`,
   `loads` went to 2, so saved variables **did** load on reload. Still
   untested: a full client restart (the reported bug).
+
+## Combat probe #2 (2026-09-24, level 8, random mobs, probe v2)
+
+Cast order in the fight: Judgement, Seal of Righteousness, Holy Strike,
+Judgement, Holy Strike, Judgement, Hammer of Justice, Seal of the Crusader,
+Seal of Righteousness, Holy Strike, Blessing of Might, Judgement. Zero Lua errors.
+
+- **`UNIT_SPELLCAST_SUCCEEDED` for the player is fully readable in combat**:
+  unit, castGUID and **spellID**. Confirmed IDs: Judgement 20271, Seal of
+  Righteousness 21084, **Seal of the Crusader 21082**, Holy Strike 679,
+  **Hammer of Justice 853**, Blessing of Might 19740. Seal prediction in
+  AuraService works on this.
+- **`UNIT_AURA` in combat:** `updateInfo` fields (isFullUpdate, addedAuras,
+  removed/updatedAuraInstanceIDs) are all secret.
+- **Every player aura read in combat throws**, including
+  `GetAuraDataByIndex`, `GetBuffDataByIndex` and `GetUnitAuraInstanceIDs`:
+  "Auras cannot be accessed when secret while tainted by
+  'NyteLytePaladinToolkit'". `GetAuraDataBySpellName` and
+  `GetUnitAuraBySpellID` return nil. `C_Secrets.ShouldAurasBeSecret()` is
+  true in combat, so AuraService checks it and skips the call.
+- **Cooldown info in combat** has readable `isActive`, `isEnabled` and
+  **`isOnGCD`** (the last one is absent for off-GCD spells like
+  Judgement). startTime, duration, modRate, activeCategory and
+  timeUntilEndOfStartRecovery are secret. Holy Strike right after casting:
+  isActive=true, isOnGCD=false (a real cooldown). Other spells:
+  isActive=true, isOnGCD=true (only the GCD). CooldownHUD uses
+  `isActive and not isOnGCD`.
+- **Duration object methods** (found by name; the metatable is protected):
+  GetRemainingDuration, GetElapsedDuration, GetTotalDuration, GetStartTime,
+  GetEndTime, GetModRate, GetRemainingPercent, GetElapsedPercent,
+  EvaluateRemainingPercent, EvaluateElapsedPercent, EvaluateRemainingDuration,
+  IsZero, IsActive, HasSecretValues. In combat every getter returns a
+  secret, so the object is for display only (`SetCooldownFromDurationObject`).
+- `C_Spell.IsSpellUsable` stays readable in combat.
+- `C_Secrets` in combat: ShouldAurasBeSecret, ShouldCooldownsBeSecret and
+  ShouldUnitPowerBeSecret are true. ShouldUnitHealthMaxBeSecret and
+  ShouldUnitPowerMaxBeSecret are false. Every known spell has
+  GetSpellAuraSecrecy / GetSpellCooldownSecrecy = 2 (Enum.SecrecyLevel
+  ContextuallySecret: 0 Never, 1 Always, 2 Contextually).
+- **Addon messages:** `C_ChatInfo.AreOutgoingAddonChatMessagesRestricted()`
+  is **true in combat**. The BlessingManager sync must check it
+  (`Compat.CanSendAddonMessages`). `C_RestrictedActions.IsAddOnRestrictionActive(type)`
+  takes an `Enum.AddOnRestrictionType` (Combat 0, Encounter 1,
+  ChallengeMode 2, PvPMatch 3, Map 4, Chat 5). The probe now asks for each.
+- The stance bar (active Paladin aura) stays readable in combat (Devotion 465).
+
+Still pending: static `/ptk probe` at level 10+ with a talent point spent,
+covering spellbook flyouts (Blessings/Auras) and the C_Traits talent trees.

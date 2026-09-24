@@ -298,6 +298,32 @@ function Compat.GetActiveStanceSpell()
 	return spellID, icon
 end
 
+-- True if the client currently treats auras as secret (C_Secrets), false if
+-- not, nil if it can't say.
+function Compat.AurasAreSecret()
+	local fn = Compat.Resolve("C_Secrets.ShouldAurasBeSecret")
+	if not fn then
+		return nil
+	end
+	local ok, v = pcall(fn)
+	if not ok or Compat.IsSecret(v) or type(v) ~= "boolean" then
+		return nil
+	end
+	return v
+end
+
+-- Whether addon messages can be sent right now (false in combat on Forever).
+function Compat.CanSendAddonMessages()
+	local fn = Compat.Resolve("C_ChatInfo.AreOutgoingAddonChatMessagesRestricted")
+	if fn then
+		local ok, restricted = pcall(fn)
+		if ok and type(restricted) == "boolean" then
+			return not restricted
+		end
+	end
+	return not Compat.InCombat()
+end
+
 function Compat.PlaySound(kitName, fallbackID)
 	local id = (_G.SOUNDKIT and _G.SOUNDKIT[kitName]) or fallbackID
 	if id and _G.PlaySound then

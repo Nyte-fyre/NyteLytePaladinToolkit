@@ -80,6 +80,13 @@ assert(target.a == 1 and target.b == 3, "fill keeps existing, adds missing")
 assert(#target.list == 1, "lists are not merged")
 assert(target.sub.keep == false and target.sub.add == 1, "nested fill")
 local db = C.Migrate({})
-assert(db.version == 1 and db.profiles and db.profileKeys, "migrate from nothing")
+assert(db.version == 2 and db.profiles and db.profileKeys, "migrate from nothing")
+local oldHoly = C.DeepCopy(P.Presets.previousCooldownLists.holy[1])
+db = C.Migrate({ version = 1, profileKeys = {}, profiles = {
+	untouched = { cooldownLists = { holy = oldHoly } },
+	edited = { cooldownLists = { holy = { "HOLY_SHOCK" } } },
+} })
+assert(db.profiles.untouched.cooldownLists.holy[7] == "HAMMER_OF_JUSTICE", "untouched default list upgraded")
+assert(#db.profiles.edited.cooldownLists.holy == 1, "edited list left alone")
 
 LOGIC_OK = true

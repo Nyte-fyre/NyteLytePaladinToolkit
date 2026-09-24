@@ -27,7 +27,7 @@ clone, `tools\install.ps1` does this (set `WOW_ADDONS_DIR` for other paths).
 | `/ptk spec` | Show the active spec and what Auto detected |
 | `/ptk unlock` / `lock` / `reset` | Move frames, lock them, reset positions |
 | `/ptk check` | Check your Seal, Aura, Blessing and Righteous Fury |
-| `/ptk cd` | List / `add <spell>` / `remove <spell>` / `reset` this spec's cooldowns |
+| `/ptk cd` | List / `add <spell>` / `remove <spell>` / `group <spell>` (show only in a group) / `reset` this spec's cooldowns |
 | `/ptk export` / `import` | Copy your profile as text / paste one in |
 | `/ptk probe` | Records what the client supports and shows it in a copyable window |
 | `/ptk probe combat` | Arms a capture for your next fight (hit a target dummy ~10s) |

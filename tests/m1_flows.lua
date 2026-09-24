@@ -4,7 +4,7 @@ local function slash(msg)
 	SlashCmdList.NYTELYTEPALADINTOOLKIT(msg)
 end
 
-assert(NyteLytePaladinToolkitDB.version == 1, "db version")
+assert(NyteLytePaladinToolkitDB.version == 2, "db version")
 assert(NyteLytePaladinToolkitDB.profileKeys["Tester-Beta Realm"] == "Default", "profile key")
 assert(P.profile and P.profile.specMode == "auto", "default spec mode")
 

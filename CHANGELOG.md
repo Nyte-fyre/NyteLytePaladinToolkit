@@ -15,6 +15,10 @@
   Paladin aura from the stance bar, and predicts a Seal you cast in combat
   (shown with *). A Seal it truly can't see shows grey instead of a false
   "missing" alarm.
+- Holy cooldown bar: Hammer of Justice added; Cleanse and Purify show only
+  while you're in a party or raid (`/ptk cd group <spell>` toggles that for
+  any spell). Unedited Holy lists are upgraded automatically.
+- Cooldown bar ignores the global cooldown, in and out of combat.
 - Settings: Options column (sound, show all buffs, Righteous Fury warnings,
   Seal bar, unlearned spells, vertical cooldown bar).
 

@@ -6,7 +6,7 @@
 -- discipline, not the real client. Secret values are proxies that error on
 -- comparison, arithmetic and concatenation, like Midnight-style secrets.
 
-MOCK = { combat = false, timers = {}, printed = {}, errorsRaised = {}, sent = {}, level = 20 }
+MOCK = { cooldowns = {}, combat = false, timers = {}, printed = {}, errorsRaised = {}, sent = {}, level = 20 }
 
 -- Secret values ----------------------------------------------------------------
 local secrets = setmetatable({}, { __mode = "k" })
@@ -106,7 +106,7 @@ function UnitExists()
 	return true
 end
 function IsInGroup()
-	return false
+	return MOCK.inGroup == true
 end
 function IsInRaid()
 	return false
@@ -290,6 +290,7 @@ MOCK.book = {
 	{ name = "Blessing of Kings", spellID = 20217, itemType = 2 },
 	{ name = "Blessings", actionID = 264, itemType = 4 },
 	{ name = "Flash of Light", spellID = 19750, itemType = 1 },
+	{ name = "Purify", spellID = 1152, itemType = 1 },
 }
 if not MOCK_NO_SPELLBOOK then
 	C_SpellBook = {
@@ -348,10 +349,12 @@ C_Spell = {
 		end
 		return nil
 	end,
-	GetSpellCooldown = function()
+	-- MOCK.cooldowns[spellID] = { active = bool, gcd = bool } (default: active, not GCD)
+	GetSpellCooldown = function(id)
+		local c = MOCK.cooldowns[id] or { active = true, gcd = false }
 		return {
-			startTime = MOCK.maybeSecret(990), duration = MOCK.maybeSecret(10),
-			isEnabled = true, modRate = 1, isActive = true,
+			startTime = MOCK.maybeSecret(990), duration = MOCK.maybeSecret(c.gcd and 1.5 or 10),
+			isEnabled = true, modRate = 1, isActive = c.active, isOnGCD = c.gcd,
 		}
 	end,
 	GetSpellCooldownDuration = function()
@@ -433,6 +436,9 @@ C_Secrets = {
 		return true
 	end,
 	ShouldAurasBeSecret = function()
+		return MOCK.combat
+	end,
+	ShouldCooldownsBeSecret = function()
 		return MOCK.combat
 	end,
 	GetSpellAuraSecrecy = function()

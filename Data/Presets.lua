@@ -24,9 +24,19 @@ Presets.modules = {
 	ret = { BuffSentinel = true, SealTracker = true, CooldownHUD = true, BlessingManager = true, TankKit = false },
 }
 
+-- Earlier default lists, so a migration can upgrade profiles that never changed them.
+Presets.previousCooldownLists = {
+	holy = {
+		{ "HOLY_SHOCK", "DIVINE_FAVOR", "LAY_ON_HANDS", "DIVINE_SHIELD", "BLESSING_PROTECTION",
+			"BLESSING_FREEDOM", "CLEANSE", "PURIFY", "CONSECRATION", "HOLY_STRIKE", "LIGHTS_VIGIL" },
+	},
+}
+
 Presets.cooldownLists = {
+	-- "@group": only shown in a party/raid (dispels matter little while solo).
 	holy = { "HOLY_SHOCK", "DIVINE_FAVOR", "LAY_ON_HANDS", "DIVINE_SHIELD", "BLESSING_PROTECTION",
-		"BLESSING_FREEDOM", "CLEANSE", "PURIFY", "CONSECRATION", "HOLY_STRIKE", "LIGHTS_VIGIL" },
+		"BLESSING_FREEDOM", "HAMMER_OF_JUSTICE", "CONSECRATION", "HOLY_STRIKE", "LIGHTS_VIGIL",
+		"CLEANSE@group", "PURIFY@group" },
 	prot = { "JUDGEMENT", "CONSECRATION", "HOLY_STRIKE", "HAMMER_OF_JUSTICE", "TEMPLARS_BULWARK",
 		"LAY_ON_HANDS", "BLESSING_PROTECTION", "DIVINE_PROTECTION", "DIVINE_SHIELD" },
 	ret = { "HOLY_STRIKE", "JUDGEMENT", "HAMMER_OF_WRATH", "EXORCISM", "CONSECRATION",
