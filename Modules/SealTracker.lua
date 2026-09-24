@@ -156,12 +156,13 @@ function M:Render()
 	else
 		local r = PK.SpellRegistry:Get("SEAL_RIGHTEOUSNESS")
 		icon.icon:SetTexture(r and r.icon or 134400)
-		if AS.frozen then
-			icon:SetState("unusable")
-			nameText:SetText("|cff909090Seal: can't see in combat|r")
-		else
+		-- A missing Seal only matters in combat (your casts are readable there).
+		if PK.Compat.InCombat() then
 			icon:SetState("missing")
 			nameText:SetText("|cffff4040No Seal|r")
+		else
+			icon:SetState("unusable")
+			nameText:SetText("|cff909090No Seal|r")
 		end
 		bar:SetValue(0)
 		timeText:SetText("")
@@ -176,6 +177,8 @@ function M:OnEnable()
 	PK:On("PK_SPELLS_UPDATED", self, render)
 	PK:On("PK_PROFILE_CHANGED", self, render)
 	PK:On("PK_SETTINGS_CHANGED", self, render)
+	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, render)
+	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, render)
 	self:Render()
 end
 
@@ -184,6 +187,8 @@ function M:OnDisable()
 	PK:Off("PK_SPELLS_UPDATED", self)
 	PK:Off("PK_PROFILE_CHANGED", self)
 	PK:Off("PK_SETTINGS_CHANGED", self)
+	PK:UnregisterEvent("PLAYER_REGEN_DISABLED", self)
+	PK:UnregisterEvent("PLAYER_REGEN_ENABLED", self)
 	current = nil
 	if container then
 		container:Hide()

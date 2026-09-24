@@ -62,12 +62,26 @@ function Frames:GetAnchor(module)
 	local mover = CreateFrame("Frame", nil, anchor)
 	mover:SetAllPoints()
 	mover:SetFrameStrata("HIGH")
+	-- Holy gold box with a thin gold edge (see UI/Theme.lua).
+	local c = PK.Theme.colors
 	local bg = mover:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints()
-	bg:SetColorTexture(0.1, 0.7, 0.2, 0.45)
+	bg:SetColorTexture(c.mover[1], c.mover[2], c.mover[3], c.mover[4])
+	for _, edge in ipairs({ { "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
+		{ "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false } }) do
+		local line = mover:CreateTexture(nil, "BORDER")
+		line:SetColorTexture(c.gold[1], c.gold[2], c.gold[3], 0.9)
+		line:SetPoint(edge[1])
+		line:SetPoint(edge[2])
+		if edge[3] then
+			line:SetHeight(1)
+		else
+			line:SetWidth(1)
+		end
+	end
 	local label = mover:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	label:SetPoint("CENTER")
-	label:SetText(Presets.MODULE_LABELS[module] or module)
+	label:SetText(PK.Theme.InlineIcon(PK.Theme.ICON, 12) .. " " .. (Presets.MODULE_LABELS[module] or module))
 	mover:Hide()
 	anchor.mover = mover
 
@@ -116,7 +130,7 @@ function Frames:SetLocked(locked)
 	PK.profile.locked = locked and true or false
 	self:Refresh()
 	PK:Fire("PK_LOCK_CHANGED", PK.profile.locked)
-	PK:Print(locked and "frames locked." or "frames unlocked: drag the green boxes, then /ptk lock.")
+	PK:Print(locked and "frames locked." or "frames unlocked: drag the gold boxes, then /ptk lock.")
 end
 
 function Frames:ToggleLock()

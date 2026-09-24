@@ -14,7 +14,8 @@ PK.modules = {}
 PK.moduleOrder = {}
 PK.unknownEvents = {}
 
-local COLOR = "|cfff58cba"
+-- Holy gold with a Holy Bolt icon (see UI/Theme.lua).
+local PREFIX = "|TInterface\\Icons\\Spell_Holy_HolyBolt:14:14|t |cffffd140"
 local MAX_ERRORS = 30
 local MAX_DEBUG = 300
 
@@ -75,7 +76,7 @@ function PK:Print(...)
 	for i = 1, select("#", ...) do
 		parts[#parts + 1] = tostring((select(i, ...)))
 	end
-	print(COLOR .. PK.chatName .. "|r: " .. table.concat(parts, " "))
+	print(PREFIX .. PK.chatName .. "|r: " .. table.concat(parts, " "))
 end
 
 local debugLog = {}

@@ -30,6 +30,12 @@ assert(statusOf("seal") == "ok", "seal ok")
 assert(statusOf("aura") == "ok", "aura from stance bar")
 assert(statusOf("blessing") == "missing", "no blessing yet")
 assert(statusOf("rf") == nil, "no Righteous Fury check as Holy")
+-- No Seal out of combat is fine ("idle"), only combat matters.
+local savedSeal = table.remove(MOCK.auras, 2)
+rescan()
+assert(statusOf("seal") == "idle", "no Seal out of combat is idle")
+table.insert(MOCK.auras, 2, savedSeal)
+rescan()
 
 -- A Blessing with 60s left is "expiring" (threshold 120s).
 table.insert(MOCK.auras, { name = "Blessing of Might", spellId = 19740, duration = 3600, expirationTime = GetTime() + 60 })
@@ -55,7 +61,7 @@ ST:Render()
 
 -- When the prediction runs out while blind: "unknown", not a false alarm.
 MOCK.advance(61)
-assert(statusOf("seal") == "unknown", "seal unknown when blind")
+assert(statusOf("seal") == "missing", "seal missing in combat once it ran out")
 ST:Render()
 assert(statusOf("blessing") == "missing", "blessing expired by its own timer")
 

@@ -22,6 +22,7 @@ Core\Config.lua
 Services\SpellRegistry.lua
 Services\AuraService.lua
 Core\SpecProfile.lua
+UI\Theme.lua
 UI\CopyWindow.lua
 UI\Frames.lua
 UI\Settings.lua
