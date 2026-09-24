@@ -16,9 +16,9 @@
 | `UnitHealth`/`UnitPower`/`UnitGetTotalAbsorbs("player")` | **secret** | secret | not used |
 | `UnitHealthMax`/`UnitPowerMax("player")` | readable | readable | not used |
 | SavedVariables on a full client restart | **not loaded** (beta bug) | - | login notice + export/import |
-| Addon messages | allowed | **restricted** (`AreOutgoingAddonChatMessagesRestricted`) | Comm queue |
+| Addon messages (PARTY) | **delivered** (ignore `AreOutgoingAddonChatMessagesRestricted`, true anyway) | restricted | Comm queue, gated by `IsAddOnRestrictionActive` |
 | Settings API (canvas category) | works | works | UI/Settings.lua |
-| Party members' auras | **unverified** | assumed secret | Roster (unreadable = unknown) |
+| Party members' auras | **readable** | assumed secret | Roster (unreadable = unknown) |
 | Talent trees (`C_Traits`) | readable: **one tree, three columns** | - | Compat.GetTalentPointsByTree |
 
 ## Launch-day checklist (Nov 4 2026)
@@ -245,3 +245,25 @@ covering spellbook flyouts (Blessings/Auras) and the C_Traits talent trees.
   profile is restored automatically. `probe.savedVariables.charBackupAt` and
   `restoredFromCharacter` show whether it worked. The character folder on the
   beta is named after a realm ID (`70\Nyte-Fyre`), not the realm name.
+
+## Party probe (2026-09-24, level 11, grouped with a Shaman who was leader)
+
+- **Party members' buffs are readable out of combat.** `party1` returned
+  full aura data (our Devotion Aura: spellId, name, expirationTime,
+  sourceUnit). The Blessing buff button works in groups.
+- `C_Spell.IsSpellInRange("Blessing of Might", "party1")` -> true, and
+  `UnitIsGroupLeader("party1")` -> true.
+- **Addon messages:** `SendAddonMessage` on PARTY returned 0 (success), and
+  our own message came back on PARTY. **But
+  `C_ChatInfo.AreOutgoingAddonChatMessagesRestricted()` returned true out of
+  combat**, while every `C_RestrictedActions.IsAddOnRestrictionActive(type)`
+  (Chat, Combat, Encounter, ...) was false and the message went through.
+  The old send gate used the former, so sync would never have sent. 0.5.4
+  uses the per-type checks, plus "never in combat" and
+  `InChatMessagingLockdown`.
+- **Saved variables loaded normally this session** (`existedAtLoad = true`,
+  `loads = 3`); the owner reports the addon-memory/saving bug is known to
+  Blizzard and being fixed. The per-character backup file
+  (`WTF\Account\<account>\70\Nyte-Fyre\SavedVariables\NyteLytePaladinToolkit.lua`)
+  is written on every save.
+- Talent detection still correct: 2 Holy points -> Holy.
