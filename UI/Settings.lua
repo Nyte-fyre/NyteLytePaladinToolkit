@@ -68,6 +68,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("BlessingManager").showWhenSolo = v
 	end },
+	{ "Buff button: refresh the lowest timer when nobody needs it", function()
+		return ms("BlessingManager").refreshLowest
+	end, function(v)
+		ms("BlessingManager").refreshLowest = v
+	end },
 	{ "Cooldown HUD: show unlearned spells", function()
 		return ms("CooldownHUD").showUnknown
 	end, function(v)
@@ -135,7 +140,7 @@ end
 
 local function Build()
 	panel = CreateFrame("Frame")
-	panel:SetSize(620, 700)
+	panel:SetSize(620, 720)
 	panel.name = PK.displayName
 
 	PK.Theme.AddGlow(panel, 80)

@@ -108,6 +108,7 @@ Presets.moduleSettings = {
 	},
 	BlessingManager = {
 		showWhenSolo = true, -- show the buff button when not in a group
+		refreshLowest = true, -- when nobody needs a Blessing, target the lowest timer
 		buttonSize = 40,
 	},
 	TankKit = {

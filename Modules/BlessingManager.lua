@@ -20,7 +20,7 @@ local M = PK:RegisterModule("BlessingManager", {})
 M.peers = {} -- [name] = { version, blessings = set, auras = set, seen }
 
 local BUTTON_NAME = "NyteLytePaladinToolkitBuffButton"
-local button, gridButton, countText, targetText
+local button, gridButton, countText, targetText, classIcon
 local wasInGroup = false
 
 local function settings()
@@ -272,9 +272,13 @@ function M:UpdateButton()
 				}
 			end
 		end
-		local target, key = B.NextMissing(eff, me(), members)
-		local missing, names = B.CountMissing(eff, me(), members)
+		local now = GetTime()
+		local refreshSec = (PK.profile.blessing.refreshMinutes or 5) * 60
+		local target, key, left, reason = B.PickTarget(eff, me(), members, now, refreshSec,
+			settings().refreshLowest)
+		local needing, names = B.CountNeeding(eff, me(), members, now, refreshSec)
 		M.missingNames = names
+		M.next = target and { name = target.name, class = target.class, key = key, left = left, reason = reason }
 		if target then
 			local spell, icon = blessingSpell(key)
 			button:SetAttribute("type", "spell")
@@ -282,18 +286,63 @@ function M:UpdateButton()
 			button:SetAttribute("unit", target.unit)
 			button.icon:SetTexture(icon or Theme.ICON_BLESSING)
 			button.icon:SetDesaturated(false)
-			targetText:SetText(target.name)
 		else
 			button:SetAttribute("type", nil)
 			button:SetAttribute("spell", nil)
 			button:SetAttribute("unit", nil)
 			button.icon:SetTexture(Theme.ICON_BLESSING)
 			button.icon:SetDesaturated(true)
-			targetText:SetText(Theme.Color("dim", "All blessed"))
 		end
-		countText:SetText(missing > 0 and Theme.Color("gold", missing .. " missing") or "")
-		M.nextTarget = target and target.name or nil
+		M:UpdateButtonText()
+		countText:SetText(needing > 0 and Theme.Color("gold", needing .. " need" .. (needing == 1 and "s" or "") .. " it") or "")
 	end)
+end
+
+local function formatLeft(sec)
+	if not sec or sec == math.huge then
+		return ""
+	elseif sec >= 60 then
+		return math.floor(sec / 60 + 0.5) .. "m"
+	end
+	return math.floor(sec) .. "s"
+end
+
+local function classColor(class, text)
+	local c = _G.RAID_CLASS_COLORS and _G.RAID_CLASS_COLORS[class]
+	if c and c.colorStr then
+		return "|c" .. c.colorStr .. text .. "|r"
+	end
+	return Theme.Color("light", text)
+end
+
+-- Name (class-colored) with a class icon, and what the next press does.
+-- Safe in combat: only font strings and a plain texture change.
+function M:UpdateButtonText()
+	if not targetText then
+		return
+	end
+	local n = self.next
+	if not n then
+		classIcon:Hide()
+		targetText:SetText(Theme.Color("dim", "All blessed"))
+		return
+	end
+	local coords = _G.CLASS_ICON_TCOORDS and _G.CLASS_ICON_TCOORDS[n.class]
+	if coords then
+		classIcon:SetTexCoord(unpack(coords))
+		classIcon:Show()
+	else
+		classIcon:Hide()
+	end
+	local status
+	if n.reason == "missing" then
+		status = Theme.Color("alarm", "missing")
+	elseif n.reason == "expiring" then
+		status = Theme.Color("gold", formatLeft(n.left) .. " left")
+	else
+		status = Theme.Color("dim", "refresh (" .. formatLeft(n.left) .. ")")
+	end
+	targetText:SetText(classColor(n.class, n.name) .. " " .. status)
 end
 
 local function buildButton()
@@ -321,8 +370,13 @@ local function buildButton()
 	hl:SetAllPoints()
 	hl:SetColorTexture(1, 0.9, 0.5, 0.25)
 
+	classIcon = anchor:CreateTexture(nil, "ARTWORK")
+	classIcon:SetSize(16, 16)
+	classIcon:SetPoint("TOPLEFT", button, "TOPRIGHT", 8, -1)
+	classIcon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
+	classIcon:Hide()
 	targetText = anchor:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	targetText:SetPoint("TOPLEFT", button, "TOPRIGHT", 8, -2)
+	targetText:SetPoint("LEFT", classIcon, "RIGHT", 4, 0)
 	countText = anchor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	countText:SetPoint("TOPLEFT", targetText, "BOTTOMLEFT", 0, -3)
 
@@ -332,10 +386,18 @@ local function buildButton()
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:AddLine(Theme.Color("gold", "Buff next missing Blessing"))
-		GameTooltip:AddLine("Click (or its keybind) to cast your assigned Blessing on " ..
-			(M.nextTarget or "the next player missing it") .. ".", 1, 1, 1, true)
+		local n = M.next
+		if n then
+			local entry = PK.Spells.byKey[n.key]
+			GameTooltip:AddLine("Next press: " .. (entry and entry.names[1] or "Blessing") .. " on " .. n.name
+				.. (n.reason == "missing" and " (missing)" or (" (" .. formatLeft(n.left) .. " left)")), 1, 1, 1, true)
+		else
+			GameTooltip:AddLine("Nobody needs your Blessing right now.", 1, 1, 1, true)
+		end
+		GameTooltip:AddLine("One press = one cast. Missing Blessings come first, then ones about to run out"
+			.. (settings().refreshLowest and ", then the lowest timer." or "."), 0.7, 0.7, 0.7, true)
 		if M.missingNames and #M.missingNames > 0 then
-			GameTooltip:AddLine("Missing: " .. table.concat(M.missingNames, ", "), 1, 0.82, 0.25, true)
+			GameTooltip:AddLine("Need it: " .. table.concat(M.missingNames, ", "), 1, 0.82, 0.25, true)
 		end
 		GameTooltip:Show()
 	end)

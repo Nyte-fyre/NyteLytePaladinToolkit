@@ -3,8 +3,8 @@ local _, PK = ...
 -- Group roster for the Blessing Manager: who is in the group, their class,
 -- whether they can be buffed right now, and which Blessings they have.
 -- Scans only out of combat (group auras are secret in combat); in combat
--- the last scan is kept. A Blessing with less than `refreshMinutes` left
--- counts as missing, so the buff button tops it up.
+-- the last scan is kept. Each member's Blessings are kept with their
+-- expiration times so the buff button can pick the lowest timer.
 -- Fires PK_ROSTER_UPDATED.
 
 local Compat = PK.Compat
@@ -60,15 +60,14 @@ local function safeCall(fn, ...)
 	return v
 end
 
--- Blessings on a unit as { key = true } (only ones with enough time left),
--- or nil if the unit's buffs can't be read.
-local function readBlessings(unit, nameMap, refreshSec)
+-- Blessings on a unit as { key = expirationTime } (0 = no expiry), or nil
+-- if the unit's buffs can't be read.
+local function readBlessings(unit, nameMap)
 	local list, _, err = Compat.GetAuras(unit, "HELPFUL")
 	if err then
 		return nil
 	end
 	local set = {}
-	local now = GetTime()
 	for _, a in ipairs(list) do
 		local name = Secrets.SafeString(select(2, Secrets.Field(a, "name")))
 		if not name then
@@ -77,8 +76,9 @@ local function readBlessings(unit, nameMap, refreshSec)
 		local key = nameMap[name]
 		if key then
 			local exp = Secrets.SafeNumber(select(2, Secrets.Field(a, "expirationTime"))) or 0
-			if exp == 0 or exp - now > refreshSec then
-				set[key] = true
+			-- Keep the longest copy if the blessing shows up twice.
+			if set[key] == nil or exp == 0 or (set[key] ~= 0 and exp > set[key]) then
+				set[key] = exp
 			end
 		end
 	end
@@ -90,7 +90,6 @@ function Roster:Scan()
 		return false
 	end
 	local nameMap = blessingNameMap()
-	local refreshSec = ((PK.profile and PK.profile.blessing.refreshMinutes) or 5) * 60
 	local members, paladins = {}, {}
 	for _, unit in ipairs(units()) do
 		if safeCall(UnitExists, unit) then
@@ -110,7 +109,7 @@ function Roster:Scan()
 					dead = dead,
 					visible = visible,
 					usable = online and not dead and visible,
-					buffs = readBlessings(unit, nameMap, refreshSec),
+					buffs = readBlessings(unit, nameMap),
 				}
 				members[#members + 1] = m
 				if class == "PALADIN" then

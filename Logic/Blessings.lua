@@ -274,27 +274,65 @@ function B.AssignedFor(assignments, paladin, class)
 	return row and row.classes and row.classes[class] or nil
 end
 
--- members: ordered list of { unit, name, class, usable = bool, buffs = set|nil }
--- (buffs = set of blessing keys the member has, nil if unreadable).
--- Returns the first member missing `me`'s assigned blessing and that key.
-function B.NextMissing(assignments, me, members)
+-- members: ordered list of { unit, name, class, usable = bool, buffs = map|nil }
+-- buffs maps blessing key -> expirationTime (0 = no expiry); nil = unreadable.
+
+-- Seconds left on a member's blessing: nil if missing, math.huge if permanent.
+function B.Remaining(member, key, now)
+	local exp = member.buffs and member.buffs[key]
+	if exp == nil then
+		return nil
+	end
+	if exp == 0 then
+		return math.huge
+	end
+	local left = exp - now
+	return left > 0 and left or nil
+end
+
+-- Who the buff button should target next. Returns member, key, remaining,
+-- reason, where reason is:
+--   "missing"  someone has no copy of your assigned blessing (first in order)
+--   "expiring" under refreshSec left (the lowest first)
+--   "lowest"   nobody needs it, but refreshLowest is on: the lowest timer,
+--              so each press refreshes the oldest blessing
+-- Unreadable members (buffs = nil) and unusable ones (dead, offline, out of
+-- range) are skipped.
+function B.PickTarget(assignments, me, members, now, refreshSec, refreshLowest)
+	local lowest, lowestKey, lowestLeft
 	for _, m in ipairs(members) do
 		local key = B.AssignedFor(assignments, me, m.class)
-		if key and m.usable and m.buffs and not m.buffs[key] then
-			return m, key
+		if key and m.usable and m.buffs then
+			local left = B.Remaining(m, key, now)
+			if left == nil then
+				return m, key, nil, "missing"
+			end
+			if left ~= math.huge and (lowestLeft == nil or left < lowestLeft) then
+				lowest, lowestKey, lowestLeft = m, key, left
+			end
 		end
+	end
+	if lowest and lowestLeft < refreshSec then
+		return lowest, lowestKey, lowestLeft, "expiring"
+	end
+	if lowest and refreshLowest then
+		return lowest, lowestKey, lowestLeft, "lowest"
 	end
 	return nil
 end
 
--- Number of members missing `me`'s assigned blessing (readable ones only).
-function B.CountMissing(assignments, me, members)
+-- Members missing your assigned blessing or under refreshSec left
+-- (readable ones only, including those out of range).
+function B.CountNeeding(assignments, me, members, now, refreshSec)
 	local n, names = 0, {}
 	for _, m in ipairs(members) do
 		local key = B.AssignedFor(assignments, me, m.class)
-		if key and m.buffs and not m.buffs[key] then
-			n = n + 1
-			names[#names + 1] = m.name
+		if key and m.buffs then
+			local left = B.Remaining(m, key, now)
+			if left == nil or left < refreshSec then
+				n = n + 1
+				names[#names + 1] = m.name
+			end
 		end
 	end
 	return n, names
