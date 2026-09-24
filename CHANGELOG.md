@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+
+- Works around Forever's beta settings bug: your profile is also saved to a
+  per-character file. If the main file doesn't load, the addon restores
+  your profile from the character copy and says so in chat.
+
 ## 0.5.1
 
 - When no saved settings were loaded (confirmed Forever beta bug after a

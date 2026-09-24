@@ -7,7 +7,7 @@ ignore = {
 }
 
 globals = {
-	"NyteLytePaladinToolkit", "NyteLytePaladinToolkitDB",
+	"NyteLytePaladinToolkit", "NyteLytePaladinToolkitDB", "NyteLytePaladinToolkitCharDB",
 	"SLASH_NYTELYTEPALADINTOOLKIT1", "SLASH_NYTELYTEPALADINTOOLKIT2", "SlashCmdList",
 	"BINDING_HEADER_NYTELYTEPALADINTOOLKIT", "BINDING_NAME_NLPT_CYCLE_SPEC", "BINDING_NAME_NLPT_TOGGLE_LOCK",
 	"StaticPopupDialogs",
