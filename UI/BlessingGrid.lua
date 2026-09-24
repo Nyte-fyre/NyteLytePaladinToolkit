@@ -244,6 +244,8 @@ function Grid:Refresh()
 			cell:SetAlpha(row.editable and 1 or 0.6)
 		end
 	end
+	local shownRows = math.max(1, math.min(#paladins, MAX_ROWS))
+	window:SetHeight(-TOP + shownRows * (CELL + GAP) + 64)
 	local extra = #paladins > MAX_ROWS and (" (showing " .. MAX_ROWS .. " of " .. #paladins .. ")") or ""
 	statusText:SetText(withAddon .. " other paladin(s) syncing" .. extra
 		.. (PK.Comm:Pending() > 0 and " - sending after combat" or ""))

@@ -199,7 +199,7 @@ local function Build()
 	header(panel, "Options", framesY, optX, 270)
 	for i, opt in ipairs(OPTIONS) do
 		local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
-		cb:SetPoint("TOPLEFT", optX - 4, framesY - 16 - (i - 1) * 24)
+		cb:SetPoint("TOPLEFT", optX - 4, framesY - 16 - (i - 1) * 22)
 		cb:SetSize(24, 24)
 		local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
@@ -211,8 +211,8 @@ local function Build()
 		optionBoxes[i] = cb
 	end
 	local cdNote = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	cdNote:SetPoint("TOPLEFT", optX, framesY - 24 - #OPTIONS * 24)
-	cdNote:SetWidth(270)
+	cdNote:SetPoint("TOPLEFT", 16, framesY - 64 - 146)
+	cdNote:SetWidth(310)
 	cdNote:SetJustifyH("LEFT")
 	cdNote:SetText("Edit this spec's cooldown bar with /ptk cd (list, add, remove, reset).")
 
@@ -250,10 +250,19 @@ function S:Refresh()
 	local d = SP:GetDecision()
 	local mode = PK.profile.specMode
 	for m, b in pairs(modeButtons) do
+		local fs = b:GetFontString()
 		if m == mode then
 			b:LockHighlight()
+			b:SetText(PK.Theme.InlineIcon(PK.Theme.ICON, 12) .. " " .. SP.LABELS[m])
+			if fs then
+				fs:SetTextColor(1, 1, 1)
+			end
 		else
 			b:UnlockHighlight()
+			b:SetText(SP.LABELS[m])
+			if fs then
+				fs:SetTextColor(0.75, 0.68, 0.55)
+			end
 		end
 	end
 	if d then

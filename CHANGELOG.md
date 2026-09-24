@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0 - M5: polish and packaging (first beta release candidate)
+
+- Fixed: a gold box inside the buff button icon (a glow texture squeezed
+  onto a small icon). Icon borders are now crisp thin edges; "missing" is a
+  2px red edge.
+- The Blessing grid button next to the buff button has a clearer icon and a
+  tooltip; the grid window sizes itself to the paladins present.
+- Settings: the selected spec mode is highlighted; the cooldown hint no
+  longer overlaps the Options window's Close button.
+- Blessing sync no longer queues messages while you're solo.
+- Localization scaffold (`Locales/enUS.lua`).
+- `tools/package.py` builds the release zip; README rewritten with
+  install steps, features, the combat-restriction approach and known limits.
+- `docs/PROBE_LOG.md`: verified-API summary and a launch-day checklist.
+- Tests fail if the addon leaks a global variable.
+
 ## 0.4.0-dev - M4: Blessing Manager, Holy theme
 
 - Blessing Manager (PallyPower-style):
