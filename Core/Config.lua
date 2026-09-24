@@ -4,7 +4,7 @@ local _, PK = ...
 -- profile export/import.
 --
 -- NyteLytePaladinToolkitDB = {
---   version = 1,
+--   version = 2,
 --   profileKeys = { ["Char-Realm"] = "Default" },
 --   profiles = { Default = { specMode, locked, modules, layout, cooldownLists, alerts, blessing } },
 --   meta, probe, probeCombat, errors, debugLog, debug  -- diagnostics, not part of profiles
@@ -17,7 +17,7 @@ local Presets = PK.Presets
 local Config = {}
 PK.Config = Config
 
-local DB_VERSION = 1
+local DB_VERSION = 2
 Config.DB_VERSION = DB_VERSION
 
 -- Table helpers ----------------------------------------------------------------------
@@ -98,8 +98,44 @@ function Config.Migrate(db)
 		db.profiles = db.profiles or {}
 		v = 1
 	end
+	if v < 2 then
+		-- Holy default list changed (HoJ added, Cleanse/Purify group-only):
+		-- upgrade profiles still using an old default, leave edited ones alone.
+		for _, profile in pairs(db.profiles) do
+			Config.UpgradeDefaultLists(profile)
+		end
+		v = 2
+	end
 	db.version = v
 	return db
+end
+
+local function sameList(a, b)
+	if type(a) ~= "table" or #a ~= #b then
+		return false
+	end
+	for i = 1, #b do
+		if a[i] ~= b[i] then
+			return false
+		end
+	end
+	return true
+end
+
+-- Replaces a spec's cooldown list with the current default if it exactly
+-- matches an earlier default (i.e. the player never edited it).
+function Config.UpgradeDefaultLists(profile)
+	local lists = type(profile) == "table" and profile.cooldownLists
+	if type(lists) ~= "table" then
+		return
+	end
+	for spec, olds in pairs(Presets.previousCooldownLists) do
+		for _, old in ipairs(olds) do
+			if sameList(lists[spec], old) then
+				lists[spec] = deepCopy(Presets.cooldownLists[spec])
+			end
+		end
+	end
 end
 
 -- Setup -------------------------------------------------------------------------------------

@@ -43,6 +43,17 @@ end
 
 -- Rescans the player's buffs. Returns true if the result was trusted.
 function AS:Scan()
+	-- In combat Forever refuses aura reads outright ("Auras cannot be accessed
+	-- when secret"), so skip the call when the client says auras are secret.
+	if Compat.InCombat() and Compat.AurasAreSecret() then
+		if not self.frozen then
+			self.frozen = true
+			PK:Debug("AuraService: frozen (auras secret)")
+		end
+		self.stanceSpellID = Compat.GetActiveStanceSpell()
+		PK:Fire("PK_AURAS_UPDATED")
+		return false
+	end
 	local list = Compat.GetAuras("player", "HELPFUL")
 	local auras, unreadable = {}, 0
 	for _, a in ipairs(list) do

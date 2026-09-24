@@ -571,14 +571,20 @@ end
 local function probeRestrictions()
 	local out = {
 		addonChatRestricted = tryPath("C_ChatInfo.AreOutgoingAddonChatMessagesRestricted"),
-		restrictionActive = tryPath("C_RestrictedActions.IsAddOnRestrictionActive"),
-		restrictionState = tryPath("C_RestrictedActions.GetAddOnRestrictionState"),
+		restrictionActive = {},
 		enums = {},
 	}
+	-- One call per restriction type (Combat, Encounter, ChallengeMode, PvPMatch, Map, Chat).
+	local types = Enum and Enum.AddOnRestrictionType
+	if type(types) == "table" then
+		for name, value in pairs(types) do
+			out.restrictionActive[name] = tryPath("C_RestrictedActions.IsAddOnRestrictionActive", value)
+		end
+	end
 	if type(Enum) == "table" then
 		for name, values in pairs(Enum) do
 			if type(name) == "string" and type(values) == "table"
-				and (name:find("Secre") or name:find("Restrict") or name:find("Aura")) then
+				and (name:find("^Secre") or name:find("^AddOnRestriction")) and not name:find("Meta$") then
 				local parts = {}
 				for k, v in pairs(values) do
 					parts[#parts + 1] = tostring(k) .. "=" .. tostring(v)
