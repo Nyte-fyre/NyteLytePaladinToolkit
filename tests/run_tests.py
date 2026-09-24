@@ -51,10 +51,26 @@ def new_runtime(flags):
 CHECKS = r"""
 local function slash(msg) SlashCmdList.NYTELYTEPALADINTOOLKIT(msg) end
 
+if MOCK_CHAR_BACKUP then
+  -- Account file didn't load (beta bug) but the per-character backup did.
+  NyteLytePaladinToolkitCharDB = { savedAt = 900, profileName = "Default",
+    profile = { specMode = "ret", locked = true, cooldownLists = { holy = { "HOLY_SHOCK" } } } }
+end
+
 MOCK.fire("ADDON_LOADED", "NyteLytePaladinToolkit")
 MOCK.fire("PLAYER_LOGIN")
 assert(NyteLytePaladinToolkitDB and NyteLytePaladinToolkitDB.meta.loads == 1, "db not initialised")
 assert(NyteLytePaladinToolkit.svState.existedAtLoad == false, "fresh install should report no SV at load")
+if MOCK_CHAR_BACKUP then
+  local p = NyteLytePaladinToolkit.profile
+  assert(NyteLytePaladinToolkit.svState.restoredFromCharacter, "restored from character backup")
+  assert(p.specMode == "ret" and #p.cooldownLists.holy == 1, "backup profile restored")
+  assert(p.cooldownLists.prot and p.moduleSettings, "missing keys filled from defaults")
+  p.specMode = "auto"
+  p.cooldownLists.holy = NyteLytePaladinToolkit.Config.DeepCopy(NyteLytePaladinToolkit.Presets.cooldownLists.holy)
+else
+  assert(NyteLytePaladinToolkit.svState.restoredFromCharacter == nil, "nothing to restore")
+end
 
 slash("")
 slash("help")
@@ -93,6 +109,8 @@ slash("show")
 slash("errors")
 slash("nonsense words")
 MOCK.fire("PLAYER_LOGOUT")
+assert(type(NyteLytePaladinToolkitCharDB) == "table" and NyteLytePaladinToolkitCharDB.profile == NyteLytePaladinToolkit.profile,
+  "character backup written on logout")
 
 -- Walk the saved data: no secret value may be stored anywhere.
 local seen = {}
@@ -144,6 +162,7 @@ SCENARIOS = [
     ("forever-shaped client", []),
     ("no issecretvalue", ["MOCK_NO_SECRETS"]),
     ("no C_SpellBook / C_UnitAuras", ["MOCK_NO_SPELLBOOK", "MOCK_NO_AURAS"]),
+    ("account file lost, character backup restores", ["MOCK_CHAR_BACKUP"]),
 ]
 
 

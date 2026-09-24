@@ -304,6 +304,8 @@ PK:RegisterEvent("ADDON_LOADED", lifecycle, function(_, _, name)
 		previousLoginAt = m.loginAt,
 		previousLogoutAt = m.logoutAt,
 		loads = (m.loads or 0) + 1,
+		-- Per-character backup (separate file; see Config.lua).
+		charBackupAt = type(NyteLytePaladinToolkitCharDB) == "table" and NyteLytePaladinToolkitCharDB.savedAt or nil,
 	}
 	m.loads = PK.svState.loads
 	m.session = string.format("%d-%04d", time(), math.random(0, 9999))
@@ -331,7 +333,11 @@ PK:RegisterEvent("PLAYER_LOGIN", lifecycle, function()
 	-- Forever's beta can start the client without loading saved settings
 	-- (confirmed 2026-09-24: existedAtLoad was false after a full restart).
 	-- Say so, instead of letting a reset setup look like an addon bug.
-	if PK.svState and not PK.svState.existedAtLoad then
+	if PK.svState and PK.svState.restoredFromCharacter then
+		C_Timer.After(6, function()
+			PK:Print("your settings didn't load (Forever beta bug), so they were restored from this character's backup.")
+		end)
+	elseif PK.svState and not PK.svState.existedAtLoad then
 		C_Timer.After(6, function()
 			PK:Print("no saved settings were found, so defaults are in use. First time? Welcome, type /ptk to set up. "
 				.. "If you had settings before, Forever's beta sometimes doesn't load them after a full restart: "
