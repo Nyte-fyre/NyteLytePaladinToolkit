@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0-dev - M4: Blessing Manager, Holy theme
+
+- Blessing Manager (PallyPower-style):
+  - Assignment grid (`/ptk bless`): one row per paladin, one column per
+    class plus Aura. Click to cycle Blessings, right-click back, Shift-click
+    to clear. You edit your row; the group leader and assistants can edit any.
+  - Auto-suggest fills a sensible layout (Kings/Might for melee,
+    Kings/Wisdom for casters, no Salvation on warriors, no Might on
+    casters, distinct Auras). "Announce" posts it to party/raid, only when
+    you click it.
+  - Syncs with other paladins running the addon, only out of combat and
+    outside boss encounters, in party/raid.
+  - Buff button: one press casts your assigned Blessing on the next group
+    member missing it (or with under 5 minutes left). Keybind under Key
+    Bindings > AddOns. Target and spell are chosen out of combat only.
+- Holy theme: gold-bordered windows, gold headers, holy icons, gold drag
+  boxes and chat prefix.
+- A missing Seal is only flagged in combat (grey "No Seal" out of combat).
+
 ## 0.3.0-dev - M3: Protection and Retribution
 
 - Tank Kit (on for Protection by default): a big flashing "Righteous Fury

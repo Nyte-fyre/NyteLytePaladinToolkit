@@ -2,7 +2,7 @@
 ## Title: Nyte Lyte's Paladin Toolkit
 ## Notes: All-in-one Paladin toolkit for WoW: Forever (buffs, seals, cooldowns, blessings)
 ## Author: Nyte-fyre
-## Version: 0.3.0-dev
+## Version: 0.4.0-dev
 ## X-License: MIT
 ## SavedVariables: NyteLytePaladinToolkitDB
 ## IconTexture: Interface\Icons\Spell_Holy_HolyBolt
@@ -16,18 +16,23 @@ Core\Secrets.lua
 Core\CombatQueue.lua
 Logic\Serializer.lua
 Logic\SpecDecision.lua
+Logic\Blessings.lua
 Data\Spells.lua
 Data\Presets.lua
 Core\Config.lua
 Services\SpellRegistry.lua
 Services\AuraService.lua
+Services\Comm.lua
+Services\Roster.lua
 Core\SpecProfile.lua
 UI\Theme.lua
 UI\CopyWindow.lua
 UI\Frames.lua
 UI\Settings.lua
+UI\BlessingGrid.lua
 Modules\Diagnostics.lua
 Modules\BuffSentinel.lua
 Modules\SealTracker.lua
 Modules\CooldownHUD.lua
 Modules\TankKit.lua
+Modules\BlessingManager.lua

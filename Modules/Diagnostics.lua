@@ -695,6 +695,28 @@ local function sampleDurationGetters(dur)
 	return out
 end
 
+-- Group members: can their buffs be read (needed by the Blessing buff button)?
+local function probeGroup()
+	if not (IsInGroup and IsInGroup()) then
+		return "not in a group"
+	end
+	local out = {}
+	local prefix = (IsInRaid and IsInRaid()) and "raid" or "party"
+	for i = 1, 4 do
+		local unit = prefix .. i
+		if UnitExists(unit) then
+			out[unit] = {
+				class = tryPath("UnitClass", unit),
+				firstBuff = rawKind(pcall(C_UnitAuras.GetAuraDataByIndex, unit, 1, "HELPFUL")),
+				inRange = tryPath("C_Spell.IsSpellInRange", "Blessing of Might", unit),
+				leader = tryPath("UnitIsGroupLeader", unit),
+			}
+		end
+	end
+	out.addonChatRestricted = tryPath("C_ChatInfo.AreOutgoingAddonChatMessagesRestricted")
+	return out
+end
+
 -- Addon message prefix + a whisper to ourselves. The reply arrives
 -- asynchronously and is written into probe.comm.received.
 local PREFIX = "NLPT"
@@ -822,6 +844,7 @@ local function runProbe()
 		{ "auraPaths", probeAuraPaths },
 		{ "restrictions", probeRestrictions },
 		{ "traits", probeTraits },
+		{ "group", probeGroup },
 		{ "units", probeUnits },
 		{ "comm", probeComm },
 	}

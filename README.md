@@ -4,9 +4,9 @@ An all-in-one Paladin addon for **World of Warcraft: Forever**: buff and seal
 tracking, cooldowns, and PallyPower-style blessing coordination, tuned for
 Holy, Protection or Retribution.
 
-**Status: early development (M3).** Buff Sentinel, Seal Tracker (with Twist of
-Light Echo), Cooldown HUD and Tank Kit work for Holy, Protection and
-Retribution; the Blessing Manager (M4) comes next.
+**Status: early development (M4).** Buff Sentinel, Seal Tracker (with Twist of
+Light Echo), Cooldown HUD, Tank Kit and the Blessing Manager (assignment
+grid, sync, one-press buff button) are in; polish and packaging (M5) next.
 
 ## Install (Forever beta)
 
@@ -29,6 +29,7 @@ clone, `tools\install.ps1` does this (set `WOW_ADDONS_DIR` for other paths).
 | `/ptk unlock` / `lock` / `reset` | Move frames, lock them, reset positions |
 | `/ptk check` | Check your Seal, Aura, Blessing and Righteous Fury |
 | `/ptk cd` | List / `add <spell>` / `remove <spell>` / `group <spell>` (show only in a group) / `reset` this spec's cooldowns |
+| `/ptk bless` | Open the Blessing assignment grid |
 | `/ptk export` / `import` | Copy your profile as text / paste one in |
 | `/ptk probe` | Records what the client supports and shows it in a copyable window |
 | `/ptk probe combat` | Arms a capture for your next fight (hit a target dummy ~10s) |

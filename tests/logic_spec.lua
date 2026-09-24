@@ -89,4 +89,63 @@ db = C.Migrate({ version = 1, profileKeys = {}, profiles = {
 assert(db.profiles.untouched.cooldownLists.holy[7] == "HAMMER_OF_JUSTICE", "untouched default list upgraded")
 assert(#db.profiles.edited.cooldownLists.holy == 1, "edited list left alone")
 
+-- Blessings: auto-suggest
+local BL = P.Blessings
+local set = function(...)
+	local t = {}
+	for _, k in ipairs({ ... }) do
+		t[k] = true
+	end
+	return t
+end
+local sug = BL.Suggest({
+	{ name = "Bee", blessings = set("BLESSING_MIGHT", "BLESSING_WISDOM"), auras = set("AURA_DEVOTION") },
+	{ name = "Ay", blessings = set("BLESSING_KINGS", "BLESSING_MIGHT", "BLESSING_WISDOM"),
+		auras = set("AURA_DEVOTION", "AURA_RETRIBUTION") },
+})
+assert(sug.Ay.classes.WARRIOR == "BLESSING_KINGS" and sug.Bee.classes.WARRIOR == "BLESSING_MIGHT", "warriors: Kings + Might")
+assert(sug.Ay.classes.MAGE == "BLESSING_WISDOM" and sug.Bee.classes.MAGE == nil, "mages: Wisdom, never Might")
+assert(sug.Ay.classes.ROGUE == "BLESSING_MIGHT" and sug.Bee.classes.ROGUE == nil, "rogues: Might; Bee has no Kings")
+for _, class in ipairs(BL.CLASSES) do
+	assert(sug.Ay.classes[class] == nil or sug.Ay.classes[class] ~= sug.Bee.classes[class], "no doubled blessing on " .. class)
+end
+assert(sug.Ay.aura == "AURA_DEVOTION" and sug.Bee.aura == nil, "distinct auras (Bee only knows Devotion)")
+local unknown = BL.Suggest({ { name = "NoAddon" } })
+assert(unknown.NoAddon.classes.WARRIOR == "BLESSING_MIGHT", "no-addon paladins assumed to know Might/Wisdom")
+
+-- Blessings: message round trip and validation
+local rowMsg = BL.Decode(BL.EncodeRow("Ay", { classes = sug.Ay.classes, aura = "AURA_RETRIBUTION", seq = 4, ts = 99 }))
+assert(rowMsg.type == "ROW" and rowMsg.paladin == "Ay" and rowMsg.seq == 4 and rowMsg.ts == 99, "row header")
+assert(rowMsg.aura == "AURA_RETRIBUTION" and rowMsg.classes.WARRIOR == "BLESSING_KINGS", "row body")
+local hello = BL.Decode(BL.EncodeHello("0.4.0|x", set("BLESSING_KINGS"), set("AURA_DEVOTION")))
+assert(hello.type == "HELLO" and hello.blessings.BLESSING_KINGS and hello.auras.AURA_DEVOTION, "hello")
+assert(#BL.EncodeRow(string.rep("N", 48), { classes = sug.Ay.classes, aura = "AURA_DEVOTION", seq = 99999, ts = 1790235093 }) < 255,
+	"rows fit in one addon message")
+assert(BL.Decode("ROW|1|2|ba,d||") == nil and BL.Decode("ROW|1|2|a=b||") == nil, "names with , or = rejected")
+assert(BL.Decode("ROW|1|2|" .. string.rep("x", 60) .. "||") == nil, "overlong names rejected")
+assert(BL.Decode("NOPE|1") == nil and BL.Decode(nil) == nil, "unknown/nil rejected")
+local junk = BL.Decode("ROW|1|2|Ay|ZZ|WA=ZZ,XX=KI,MA=WI")
+assert(junk and junk.aura == nil and junk.classes.WARRIOR == nil and junk.classes.MAGE == "BLESSING_WISDOM", "unknown codes dropped")
+
+-- Blessings: conflict rules
+local A = {}
+assert(BL.ApplyRow(A, "Ay", { classes = {}, seq = 1, ts = 10 }, { sender = "Ay" }))
+assert(not BL.ApplyRow(A, "Ay", { classes = {}, seq = 2, ts = 10 }, { sender = "Bee" }), "no editing others without lead")
+assert(BL.ApplyRow(A, "Ay", { classes = {}, seq = 2, ts = 5 }, { sender = "Lead", senderIsLeader = true }), "leader may edit")
+assert(not BL.ApplyRow(A, "Ay", { classes = {}, seq = 1, ts = 50 }, { sender = "Ay" }), "lower seq loses")
+assert(not BL.ApplyRow(A, "Ay", { classes = {}, seq = 2, ts = 4 }, { sender = "Ay" }), "same seq, older ts loses")
+assert(not BL.ApplyRow(A, "Ay", { classes = {}, seq = 2, ts = 5 }, { sender = "Ay" }), "tie: leader's version wins")
+
+-- Blessings: next missing
+local members = {
+	{ unit = "party1", name = "Dead", class = "ROGUE", usable = false, buffs = {} },
+	{ unit = "party2", name = "Blind", class = "ROGUE", usable = true, buffs = nil },
+	{ unit = "party3", name = "Mage", class = "MAGE", usable = true, buffs = {} },
+	{ unit = "party4", name = "Rogue", class = "ROGUE", usable = true, buffs = {} },
+}
+local assign = { Me = { classes = { ROGUE = "BLESSING_MIGHT" } } }
+local who, key = BL.NextMissing(assign, "Me", members)
+assert(who.name == "Rogue" and key == "BLESSING_MIGHT", "skips dead, unreadable and unassigned")
+assert(BL.CountMissing(assign, "Me", members) == 2, "count includes the dead rogue")
+
 LOGIC_OK = true

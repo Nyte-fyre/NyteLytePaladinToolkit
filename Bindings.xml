@@ -5,4 +5,8 @@
 	<Binding name="NLPT_TOGGLE_LOCK" category="ADDONS">
 		NyteLytePaladinToolkit.Frames:ToggleLock()
 	</Binding>
+	<Binding name="CLICK NyteLytePaladinToolkitBuffButton:LeftButton" category="ADDONS"/>
+	<Binding name="NLPT_TOGGLE_GRID" category="ADDONS">
+		NyteLytePaladinToolkit.BlessingGrid:Toggle()
+	</Binding>
 </Bindings>

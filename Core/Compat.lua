@@ -333,14 +333,22 @@ end
 
 -- Auras ------------------------------------------------------------------------
 
--- Returns a list of raw aura data tables for unit (fields may be secret).
+-- Returns list, method, err: raw aura data tables for unit (fields may be
+-- secret). err is set when the client refused the read (e.g. secret auras),
+-- so callers can tell "no buffs" from "can't see buffs".
 function Compat.GetAuras(unit, filter)
 	local list = {}
 	local byIndex = Compat.Resolve("C_UnitAuras.GetAuraDataByIndex")
 	if byIndex then
 		for i = 1, 80 do
 			local ok, aura = pcall(byIndex, unit, i, filter)
-			if not ok or Compat.IsSecret(aura) or type(aura) ~= "table" then
+			if not ok then
+				return list, "C_UnitAuras", tostring(aura)
+			end
+			if Compat.IsSecret(aura) then
+				return list, "C_UnitAuras", "secret"
+			end
+			if type(aura) ~= "table" then
 				break
 			end
 			list[#list + 1] = aura
