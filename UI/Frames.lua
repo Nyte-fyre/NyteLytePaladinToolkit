@@ -50,7 +50,8 @@ function Frames:GetAnchor(module)
 	anchor:SetMovable(true)
 	anchor:RegisterForDrag("LeftButton")
 	anchor:SetScript("OnDragStart", function(self)
-		if not PK.profile.locked then
+		-- Anchors holding secure buttons are protected in combat.
+		if not PK.profile.locked and not (self.protected and PK.Compat.InCombat()) then
 			self:StartMoving()
 		end
 	end)
@@ -90,10 +91,22 @@ function Frames:GetAnchor(module)
 	return anchor
 end
 
+-- Marks an anchor as holding secure frames: it must not be moved, resized
+-- or shown/hidden in combat, so layout changes wait until combat ends.
+function Frames:SetProtected(module)
+	self:GetAnchor(module).protected = true
+end
+
 function Frames:ApplyLayout(module)
 	local anchor = self.anchors[module]
 	local l = PK.Config:GetLayout(currentSpec(), module)
 	if not anchor or not l then
+		return
+	end
+	if anchor.protected and PK.Compat.InCombat() then
+		PK.CombatQueue:Run("layout:" .. module, function()
+			Frames:ApplyLayout(module)
+		end)
 		return
 	end
 	local scale = l.scale or 1
@@ -113,7 +126,11 @@ function Frames:Refresh()
 			self:GetAnchor(module)
 		end
 		local anchor = self.anchors[module]
-		if anchor then
+		if anchor and anchor.protected and PK.Compat.InCombat() then
+			PK.CombatQueue:Run("refresh", function()
+				Frames:Refresh()
+			end)
+		elseif anchor then
 			self:ApplyLayout(module)
 			anchor:EnableMouse(unlocked and enabled or false)
 			if unlocked and enabled then

@@ -101,6 +101,10 @@ Presets.moduleSettings = {
 		iconSize = 30,
 		showEcho = true, -- Twist of Light Echo (Ret talent) next to the Seal
 	},
+	BlessingManager = {
+		showWhenSolo = true, -- show the buff button when not in a group
+		buttonSize = 40,
+	},
 	TankKit = {
 		iconSize = 44,
 		spells = { "JUDGEMENT", "CONSECRATION", "HOLY_STRIKE", "HAMMER_OF_JUSTICE", "TEMPLARS_BULWARK" },

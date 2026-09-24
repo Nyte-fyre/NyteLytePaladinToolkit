@@ -84,7 +84,8 @@ function Config.BuildDefaults()
 		cooldownLists = deepCopy(Presets.cooldownLists),
 		alerts = { sound = true, expiringThresholdSec = 120 },
 		moduleSettings = deepCopy(Presets.moduleSettings),
-		blessing = { assignments = {}, autoSuggest = true },
+		-- assignments: { [paladin] = row } (see Logic/Blessings.lua)
+		blessing = { assignments = {}, autoSuggest = true, refreshMinutes = 5 },
 	}
 end
 

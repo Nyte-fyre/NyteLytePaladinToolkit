@@ -55,8 +55,8 @@ function AS:Scan()
 		PK:Fire("PK_AURAS_UPDATED")
 		return false
 	end
-	local list = Compat.GetAuras("player", "HELPFUL")
-	local auras, unreadable = {}, 0
+	local list, _, err = Compat.GetAuras("player", "HELPFUL")
+	local auras, unreadable = {}, err and 1 or 0
 	for _, a in ipairs(list) do
 		local aura = readAura(a)
 		if aura then

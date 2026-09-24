@@ -87,23 +87,76 @@ WOW_PROJECT_ID, WOW_PROJECT_MAINLINE, WOW_PROJECT_CLASSIC = 1, 1, 2
 function GetLocale()
 	return "enUS"
 end
-function UnitClass()
+-- Group members: MOCK.party = { { unit = "party1", name = "X", class = "ROGUE" }, ... }
+MOCK.party = {}
+MOCK.unitAuras = {}
+local function partyMember(unit)
+	for _, m in ipairs(MOCK.party) do
+		if m.unit == unit then
+			return m
+		end
+	end
+	return nil
+end
+function UnitClass(unit)
+	local m = partyMember(unit)
+	if m then
+		return m.class, m.class, 0
+	end
 	return "Paladin", "PALADIN", 2
 end
+function GetNumGroupMembers()
+	return MOCK.inGroup and (#MOCK.party + 1) or 0
+end
+function UnitIsConnected()
+	return true
+end
+function UnitIsDeadOrGhost()
+	return false
+end
+function UnitIsVisible()
+	return true
+end
+function UnitIsGroupLeader(unit)
+	return MOCK.leader == unit
+end
+function UnitIsGroupAssistant()
+	return false
+end
+function Ambiguate(name)
+	return (name:match("^([^-]+)")) or name
+end
+function IsShiftKeyDown()
+	return MOCK.shift == true
+end
+MOCK.chat = {}
+function SendChatMessage(text, channel)
+	MOCK.chat[#MOCK.chat + 1] = { text = text, channel = channel }
+end
+GameTooltip = setmetatable({}, { __index = function()
+	return function() end
+end })
 function UnitRace()
 	return "Human", "Human"
 end
 function UnitLevel()
 	return MOCK.level
 end
-function UnitName()
+function UnitName(unit)
+	local m = partyMember(unit)
+	if m then
+		return m.name
+	end
 	return "Tester"
 end
 function GetRealmName()
 	return "Beta Realm"
 end
-function UnitExists()
-	return true
+function UnitExists(unit)
+	if unit == nil or unit == "player" or unit == "target" then
+		return true
+	end
+	return MOCK.inGroup and partyMember(unit) ~= nil
 end
 function IsInGroup()
 	return MOCK.inGroup == true
@@ -139,11 +192,30 @@ function GetShapeshiftFormInfo()
 	return 135893, true, true, 465
 end
 
+MOCK.tickers = {}
 C_Timer = {
 	After = function(delay, fn)
 		MOCK.timers[#MOCK.timers + 1] = { delay = delay, fn = fn }
 	end,
+	NewTicker = function(interval, fn)
+		local t = { fn = fn }
+		function t:Cancel()
+			self.cancelled = true
+		end
+		MOCK.tickers[#MOCK.tickers + 1] = t
+		return t
+	end,
 }
+-- Runs every live ticker `n` times.
+function MOCK.tick(n)
+	for _ = 1, n or 1 do
+		for _, t in ipairs(MOCK.tickers) do
+			if not t.cancelled then
+				t.fn()
+			end
+		end
+	end
+end
 function MOCK.runTimers()
 	local list = MOCK.timers
 	MOCK.timers = {}
@@ -165,7 +237,7 @@ for _, e in ipairs({
 	"CHAT_MSG_ADDON", "UNIT_AURA", "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_TALENT_UPDATE",
 	"CHARACTER_POINTS_CHANGED", "GROUP_ROSTER_UPDATE", "READY_CHECK", "ENCOUNTER_START", "ENCOUNTER_END",
 	"UNIT_SPELLCAST_SUCCEEDED", "LEARNED_SPELL_IN_SKILL_LINE", "ACTIVE_TALENT_GROUP_CHANGED", "TRAIT_CONFIG_UPDATED",
-	"PLAYER_ENTERING_WORLD", "UPDATE_SHAPESHIFT_FORM", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES",
+	"PLAYER_ENTERING_WORLD", "UPDATE_SHAPESHIFT_FORM", "ENCOUNTER_START", "ENCOUNTER_END", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES",
 }) do
 	KNOWN_EVENTS[e] = true
 end
@@ -207,6 +279,16 @@ function frameMethods:Hide()
 end
 function frameMethods:IsShown()
 	return self._shown ~= false
+end
+function frameMethods:SetAttribute(k, v)
+	self._attr = self._attr or {}
+	self._attr[k] = v
+end
+function frameMethods:GetAttribute(k)
+	return self._attr and self._attr[k]
+end
+function frameMethods:SetShown(v)
+	self._shown = v and true or false
 end
 function frameMethods:SetChecked(v)
 	self._checked = v and true or false
@@ -384,7 +466,15 @@ MOCK.auras = {
 }
 if not MOCK_NO_AURAS then
 	C_UnitAuras = {
-		GetAuraDataByIndex = function(_, i)
+		GetAuraDataByIndex = function(unit, i)
+			if unit ~= "player" then
+				local list = MOCK.unitAuras[unit] or {}
+				local a = list[i]
+				if not a or MOCK.combat then
+					return nil
+				end
+				return { name = a.name, spellId = a.spellId, duration = a.duration, expirationTime = a.expirationTime }
+			end
 			local a = MOCK.auras[i]
 			if not a or MOCK.combat then
 				return nil
@@ -424,6 +514,9 @@ end
 
 -- Addon messages -----------------------------------------------------------------------
 C_ChatInfo = {
+	AreOutgoingAddonChatMessagesRestricted = function()
+		return MOCK.combat
+	end,
 	RegisterAddonMessagePrefix = function()
 		return 0
 	end,

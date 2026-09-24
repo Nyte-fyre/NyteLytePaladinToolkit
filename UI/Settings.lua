@@ -63,6 +63,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("TankKit").rfSound = v
 	end },
+	{ "Blessing buff button when solo", function()
+		return ms("BlessingManager").showWhenSolo
+	end, function(v)
+		ms("BlessingManager").showWhenSolo = v
+	end },
 	{ "Cooldown HUD: show unlearned spells", function()
 		return ms("CooldownHUD").showUnknown
 	end, function(v)
@@ -130,7 +135,7 @@ end
 
 local function Build()
 	panel = CreateFrame("Frame")
-	panel:SetSize(620, 680)
+	panel:SetSize(620, 700)
 	panel.name = PK.displayName
 
 	PK.Theme.AddGlow(panel, 80)
