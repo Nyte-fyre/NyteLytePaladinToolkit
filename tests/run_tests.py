@@ -41,6 +41,7 @@ def new_runtime(flags):
         if not f then error(err) end
         f("NyteLytePaladinToolkit", ns)
     end""")
+    lua.execute("MOCK_GLOBALS_BEFORE = {} for k in pairs(_G) do MOCK_GLOBALS_BEFORE[k] = true end")
     ns = lua.table()
     for rel in toc_files():
         loader(read(os.path.join(ROOT, rel)), "NyteLytePaladinToolkit/" + rel.replace(os.sep, "/"), ns)
@@ -120,6 +121,25 @@ RESULT = {
 }
 """
 
+# Globals the addon is allowed to create (everything else is a leak, e.g. a
+# missing `local`). Frame names, slash commands and keybinding labels are fine.
+ALLOWED_GLOBAL_PREFIXES = ("NyteLytePaladinToolkit", "SLASH_NYTELYTEPALADINTOOLKIT", "BINDING_")
+TEST_GLOBALS = {"RESULT", "M1_OK", "M2_OK", "M3_OK", "M4_OK", "LOGIC_OK", "MOCK_GLOBALS_BEFORE"}
+
+
+def leaked_globals(lua):
+    names = lua.eval("""(function()
+        local out = {}
+        for k in pairs(_G) do
+            if not MOCK_GLOBALS_BEFORE[k] then out[#out + 1] = tostring(k) end
+        end
+        table.sort(out)
+        return table.concat(out, ",")
+    end)()""")
+    return [n for n in names.split(",") if n and n not in TEST_GLOBALS
+            and not n.startswith(ALLOWED_GLOBAL_PREFIXES)]
+
+
 SCENARIOS = [
     ("forever-shaped client", []),
     ("no issecretvalue", ["MOCK_NO_SECRETS"]),
@@ -136,6 +156,9 @@ def main():
             for extra in ("m1_flows.lua", "m2_flows.lua", "m3_flows.lua", "m4_flows.lua", "logic_spec.lua"):
                 lua.execute(read(os.path.join(ROOT, "tests", extra)))
             r = lua.globals().RESULT
+            leaked = leaked_globals(lua)
+            if leaked:
+                raise AssertionError("addon created unexpected globals: " + ", ".join(leaked))
             errors = lua.eval("#NyteLytePaladinToolkit.errorList + #MOCK.errorsRaised")
             ok = errors == 0
             first = lua.eval("MOCK.errorsRaised[1] or (NyteLytePaladinToolkit.errorList[1] and NyteLytePaladinToolkit.errorList[1].msg)")

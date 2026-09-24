@@ -31,8 +31,8 @@ end
 
 -- Queues a message. key: optional; a newer message with the same key replaces it.
 function Comm:Send(text, key)
-	if type(text) ~= "string" or #text > 250 then
-		return
+	if type(text) ~= "string" or #text > 250 or not self:Channel() then
+		return -- nothing to sync with when solo
 	end
 	key = key or text
 	if not self.queue[key] then

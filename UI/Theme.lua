@@ -11,6 +11,7 @@ PK.Theme = Theme
 Theme.ICON = "Interface\\Icons\\Spell_Holy_HolyBolt"
 Theme.ICON_BLESSING = "Interface\\Icons\\Spell_Holy_FistOfJustice"
 Theme.ICON_SEAL = "Interface\\Icons\\Spell_Holy_RighteousnessAura"
+Theme.ICON_GRID = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings"
 Theme.WHITE = "Interface\\Buttons\\WHITE8X8"
 
 -- r, g, b[, a]
@@ -149,6 +150,48 @@ function Theme.CreateWindow(name, title, width, height, icon)
 	end
 	f:Hide()
 	return f
+end
+
+-- A crisp 1px (or `size`) edge around a frame, drawn with four textures.
+-- Returns a small object with SetVertexColor/Show/Hide so it can stand in
+-- for a border texture. (Blizzard's action-button border is a big glow
+-- ring; squeezed onto an icon it shows as a box inside the icon.)
+function Theme.Edge(frame, r, g, b, a, size, layer)
+	size = size or 1
+	local edge = { lines = {} }
+	local spec = {
+		{ "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
+		{ "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false },
+	}
+	for _, s in ipairs(spec) do
+		local t = frame:CreateTexture(nil, layer or "OVERLAY")
+		t:SetTexture(Theme.WHITE)
+		t:SetPoint(s[1])
+		t:SetPoint(s[2])
+		if s[3] then
+			t:SetHeight(size)
+		else
+			t:SetWidth(size)
+		end
+		edge.lines[#edge.lines + 1] = t
+	end
+	function edge:SetVertexColor(cr, cg, cb, ca)
+		for _, t in ipairs(self.lines) do
+			t:SetVertexColor(cr, cg, cb, ca or 1)
+		end
+	end
+	function edge:Show()
+		for _, t in ipairs(self.lines) do
+			t:Show()
+		end
+	end
+	function edge:Hide()
+		for _, t in ipairs(self.lines) do
+			t:Hide()
+		end
+	end
+	edge:SetVertexColor(r or 1, g or 0.82, b or 0.25, a or 1)
+	return edge
 end
 
 -- Gold-tinted panel button.

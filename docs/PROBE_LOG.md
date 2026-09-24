@@ -1,5 +1,45 @@
 # Probe log
 
+## Summary: verified API surface (beta build 1.60.1.69977, as of 2026-09-24)
+
+| What | Out of combat | In combat | Used by |
+|---|---|---|---|
+| Player auras (`C_UnitAuras.GetAuraDataByIndex`) | readable | **refused** (error) | AuraService (frozen snapshot) |
+| `C_Secrets.ShouldAurasBeSecret()` | false | true | AuraService (skips refused reads) |
+| Own `UNIT_SPELLCAST_SUCCEEDED` spell ID | readable | **readable** | AuraService predictions |
+| `UNIT_AURA` updateInfo | readable | secret | (only used as a "rescan" trigger) |
+| Cooldown `isActive`, `isEnabled`, `isOnGCD` | readable | **readable** | IconMixin:RefreshCooldown |
+| Cooldown startTime/duration/modRate | readable | secret | display only (duration objects) |
+| `C_Spell.GetSpellCooldownDuration` + `Cooldown:SetCooldownFromDurationObject` | works | works | cooldown swipes |
+| `C_Spell.IsSpellUsable` | readable | readable | cooldown dimming |
+| Stance bar (active Paladin aura) | readable | readable | AuraService:GetPaladinAura |
+| `UnitHealth`/`UnitPower`/`UnitGetTotalAbsorbs("player")` | **secret** | secret | not used |
+| `UnitHealthMax`/`UnitPowerMax("player")` | readable | readable | not used |
+| Addon messages | allowed | **restricted** (`AreOutgoingAddonChatMessagesRestricted`) | Comm queue |
+| Settings API (canvas category) | works | works | UI/Settings.lua |
+| Party members' auras | **unverified** | assumed secret | Roster (unreadable = unknown) |
+| Talent trees (`C_Traits`) | **unverified** (needs level 10+) | - | SpecProfile (stubbed) |
+
+## Launch-day checklist (Nov 4 2026)
+
+1. Install, log in, `/console scriptErrors 1`, `/reload`. Any errors?
+2. `GetBuildInfo()` interface is still 16001? If not, update `## Interface:`.
+3. Addon folder path on the launch client: update README and `tools/install.ps1`.
+4. `/ptk probe` then `/reload`, and compare against the summary table above
+   (`python tests/read_sv.py probe.api probe.secrecy probe.registry.unresolved`).
+5. `/ptk probe combat` in a real fight, then `/reload`, and check the table's
+   "In combat" column.
+6. Talents: C_Traits tree dump -> implement `Compat.GetTalentPointsByTree()`.
+7. Verify the guessed names and durations: Seal of Fury, Twist of Light Echo
+   ("Echo", 10s), Iron Creed (6s), Templar's Bulwark, Light's Vigil,
+   Righteous Fury duration. Fix `Data/Spells.lua` and `DEFAULT_DURATION` in
+   AuraService.
+8. In a group: party aura readability (`probe.group`), and a Blessing sync
+   test between two paladins running the addon.
+9. Restart the client fully and check `probe.savedVariables.existedAtLoad`
+   (the reported SavedVariables bug).
+
+
 What `/ptk probe` has confirmed on real clients. Anything not listed here is
 still unverified. Re-run the probe on launch day (Nov 4 2026) and record the
 differences.
