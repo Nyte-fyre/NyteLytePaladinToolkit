@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1
+
+- Auto spec detection now uses your talent points. Forever has one talent
+  tree with Holy, Protection and Retribution side by side, and the addon
+  counts the points spent in each column.
+- Tank Kit adds Holy Shield (a Forever Protection talent). Unedited Tank Kit
+  lists upgrade automatically.
+- Spell list updated from the real talent tree: Blessed Life removed (not
+  in Forever); talents confirmed by name.
+
 ## 0.5.0 - M5: polish and packaging (first beta release candidate)
 
 - Fixed: a gold box inside the buff button icon (a glow texture squeezed

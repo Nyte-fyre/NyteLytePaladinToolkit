@@ -428,7 +428,16 @@ local function probeSpec(resolved)
 	end
 	s.strategies.heuristic = { counts = counts, hits = hits }
 
-	-- Provisional decision (the real SpecProfile arrives in M1).
+	-- Talent points per column of Forever's single talent tree.
+	local tp, tpErr = Compat.GetTalentPointsByTree()
+	s.strategies.traitPoints = tp or tpErr
+	if tp then
+		for spec, n in pairs(tp) do
+			points[spec] = (points[spec] or 0) + n
+		end
+	end
+
+	-- Decision (same order as SpecProfile: talent points, then known spells).
 	local best, bestVal, method = nil, 0, nil
 	for _, spec in ipairs(TREE_NAMES) do
 		if points[spec] and points[spec] > bestVal then

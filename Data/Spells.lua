@@ -50,6 +50,7 @@ S.list = {
 	-- Self buffs and procs
 	{ key = "RIGHTEOUS_FURY", names = { "Righteous Fury" }, category = "selfBuff" },
 	{ key = "TWIST_ECHO", names = { "Echo", "Twist of Light" }, category = "proc", spec = "ret", verify = true },
+	-- Iron Creed is a 5-rank Protection talent; its buff name/duration are unverified.
 	{ key = "IRON_CREED", names = { "Iron Creed" }, category = "proc", spec = "prot", verify = true },
 
 	-- Abilities
@@ -73,15 +74,16 @@ S.list = {
 	{ key = "HOLY_LIGHT", names = { "Holy Light" }, category = "ability" },
 
 	-- Talent-gated, presence unverified
-	{ key = "TEMPLARS_BULWARK", names = { "Templar's Bulwark" }, category = "talent", spec = "prot", verify = true },
-	{ key = "LIGHTS_VIGIL", names = { "Light's Vigil" }, category = "talent", spec = "holy", verify = true },
-	{ key = "INFUSION_OF_LIGHT", names = { "Infusion of Light" }, category = "talent", spec = "holy", verify = true },
-	{ key = "SACRED_ARBITER", names = { "Sacred Arbiter" }, category = "talent", spec = "ret", verify = true },
-	{ key = "SANCTIFIED_JUDGEMENT", names = { "Sanctified Judgement" }, category = "talent", spec = "ret", verify = true },
-	{ key = "TWIST_OF_LIGHT", names = { "Twist of Light" }, category = "talent", spec = "ret", verify = true },
-	{ key = "CRUSADE", names = { "Crusade" }, category = "talent", spec = "ret", verify = true },
-	{ key = "CHAMPION_OF_THE_LIGHT", names = { "Champion of the Light" }, category = "talent", spec = "ret", verify = true },
-	{ key = "BLESSED_LIFE", names = { "Blessed Life" }, category = "talent", spec = "prot", verify = true },
+	-- Talents confirmed in Forever's talent tree (level 10 probe, 2026-09-24).
+	{ key = "TEMPLARS_BULWARK", names = { "Templar's Bulwark" }, category = "talent", spec = "prot" },
+	{ key = "LIGHTS_VIGIL", names = { "Light's Vigil" }, category = "talent", spec = "holy" },
+	{ key = "INFUSION_OF_LIGHT", names = { "Infusion of Light" }, category = "talent", spec = "holy" },
+	{ key = "SACRED_ARBITER", names = { "Sacred Arbiter" }, category = "talent", spec = "ret" },
+	{ key = "SANCTIFIED_JUDGEMENT", names = { "Sanctified Judgement" }, category = "talent", spec = "ret" },
+	{ key = "TWIST_OF_LIGHT", names = { "Twist of Light" }, category = "talent", spec = "ret" },
+	{ key = "CRUSADE", names = { "Crusade" }, category = "talent", spec = "ret" },
+	{ key = "CHAMPION_OF_THE_LIGHT", names = { "Champion of the Light" }, category = "talent", spec = "ret" },
+	{ key = "HOLY_SHIELD", names = { "Holy Shield" }, category = "talent", spec = "prot" },
 }
 
 S.byKey = {}

@@ -571,8 +571,10 @@ C_Traits = {
 	GetTreeNodes = function()
 		return { 1, 2 }
 	end,
+	-- MOCK.traitX / MOCK.traitRanks override a node's column and spent points.
 	GetNodeInfo = function(_, nodeID)
-		return { ID = nodeID, posX = nodeID * 100, posY = 0, ranksPurchased = 0, maxRanks = 5, entryIDs = { nodeID + 10 } }
+		return { ID = nodeID, posX = (MOCK.traitX or {})[nodeID] or nodeID * 100, posY = 0,
+			ranksPurchased = (MOCK.traitRanks or {})[nodeID] or 0, maxRanks = 5, entryIDs = { nodeID + 10 } }
 	end,
 	GetEntryInfo = function(_, entryID)
 		return { definitionID = entryID + 10 }

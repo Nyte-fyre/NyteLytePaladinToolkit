@@ -4,7 +4,7 @@ local function slash(msg)
 	SlashCmdList.NYTELYTEPALADINTOOLKIT(msg)
 end
 
-assert(NyteLytePaladinToolkitDB.version == 3, "db version")
+assert(NyteLytePaladinToolkitDB.version == 4, "db version")
 assert(NyteLytePaladinToolkitDB.profileKeys["Tester-Beta Realm"] == "Default", "profile key")
 assert(P.profile and P.profile.specMode == "auto", "default spec mode")
 
@@ -21,6 +21,23 @@ assert(P.SpecProfile:GetSpec() == "holy", "auto should detect holy from Holy Sho
 assert(P.SpecProfile:GetDecision().method == "known spells", "detection method")
 assert(changes == 3, "expected 3 spec changes, got " .. changes)
 slash("spec")
+-- Talent points (one tree, three columns by x position) beat known spells.
+MOCK.traitX = { [1] = 5620, [2] = 9680 } -- node 1 in Protection, node 2 in Retribution
+MOCK.traitRanks = { [1] = 5, [2] = 1 }
+MOCK.fire("TRAIT_CONFIG_UPDATED", 7516683)
+MOCK.runTimers()
+local d = P.SpecProfile:GetDecision()
+assert(d.spec == "prot" and d.method == "talent points" and d.confidence == "high",
+	"talents: 5 Prot vs 1 Ret -> Prot (" .. tostring(d.spec) .. ", " .. tostring(d.method) .. ")")
+MOCK.traitRanks = { [1] = 1, [2] = 1 }
+MOCK.fire("TRAIT_CONFIG_UPDATED", 7516683)
+MOCK.runTimers()
+assert(P.SpecProfile:GetDecision().method == "known spells", "tied talents fall back to known spells")
+MOCK.traitRanks, MOCK.traitX = {}, {}
+MOCK.fire("TRAIT_CONFIG_UPDATED", 7516683)
+MOCK.runTimers()
+assert(P.SpecProfile:GetSpec() == "holy", "back to Holy")
+
 P.SpecProfile:Cycle()
 assert(P.profile.specMode == "holy", "cycle auto -> holy")
 P:Off("PK_SPEC_CHANGED", "test")

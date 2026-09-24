@@ -24,6 +24,11 @@ Presets.modules = {
 	ret = { BuffSentinel = true, SealTracker = true, CooldownHUD = true, BlessingManager = true, TankKit = false },
 }
 
+-- Earlier Tank Kit spell lists (see Config.Migrate).
+Presets.previousTankKitSpells = {
+	{ "JUDGEMENT", "CONSECRATION", "HOLY_STRIKE", "HAMMER_OF_JUSTICE", "TEMPLARS_BULWARK" },
+}
+
 -- Earlier default lists, so a migration can upgrade profiles that never changed them.
 Presets.previousCooldownLists = {
 	holy = {
@@ -107,7 +112,7 @@ Presets.moduleSettings = {
 	},
 	TankKit = {
 		iconSize = 44,
-		spells = { "JUDGEMENT", "CONSECRATION", "HOLY_STRIKE", "HAMMER_OF_JUSTICE", "TEMPLARS_BULWARK" },
+		spells = { "JUDGEMENT", "HOLY_SHIELD", "CONSECRATION", "HOLY_STRIKE", "HAMMER_OF_JUSTICE", "TEMPLARS_BULWARK" },
 		rfWarning = true, -- big on-screen Righteous Fury warning
 		rfSound = true, -- sound on zone-in / ready check if Righteous Fury is missing
 		showIronCreed = true,

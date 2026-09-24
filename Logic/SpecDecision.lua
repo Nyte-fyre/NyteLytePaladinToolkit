@@ -69,6 +69,24 @@ function SpecDecision.Decide(mode, input)
 	}
 end
 
+-- Forever has one retail-style talent tree with the three Classic trees side
+-- by side (probe at level 10, 2026-09-24): Holy nodes sit at x ~1000-2800,
+-- Protection at ~5000-6800, Retribution at ~9000-10900. Returns the tree for
+-- a node's x position, or nil.
+SpecDecision.TREE_X_BOUNDS = { holy = 4000, prot = 8000 }
+
+function SpecDecision.SpecForTalentX(x)
+	if type(x) ~= "number" then
+		return nil
+	end
+	if x < SpecDecision.TREE_X_BOUNDS.holy then
+		return "holy"
+	elseif x < SpecDecision.TREE_X_BOUNDS.prot then
+		return "prot"
+	end
+	return "ret"
+end
+
 -- Next mode in the cycle auto -> holy -> prot -> ret -> auto.
 function SpecDecision.NextMode(mode)
 	for i, m in ipairs(SpecDecision.MODES) do
