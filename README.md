@@ -1,5 +1,7 @@
 # Nyte Lyte's Paladin Toolkit
 
+<img src="docs/logo.png" alt="logo" width="120" align="right">
+
 An all-in-one Paladin addon for **World of Warcraft: Forever**. It replaces a
 stack of WeakAuras and PallyPower with one addon, tuned for **Holy,
 Protection or Retribution**, with every part switchable per spec.

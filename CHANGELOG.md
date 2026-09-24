@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.5
+
+- Diagnostics: the combat probe also records group events (party
+  deaths and reconnects, your casts' targets, and which group members'
+  buffs changed), to plan in-combat rebuff tracking.
+- Project logo and CurseForge publishing guide.
+
 ## 0.5.4
 
 - Fixed: Blessing sync never sent anything. The game's blanket "addon chat

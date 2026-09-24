@@ -719,6 +719,9 @@ local function probeGroup()
 				firstBuff = rawKind(pcall(C_UnitAuras.GetAuraDataByIndex, unit, 1, "HELPFUL")),
 				inRange = tryPath("C_Spell.IsSpellInRange", "Blessing of Might", unit),
 				leader = tryPath("UnitIsGroupLeader", unit),
+				dead = tryPath("UnitIsDeadOrGhost", unit),
+				connected = tryPath("UnitIsConnected", unit),
+				name = tryPath("UnitName", unit),
 			}
 		end
 	end
@@ -910,6 +913,7 @@ local function combatSample(label)
 		{ "shapeshift", probeShapeshift },
 		{ "auraPaths", probeAuraPaths },
 		{ "restrictions", probeRestrictions },
+		{ "group", probeGroup },
 		{ "secrecy", function()
 			return probeSecrecy(lastResolved or {})
 		end },
@@ -961,17 +965,46 @@ local function describeAuraUpdate(info)
 	return out
 end
 
-local function logCombatEvent(_, event, unit, a, b)
+-- Per-event caps so a busy group's UNIT_AURA spam can't crowd out casts.
+local EVENT_CAPS = { UNIT_AURA = 16, UNIT_SPELLCAST_SENT = 10, UNIT_SPELLCAST_SUCCEEDED = 14 }
+local eventCounts = {}
+
+local function isGroupUnit(unit)
+	return type(unit) == "string" and (unit == "player" or unit:find("^party%d") or unit:find("^raid%d")) ~= nil
+end
+
+local function logCombatEvent(_, event, unit, a, b, c)
 	local cap = PK.db.probeCombat
 	if not cap or #cap.events >= MAX_EVENTS then
 		return
 	end
 	-- Out of combat everything is readable already; keep the slots for combat.
-	if not Compat.InCombat() or Compat.IsSecret(unit) or unit ~= "player" then
+	if not Compat.InCombat() then
 		return
 	end
-	local row = { t = GetTime(), event = event, inCombat = Compat.InCombat() }
-	if event == "UNIT_SPELLCAST_SUCCEEDED" then
+	-- Can we even see which unit an event is for? (A secret unit token means no.)
+	if Compat.IsSecret(unit) then
+		cap.events[#cap.events + 1] = { t = GetTime(), event = event, unit = "<secret>" }
+		return
+	end
+	if event == "UNIT_AURA" then
+		if not isGroupUnit(unit) then
+			return
+		end
+	elseif unit ~= "player" then
+		return
+	end
+	eventCounts[event] = (eventCounts[event] or 0) + 1
+	if eventCounts[event] > (EVENT_CAPS[event] or 10) then
+		return
+	end
+	local row = { t = GetTime(), event = event, unit = unit, inCombat = true }
+	if event == "UNIT_SPELLCAST_SENT" then
+		-- unit, target (name), castGUID, spellID: is the target readable in combat?
+		row.target = Describe(a)
+		row.castGUID = Describe(b)
+		row.spellID = Describe(c)
+	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
 		row.castGUID = Describe(a)
 		row.spellID = Describe(b)
 		if row.inCombat and castSamples < 3 then
@@ -991,6 +1024,7 @@ local function disarm()
 	PK:UnregisterEvent("PLAYER_REGEN_DISABLED", combatWatcher)
 	PK:UnregisterEvent("PLAYER_REGEN_ENABLED", combatWatcher)
 	PK:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED", combatWatcher)
+	PK:UnregisterEvent("UNIT_SPELLCAST_SENT", combatWatcher)
 	PK:UnregisterEvent("UNIT_AURA", combatWatcher)
 end
 
@@ -1002,8 +1036,10 @@ local function arm()
 	lastResolved = buildResolved()
 	PK.db.probeCombat = { armedAt = time(), samples = {}, events = {} }
 	castSamples = 0
+	eventCounts = {}
 	combatSample("baseline (out of combat)")
 	PK:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", combatWatcher, logCombatEvent)
+	PK:RegisterEvent("UNIT_SPELLCAST_SENT", combatWatcher, logCombatEvent)
 	PK:RegisterEvent("UNIT_AURA", combatWatcher, logCombatEvent)
 	PK:RegisterEvent("PLAYER_REGEN_DISABLED", combatWatcher, function()
 		combatSample("t+0")
