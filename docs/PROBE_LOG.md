@@ -15,6 +15,7 @@
 | Stance bar (active Paladin aura) | readable | readable | AuraService:GetPaladinAura |
 | `UnitHealth`/`UnitPower`/`UnitGetTotalAbsorbs("player")` | **secret** | secret | not used |
 | `UnitHealthMax`/`UnitPowerMax("player")` | readable | readable | not used |
+| SavedVariables on a full client restart | **not loaded** (beta bug) | - | login notice + export/import |
 | Addon messages | allowed | **restricted** (`AreOutgoingAddonChatMessagesRestricted`) | Comm queue |
 | Settings API (canvas category) | works | works | UI/Settings.lua |
 | Party members' auras | **unverified** | assumed secret | Roster (unreadable = unknown) |
@@ -212,3 +213,19 @@ covering spellbook flyouts (Blessings/Auras) and the C_Traits talent trees.
   Retribution, Concentration, **Sanctity**, Fire/Frost/Shadow Resistance).
   **No Greater Blessings anywhere**, so assume Forever has none. Blessing of
   Kings is trainable (in the flyout).
+
+## Full client restart (2026-09-24, level 10)
+
+- **The reported SavedVariables bug is real.** After fully exiting and
+  relaunching, the addon started with `existedAtLoad = false` and
+  `loads = 1`: the client did not load the saved file. The previous session's
+  data was still on disk as `NyteLytePaladinToolkit.lua.bak` and was
+  overwritten on the next save. The same happened to another addon on the
+  same account (ReagentRoute lost its saved bank snapshot), so it's
+  client-wide, not addon-specific. `/reload` does load saved variables
+  (loads went 1 -> 2 earlier).
+- Mitigation: a chat notice 6s after login when nothing was loaded, pointing
+  to `/ptk import`, plus the existing export/import. Nothing an addon can
+  do restores the file itself.
+- Talent detection verified live: 2 points in Holy -> Auto = Holy, via
+  talent points.
