@@ -1,8 +1,8 @@
 local _, PK = ...
 
--- /pk probe: records what this client actually supports into
--- PaladinKitDB.probe (on disk after /reload) and shows it in a copy window.
--- /pk probe combat: arms a capture that samples the player's own auras,
+-- /ptk probe: records what this client actually supports into
+-- NyteLytePaladinToolkitDB.probe (on disk after /reload) and shows it in a copy window.
+-- /ptk probe combat: arms a capture that samples the player's own auras,
 -- cooldowns and unit values during the next combat, to learn which of them
 -- are secret. Nothing here compares or does math on API values without
 -- going through Compat.Describe / Compat.IsSecret first.
@@ -523,7 +523,7 @@ end
 
 -- Addon message prefix + a whisper to ourselves. The reply arrives
 -- asynchronously and is written into probe.comm.received.
-local PREFIX = "PKBM"
+local PREFIX = "NLPT"
 local function probeComm()
 	local out = {}
 	out.register = tryPath("C_ChatInfo.RegisterAddonMessagePrefix", PREFIX)
@@ -719,7 +719,7 @@ end
 
 local function arm()
 	if Compat.InCombat() then
-		PK:Print("leave combat first, then run /pk probe combat again.")
+		PK:Print("leave combat first, then run /ptk probe combat again.")
 		return
 	end
 	lastResolved = buildResolved()
@@ -749,11 +749,11 @@ local function probeText()
 	local db = PK.db
 	local parts = {}
 	if db.probe then
-		parts[#parts + 1] = "=== PaladinKit probe ==="
+		parts[#parts + 1] = "=== " .. PK.displayName .. " probe ==="
 		parts[#parts + 1] = table.concat(dump(db.probe), "\n")
 	end
 	if db.probeCombat then
-		parts[#parts + 1] = "\n=== PaladinKit combat probe ==="
+		parts[#parts + 1] = "\n=== " .. PK.displayName .. " combat probe ==="
 		parts[#parts + 1] = table.concat(dump(db.probeCombat), "\n")
 	end
 	if #PK.errorList > 0 then
@@ -794,7 +794,7 @@ PK:RegisterCommand("probe", function(args)
 		return
 	end
 	if Compat.InCombat() then
-		PK:Print("run /pk probe out of combat (use /pk probe combat for in-combat data).")
+		PK:Print("run /ptk probe out of combat (use /ptk probe combat for in-combat data).")
 		return
 	end
 	local p = runProbe()
@@ -806,11 +806,11 @@ PK:RegisterCommand("probe", function(args)
 		tostring(p.client and p.client.interface), p.spellbook and p.spellbook.count or 0,
 		p.registry and #p.registry.unresolved or 0, nErr))
 	PK:Print("type /reload to save it to disk (wait a second first so the addon-message test can arrive).")
-	PK.CopyWindow:Show("PaladinKit probe", probeText())
-end, "run the compatibility probe (\"/pk probe combat\" to capture during combat)")
+	PK.CopyWindow:Show(PK.displayName .. " - probe", probeText())
+end, "run the compatibility probe (\"/ptk probe combat\" to capture during combat)")
 
 PK:RegisterCommand("show", function()
-	PK.CopyWindow:Show("PaladinKit probe", probeText())
+	PK.CopyWindow:Show(PK.displayName .. " - probe", probeText())
 end, "show the last probe results")
 
 PK:RegisterCommand("debug", function(args)
@@ -824,6 +824,6 @@ PK:RegisterCommand("debug", function(args)
 		end
 		PK:Print("debug log cleared")
 	else
-		PK.CopyWindow:Show("PaladinKit debug log", table.concat(PK.debugLog, "\n"))
+		PK.CopyWindow:Show(PK.displayName .. " - debug log", table.concat(PK.debugLog, "\n"))
 	end
 end, "on | off | show | clear - verbose logging")

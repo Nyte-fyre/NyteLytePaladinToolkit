@@ -1,12 +1,12 @@
-# PaladinKit — Handoff for Claude Code
+# Nyte Lyte's Paladin Toolkit — Handoff for Claude Code
 
-Working name: **PaladinKit** (folder `PaladinKit`, slash commands `/pk` and `/paladinkit`). Rename later with find/replace.
+Name: **Nyte Lyte's Paladin Toolkit** (the owner's Forever character is Nyte Lyte; GitHub/CurseForge account: Nyte-Fyre). This is the display name in the TOC Title, window titles and CurseForge. Chat prefix: "Paladin Toolkit". Internal name (folder, TOC file, `NyteLytePaladinToolkitDB`, global `NyteLytePaladinToolkit`): `NyteLytePaladinToolkit`. Don't change it after launch, because that wipes players' saved settings. Slash commands: `/ptk` and `/paladintoolkit` (`/pk` was rejected because it reads as PvP "player kill"; `/pt` is avoided because it's collision-prone). Addon-message prefix: `NLPT`.
 
 Save this file as `CLAUDE.md` in the repo root so every session starts with it.
 
 ## 0. Kickoff prompt (paste as the first message)
 
-> Read CLAUDE.md fully. Build PaladinKit for WoW: Forever, milestone by milestone (section 13). Start with M0 (scaffold + diagnostics) and stop for my in-game test results before M1. Ask me at most one question at a time, and only if a probe result can't answer it. Prefer complete files over partial snippets.
+> Read CLAUDE.md fully. Build NyteLytePaladinToolkit for WoW: Forever, milestone by milestone (section 13). Start with M0 (scaffold + diagnostics) and stop for my in-game test results before M1. Ask me at most one question at a time, and only if a probe result can't answer it. Prefer complete files over partial snippets.
 
 ---
 
@@ -20,7 +20,7 @@ It has a **spec choice node** (Holy / Protection / Retribution / Auto). The acti
 
 - Owner is a Paladin player with some WeakAuras experience, **not a Lua developer**.
 - Prefers **complete, copy-paste-ready files and direct edits** over walkthroughs. Keep explanations short. Give test instructions as exact in-game commands to paste.
-- Claude Code **cannot run WoW**. The test loop is: you write code, the owner runs `/reload`, and pastes back Lua errors and `/pk probe` output. Design everything around that loop (section 9).
+- Claude Code **cannot run WoW**. The test loop is: you write code, the owner runs `/reload`, and pastes back Lua errors and `/ptk probe` output. Design everything around that loop (section 9).
 
 ## 3. Target platform (facts, with confidence)
 
@@ -59,8 +59,8 @@ Sourced from public reporting during the beta; treat as **reported, verify with 
 ## 5. Repository layout
 
 ```
-PaladinKit/
-  PaladinKit.toc
+NyteLytePaladinToolkit/
+  NyteLytePaladinToolkit.toc
   Bindings.xml
   Core/
     Init.lua          -- namespace, module registry, event bus, logging
@@ -72,7 +72,7 @@ PaladinKit/
     Spells.lua        -- name registry by category (section 8)
     Presets.lua       -- per-spec default cooldown lists and module toggles
   Modules/
-    Diagnostics.lua   -- /pk probe
+    Diagnostics.lua   -- /ptk probe
     BuffSentinel.lua
     SealTracker.lua
     CooldownHUD.lua
@@ -89,7 +89,7 @@ PaladinKit/
   .luacheckrc  .pkgmeta  README.md  CHANGELOG.md  LICENSE (MIT)
 ```
 
-TOC essentials: `## Interface: 16001`, `## Title: PaladinKit`, `## Notes`, `## Version`, `## SavedVariables: PaladinKitDB`, `## IconTexture` (optional), load order Core → Data → UI → Modules → Locales as needed. Add `## Category`/other fields only if the client accepts them.
+TOC essentials: `## Interface: 16001`, `## Title: NyteLytePaladinToolkit`, `## Notes`, `## Version`, `## SavedVariables: NyteLytePaladinToolkitDB`, `## IconTexture` (optional), load order Core → Data → UI → Modules → Locales as needed. Add `## Category`/other fields only if the client accepts them.
 
 ## 6. Spec choice node (core feature)
 
@@ -107,7 +107,7 @@ Forever keeps Classic-style three talent trees (Holy / Protection / Retribution)
 Re-run on `PLAYER_LOGIN`, `PLAYER_ENTERING_WORLD`, and the talent-change events the probe finds (e.g. `CHARACTER_POINTS_CHANGED`, `PLAYER_TALENT_UPDATE`, `ACTIVE_TALENT_GROUP_CHANGED`). Fire an internal `PK_SPEC_CHANGED` event; modules re-layout on it.
 
 ### Fast switching
-- `/pk holy`, `/pk prot`, `/pk ret`, `/pk auto`.
+- `/ptk holy`, `/ptk prot`, `/ptk ret`, `/ptk auto`.
 - Dropdown at the top of the settings panel and an optional keybind that cycles modes.
 - Switching is instant and in-place (no `/reload`).
 
@@ -130,7 +130,7 @@ Each module: `PK:RegisterModule(name, {OnEnable, OnDisable, OnSpecChanged, defau
 - Visual: icon row; a missing buff shows as a desaturated icon with a red border/glow; expiring soon (configurable threshold) pulses. Optional text label and optional sound (built-in `SOUNDKIT` only in v1).
 - **Group scan (out of combat only):** for each group member in range/visible, check whether they have the Blessings this paladin is assigned to give (from BlessingManager assignments). Show a compact "missing: 3" indicator and list on hover. Refresh on `GROUP_ROSTER_UPDATE` and throttled `UNIT_AURA`.
 - In combat: read only what the probe proves non-secret for `player`; otherwise hide/freeze the indicator (never error).
-- Pre-pull check: `/pk check` prints or flashes a summary; also triggers on ready check if that event is available.
+- Pre-pull check: `/ptk check` prints or flashes a summary; also triggers on ready check if that event is available.
 
 ### 7.2 SealTracker
 - Bar/icon for the active Seal with remaining time. Do not hardcode durations — read from aura data when non-secret; otherwise use a display-only path.
@@ -157,7 +157,7 @@ Purpose: assign Blessings/Auras among the paladins in a group/raid, sync assignm
 - Permissions: each paladin edits their own row; group leader/assistants may edit any row.
 
 **Sync protocol (addon messages, out of combat only)**
-- Prefix `PKBM` via `C_ChatInfo.RegisterAddonMessagePrefix` / `SendAddonMessage` on `PARTY` / `RAID`.
+- Prefix `NLPT` via `C_ChatInfo.RegisterAddonMessagePrefix` / `SendAddonMessage` on `PARTY` / `RAID`.
 - Messages: `HELLO|version|knownBlessings|knownAuras`, `ASSIGN|seq|paladin|classToken|blessingKey`, `AURA|seq|paladin|auraKey`, `CLEAR`, `REQ` (request full state). Keep each message < 255 bytes; chunk if needed. Include a monotonically increasing `seq` + timestamp for conflict resolution (last write wins; leader/assist wins ties).
 - **Never send in combat or during an encounter.** Queue and flush on `PLAYER_REGEN_ENABLED` / `ENCOUNTER_END`. Throttle sends. Test that `SendAddonMessage` works on the real client (probe).
 - Chat announcements (e.g. "assignments") are **manual, button-triggered only** — never automatic.
@@ -185,24 +185,24 @@ Names only, localized via `C_Spell` lookups; store `{key, name, category, verify
 - **Abilities:** Holy Strike *(new)*, Judgement, Consecration, Holy Shock, Divine Favor, Lay on Hands, Divine Shield, Divine Protection, Hammer of Justice, Hammer of Wrath, Exorcism, Holy Wrath, Repentance, Cleanse, Purify, Divine Intervention
 - **Talent-gated, verify presence:** Templar's Bulwark, Light's Vigil, Infusion of Light, Sacred Arbiter, Sanctified Judgement
 
-## 9. Diagnostics (`/pk probe`) — build this first
+## 9. Diagnostics (`/ptk probe`) — build this first
 
-Because Claude Code cannot run the game, `/pk probe` is the most important early feature. It opens a **scrollable, selectable EditBox** so the owner can copy everything and paste it back. It reports:
+Because Claude Code cannot run the game, `/ptk probe` is the most important early feature. It opens a **scrollable, selectable EditBox** so the owner can copy everything and paste it back. It reports:
 
 - Client version/build, interface number, `issecretvalue` present?
 - Which of these exist: `C_UnitAuras.*` (`GetAuraDataByIndex`, `GetPlayerAuraBySpellID`, `GetAuraDataBySpellName`, `GetUnitAuras`), `C_Spell.*` (`GetSpellInfo`, `GetSpellCooldown`, `GetSpellCooldownDuration`), `C_SpellBook.*`, `C_ChatInfo.*`, `Cooldown:SetCooldownFromDurationObject`, talent APIs, `C_Secrets.*`, `C_CurveUtil.*`, `Settings.*`, and the removed legacy globals.
 - For every name in `Data/Spells.lua`: resolved? spellID? known by the player?
 - Spec detection: every strategy's raw result and the final decision.
-- Player aura readability **out of combat**, and `/pk probe combat` which runs after the owner enters combat with a dummy and reports which fields of the player's own auras and cooldowns are secret vs readable.
+- Player aura readability **out of combat**, and `/ptk probe combat` which runs after the owner enters combat with a dummy and reports which fields of the player's own auras and cooldowns are secret vs readable.
 - Addon message prefix registration result and a loopback self-send test.
 - Interface/AddOns folder path hint and the SavedVariables load state (helps diagnose the reset bug).
 
-Also add `/pk debug on|off` for verbose logging to the same copy window, and `/pk errors` reminding the owner to run `/console scriptErrors 1`.
+Also add `/ptk debug on|off` for verbose logging to the same copy window, and `/ptk errors` reminding the owner to run `/console scriptErrors 1`.
 
-## 10. Config schema (SavedVariables `PaladinKitDB`)
+## 10. Config schema (SavedVariables `NyteLytePaladinToolkitDB`)
 
 ```lua
-PaladinKitDB = {
+NyteLytePaladinToolkitDB = {
   version = 1,
   profileKeys = { ["Char-Realm"] = "Default" },
   profiles = {
@@ -227,24 +227,24 @@ Include a `migrate()` stub and default-filling that never wipes user keys.
 
 ## 11. Settings UI and profile export/import
 
-- Use the client's `Settings` API if the probe finds it; otherwise a standalone draggable config frame opened by `/pk`.
+- Use the client's `Settings` API if the probe finds it; otherwise a standalone draggable config frame opened by `/ptk`.
 - Top: **Spec mode dropdown** (Auto/Holy/Prot/Ret) with the "Detected: X (confidence)" text.
 - Per-spec module toggle matrix (the table in section 6), plus per-module options (icon size, spacing, grow direction, alerts).
-- **Lock/Unlock** layout with a grid and `/pk unlock`, `/pk lock`, `/pk reset`.
+- **Lock/Unlock** layout with a grid and `/ptk unlock`, `/ptk lock`, `/ptk reset`.
 - **Export/Import profile** as a single pasteable string (simple dependency-free serializer + checksum). This is the workaround for the reported SavedVariables persistence bug and for sharing setups.
 
 ## 12. Tooling and workflow
 
 - Lint with **luacheck** (`.luacheckrc` declaring WoW globals) and keep it clean.
 - Unit-test pure-Lua logic with **busted**: spec-detection decision logic, assignment conflict resolution, serializer round-trip, auto-suggest layout. Mock WoW APIs in `tests/mocks.lua`.
-- `tools/install.ps1` and `tools/install.sh`: copy or symlink `PaladinKit/` into the AddOns dir given by env `WOW_ADDONS_DIR` (default to the beta path in section 3, easily overridden for launch).
-- In-game loop for the owner: `/console scriptErrors 1` → `/reload` → reproduce → paste errors and `/pk probe`.
+- `tools/install.ps1` and `tools/install.sh`: copy or symlink `NyteLytePaladinToolkit/` into the AddOns dir given by env `WOW_ADDONS_DIR` (default to the beta path in section 3, easily overridden for launch).
+- In-game loop for the owner: `/console scriptErrors 1` → `/reload` → reproduce → paste errors and `/ptk probe`.
 - Commit after every milestone with a clear message. Keep `CHANGELOG.md` current.
 - Release later via GitHub + CurseForge using the BigWigs packager (`.pkgmeta`); MIT license; donation link allowed.
 
 ## 13. Milestones and acceptance
 
-**M0 — Scaffold + Diagnostics.** Addon loads with zero Lua errors on the beta client; `/pk`, `/pk probe`, `/pk probe combat`, `/pk debug` work; probe output is complete and copyable. *Stop here for the owner's test results.*
+**M0 — Scaffold + Diagnostics.** Addon loads with zero Lua errors on the beta client; `/ptk`, `/ptk probe`, `/ptk probe combat`, `/ptk debug` work; probe output is complete and copyable. *Stop here for the owner's test results.*
 
 **M1 — Core.** Init/event bus, Compat, Secrets, Config with defaults/migration, SpecProfile (all four modes, manual switching works, auto-detection using whatever the probe found), frame widgets with lock/unlock/drag, settings panel skeleton, profile export/import.
 
@@ -286,9 +286,9 @@ Threat meters, damage meters, boss mods, party health/heal alerts, enemy debuff/
 
 These override the matching parts of sections 9, 12 and 5 above.
 
-- **Repo:** `<Desktop>\PaladinKit`, repo root = addon folder.
-- **Installed via a junction:** `C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns\PaladinKit` → repo (`tools\install.ps1`). Edits are live after `/reload`.
-- **Read results from disk, don't ask for pastes.** `/pk probe` and `/pk probe combat` save to `PaladinKitDB.probe` / `.probeCombat`; captured Lua errors go to `PaladinKitDB.errors`. After the owner types `/reload`, read `C:\Program Files (x86)\World of Warcraft\_classic_beta_\WTF\Account\<account>\SavedVariables\PaladinKit.lua` (the account folder seen so far is `<account>`). The copy window is the fallback.
+- **Repo:** `<Desktop>\NyteLytePaladinToolkit`, repo root = addon folder.
+- **Installed via a junction:** `C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns\NyteLytePaladinToolkit` → repo (`tools\install.ps1`). Edits are live after `/reload`.
+- **Read results from disk, don't ask for pastes.** `/ptk probe` and `/ptk probe combat` save to `NyteLytePaladinToolkitDB.probe` / `.probeCombat`; captured Lua errors go to `NyteLytePaladinToolkitDB.errors`. After the owner types `/reload`, read `C:\Program Files (x86)\World of Warcraft\_classic_beta_\WTF\Account\<account>\SavedVariables\NyteLytePaladinToolkit.lua` (the account folder seen so far is `<account>`). The copy window is the fallback.
 - **Tests:** `python tests/run_tests.py` (lupa, Lua 5.1) instead of busted; mocks in `tests/mocks.lua`, with secret values modeled as proxies that error on compare, math and concat. Keep it passing before asking the owner to test. Put pure logic in files that don't touch WoW APIs so it can be tested directly.
 - **Lint:** `.luacheckrc` is kept current; luacheck isn't installed yet.
 - **Architecture:** Core (Init, Compat, Secrets, Config, SpecProfile, CombatQueue) → Services (SpellRegistry, AuraService, CooldownService, Comm) → pure Logic → UI widgets → Modules. Only Services call version-sensitive APIs, and only through Compat. Modules only render what Services publish. Every safe read has three states: value / SECRET / UNAVAILABLE.

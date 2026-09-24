@@ -1,10 +1,10 @@
 ## Interface: 16001
-## Title: PaladinKit
+## Title: Nyte Lyte's Paladin Toolkit
 ## Notes: All-in-one Paladin toolkit for WoW: Forever (buffs, seals, cooldowns, blessings)
 ## Author: Nyte-fyre
 ## Version: 0.0.1
 ## X-License: MIT
-## SavedVariables: PaladinKitDB
+## SavedVariables: NyteLytePaladinToolkitDB
 ## IconTexture: Interface\Icons\Spell_Holy_HolyBolt
 
 # Interface 16001 = WoW Forever (retail-based client, WOW_PROJECT_ID 1),

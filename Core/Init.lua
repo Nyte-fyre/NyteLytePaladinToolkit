@@ -3,10 +3,12 @@ local ADDON_NAME, PK = ...
 -- Namespace, error capture, event bus, module registry, slash commands.
 -- Loads first. Everything here must work before SavedVariables are loaded
 -- (they arrive with ADDON_LOADED), so early state lives in locals and is
--- attached to PaladinKitDB once it exists.
+-- attached to NyteLytePaladinToolkitDB once it exists.
 
-_G.PaladinKit = PK
+_G.NyteLytePaladinToolkit = PK
 PK.name = ADDON_NAME
+PK.displayName = "Nyte Lyte's Paladin Toolkit"
+PK.chatName = "Paladin Toolkit"
 PK.version = "dev"
 PK.modules = {}
 PK.moduleOrder = {}
@@ -18,7 +20,7 @@ local MAX_DEBUG = 300
 
 -- Error capture ------------------------------------------------------------
 -- Lua errors mentioning this addon are kept (deduplicated) and saved to
--- PaladinKitDB.errors so they can be read from disk after /reload.
+-- NyteLytePaladinToolkitDB.errors so they can be read from disk after /reload.
 local earlyErrors = {}
 PK.errorList = earlyErrors
 
@@ -73,7 +75,7 @@ function PK:Print(...)
 	for i = 1, select("#", ...) do
 		parts[#parts + 1] = tostring((select(i, ...)))
 	end
-	print(COLOR .. "PaladinKit|r: " .. table.concat(parts, " "))
+	print(COLOR .. PK.chatName .. "|r: " .. table.concat(parts, " "))
 end
 
 local debugLog = {}
@@ -216,14 +218,14 @@ local function printHelp()
 	for _, word in ipairs(commandOrder) do
 		local c = commands[word]
 		if c.help then
-			print("  /pk " .. word .. " - " .. c.help)
+			print("  /ptk " .. word .. " - " .. c.help)
 		end
 	end
 end
 
-SLASH_PALADINKIT1 = "/pk"
-SLASH_PALADINKIT2 = "/paladinkit"
-SlashCmdList.PALADINKIT = function(msg)
+SLASH_NYTELYTEPALADINTOOLKIT1 = "/ptk"
+SLASH_NYTELYTEPALADINTOOLKIT2 = "/paladintoolkit"
+SlashCmdList.NYTELYTEPALADINTOOLKIT = function(msg)
 	local words = {}
 	for w in (msg or ""):lower():gmatch("%S+") do
 		words[#words + 1] = w
@@ -240,13 +242,13 @@ end
 PK:RegisterCommand("help", printHelp, "list commands")
 PK:RegisterCommand("errors", function()
 	PK:Print("to see Lua errors as popups, type: /console scriptErrors 1")
-	PK:Print(#PK.errorList .. " PaladinKit error(s) captured this session and saved on /reload.")
+	PK:Print(#PK.errorList .. " error(s) captured this session and saved on /reload.")
 	if #PK.errorList > 0 and PK.CopyWindow then
 		local lines = {}
 		for _, e in ipairs(PK.errorList) do
 			lines[#lines + 1] = string.format("[x%d] %s\n%s", e.count, e.msg, e.stack or "")
 		end
-		PK.CopyWindow:Show("PaladinKit errors", table.concat(lines, "\n\n"))
+		PK.CopyWindow:Show(PK.displayName .. " - errors", table.concat(lines, "\n\n"))
 	end
 end, "show captured Lua errors")
 
@@ -269,11 +271,11 @@ PK:RegisterEvent("ADDON_LOADED", lifecycle, function(_, _, name)
 
 	-- Record whether SavedVariables actually came back (Forever beta has a
 	-- reported bug where they are written but not loaded on a fresh start).
-	local existed = type(PaladinKitDB) == "table"
+	local existed = type(NyteLytePaladinToolkitDB) == "table"
 	if not existed then
-		PaladinKitDB = {}
+		NyteLytePaladinToolkitDB = {}
 	end
-	local db = PaladinKitDB
+	local db = NyteLytePaladinToolkitDB
 	db.meta = db.meta or {}
 	local m = db.meta
 	PK.svState = {

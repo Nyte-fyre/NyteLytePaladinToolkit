@@ -10,7 +10,7 @@ PK.CopyWindow = CopyWindow
 local frame, editBox, titleText, scroll
 
 local function Build()
-	frame = CreateFrame("Frame", "PaladinKitCopyWindow", UIParent, "BasicFrameTemplateWithInset")
+	frame = CreateFrame("Frame", "NyteLytePaladinToolkitCopyWindow", UIParent, "BasicFrameTemplateWithInset")
 	frame:SetSize(720, 520)
 	frame:SetPoint("CENTER")
 	frame:SetFrameStrata("DIALOG")
@@ -20,7 +20,7 @@ local function Build()
 	frame:RegisterForDrag("LeftButton")
 	frame:SetScript("OnDragStart", frame.StartMoving)
 	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-	tinsert(UISpecialFrames, "PaladinKitCopyWindow")
+	tinsert(UISpecialFrames, "NyteLytePaladinToolkitCopyWindow")
 
 	titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	titleText:SetPoint("TOP", 0, -5)
@@ -79,7 +79,7 @@ function CopyWindow:Show(title, text)
 	if not frame then
 		Build()
 	end
-	titleText:SetText(title or "PaladinKit")
+	titleText:SetText(title or PK.displayName)
 	editBox.original = text or ""
 	editBox:SetText(editBox.original)
 	editBox:SetCursorPosition(0)
