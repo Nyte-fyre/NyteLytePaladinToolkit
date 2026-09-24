@@ -14,24 +14,12 @@ local frame, editBox, titleText, scroll, selectAll, accept, hint
 local mode, onAcceptFn
 
 local function Build()
-	frame = CreateFrame("Frame", "NyteLytePaladinToolkitCopyWindow", UIParent, "BasicFrameTemplateWithInset")
-	frame:SetSize(720, 520)
-	frame:SetPoint("CENTER")
-	frame:SetFrameStrata("DIALOG")
-	frame:SetClampedToScreen(true)
-	frame:SetMovable(true)
-	frame:EnableMouse(true)
-	frame:RegisterForDrag("LeftButton")
-	frame:SetScript("OnDragStart", frame.StartMoving)
-	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-	tinsert(UISpecialFrames, "NyteLytePaladinToolkitCopyWindow")
-
-	titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	titleText:SetPoint("TOP", 0, -5)
+	frame = PK.Theme.CreateWindow("NyteLytePaladinToolkitCopyWindow", PK.displayName, 720, 540)
+	titleText = frame.titleText
 
 	scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
-	scroll:SetPoint("TOPLEFT", 14, -32)
-	scroll:SetPoint("BOTTOMRIGHT", -34, 44)
+	scroll:SetPoint("TOPLEFT", 16, -52)
+	scroll:SetPoint("BOTTOMRIGHT", -36, 46)
 
 	editBox = CreateFrame("EditBox", nil, scroll)
 	editBox:SetMultiLine(true)
@@ -59,7 +47,7 @@ local function Build()
 
 	selectAll = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 	selectAll:SetSize(120, 24)
-	selectAll:SetPoint("BOTTOMLEFT", 14, 12)
+	selectAll:SetPoint("BOTTOMLEFT", 16, 14)
 	selectAll:SetText("Select all")
 	selectAll:SetScript("OnClick", function()
 		editBox:SetFocus()
@@ -68,7 +56,7 @@ local function Build()
 
 	accept = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 	accept:SetSize(120, 24)
-	accept:SetPoint("BOTTOMLEFT", 14, 12)
+	accept:SetPoint("BOTTOMLEFT", 16, 14)
 	accept:SetText("Import")
 	accept:SetScript("OnClick", function()
 		if onAcceptFn and onAcceptFn(editBox:GetText()) then
@@ -81,7 +69,7 @@ local function Build()
 
 	local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 	close:SetSize(90, 24)
-	close:SetPoint("BOTTOMRIGHT", -14, 12)
+	close:SetPoint("BOTTOMRIGHT", -16, 14)
 	close:SetText("Close")
 	close:SetScript("OnClick", function()
 		frame:Hide()

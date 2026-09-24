@@ -4,9 +4,10 @@ local _, PK = ...
 -- Paladin aura, Righteous Fury (per spec) and a Blessing. By default only
 -- problems show: missing (grey with a red border) or expiring soon
 -- (pulsing, with time left). In combat it keeps the last known state (see
--- AuraService); a Seal it can't see in combat shows as "unknown" instead of
--- raising a false alarm. `/ptk check` prints the same checks to chat, and a
--- ready check does it automatically.
+-- AuraService). A missing Seal only matters in combat (owner's call), so out
+-- of combat it's "idle" and not shown; in combat your own casts are readable,
+-- so a missing Seal there is real. `/ptk check` prints the same checks to
+-- chat, and a ready check does it automatically.
 
 local AS = PK.AuraService
 local Frames = PK.Frames
@@ -46,20 +47,22 @@ local function formatTime(sec)
 end
 
 -- Builds the list of checks for the current spec.
--- Each: { id, label, status = ok|expiring|missing|unknown, aura, icon, remaining }
+-- Each: { id, label, status = ok|expiring|missing|idle, aura, icon, remaining }
+-- ("idle": not checked right now, e.g. the Seal out of combat)
 function M:Evaluate()
 	local s = settings()
 	local spec = PK.SpecProfile:GetSpec()
 	local threshold = PK.profile.alerts.expiringThresholdSec or 120
 	local results = {}
 
-	local function add(id, label, aura, fallbackIcon, long, unknownWhenFrozen)
+	local inCombat = PK.Compat.InCombat()
+	local function add(id, label, aura, fallbackIcon, long, combatOnly)
 		local remaining = AS:Remaining(aura)
 		local status
 		if aura and remaining then
 			status = (long and remaining < threshold) and "expiring" or "ok"
-		elseif unknownWhenFrozen and AS.frozen then
-			status = "unknown"
+		elseif combatOnly and not inCombat then
+			status = "idle"
 		else
 			status = "missing"
 		end
@@ -122,7 +125,7 @@ function M:Render()
 
 	local shown = {}
 	for _, r in ipairs(results) do
-		if s.showAll or r.status == "missing" or r.status == "expiring" then
+		if (s.showAll and r.status ~= "idle") or r.status == "missing" or r.status == "expiring" then
 			shown[#shown + 1] = r
 		end
 	end
@@ -139,8 +142,6 @@ function M:Render()
 		icon.icon:SetTexture(r.icon or 134400)
 		if r.status == "missing" then
 			icon:SetState("missing")
-		elseif r.status == "unknown" then
-			icon:SetState("unusable")
 		else
 			icon:SetState("ready")
 		end
@@ -180,8 +181,8 @@ function M:PrintCheck(reason)
 		elseif r.status == "expiring" then
 			problems = problems + 1
 			text = "|cffffd040" .. (r.aura and r.aura.name or "?") .. " (" .. formatTime(r.remaining) .. " left)|r"
-		elseif r.status == "unknown" then
-			text = "|cff909090can't see in combat|r"
+		elseif r.status == "idle" then
+			text = "|cff909090checked in combat|r"
 		else
 			problems = problems + 1
 			text = "|cffff4040missing|r"
@@ -204,6 +205,8 @@ function M:OnEnable()
 	PK:On("PK_SPELLS_UPDATED", self, render)
 	PK:On("PK_PROFILE_CHANGED", self, render)
 	PK:On("PK_SETTINGS_CHANGED", self, render)
+	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, render)
+	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, render)
 	PK:RegisterEvent("READY_CHECK", self, function()
 		if M:PrintCheck("ready check") > 0 and PK.profile.alerts.sound then
 			PK.Compat.PlaySound("RAID_WARNING", 8959)
@@ -222,6 +225,8 @@ function M:OnDisable()
 	PK:Off("PK_PROFILE_CHANGED", self)
 	PK:Off("PK_SETTINGS_CHANGED", self)
 	PK:UnregisterEvent("READY_CHECK", self)
+	PK:UnregisterEvent("PLAYER_REGEN_DISABLED", self)
+	PK:UnregisterEvent("PLAYER_REGEN_ENABLED", self)
 	if ticker then
 		ticker:Cancel()
 		ticker = nil

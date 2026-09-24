@@ -76,11 +76,8 @@ local OPTIONS = {
 }
 local statusText, lockButton, profileText
 
-local function header(parent, text, y)
-	local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	fs:SetPoint("TOPLEFT", 16, y)
-	fs:SetText(text)
-	return fs
+local function header(parent, text, y, x, width)
+	return PK.Theme.Header(parent, text, x or 16, y, width or 290)
 end
 
 local function button(parent, text, width, onClick)
@@ -136,9 +133,8 @@ local function Build()
 	panel:SetSize(620, 680)
 	panel.name = PK.displayName
 
-	local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	title:SetPoint("TOPLEFT", 16, -16)
-	title:SetText(PK.displayName)
+	PK.Theme.AddGlow(panel, 80)
+	local title = PK.Theme.Title(panel, PK.displayName, 16, -12)
 	local version = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	version:SetPoint("LEFT", title, "RIGHT", 8, 0)
 	version:SetText("v" .. PK.version)
@@ -158,7 +154,7 @@ local function Build()
 	statusText:SetJustifyH("LEFT")
 
 	-- Module matrix
-	header(panel, "Modules per spec", -132)
+	header(panel, "Modules per spec", -132, 16, 590)
 	for i, spec in ipairs(SPECS) do
 		local fs = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		fs:SetPoint("TOPLEFT", 300 + (i - 1) * 90, -152)
@@ -195,9 +191,7 @@ local function Build()
 
 	-- Module options (right column)
 	local optX = 340
-	local optHeader = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	optHeader:SetPoint("TOPLEFT", optX, framesY)
-	optHeader:SetText("Options")
+	header(panel, "Options", framesY, optX, 270)
 	for i, opt in ipairs(OPTIONS) do
 		local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
 		cb:SetPoint("TOPLEFT", optX - 4, framesY - 16 - (i - 1) * 24)
@@ -289,18 +283,11 @@ local function register()
 		end
 	end
 	-- No Settings API: host the panel in a standalone window.
-	fallbackWindow = CreateFrame("Frame", "NyteLytePaladinToolkitSettings", UIParent, "BasicFrameTemplateWithInset")
-	fallbackWindow:SetSize(640, 600)
-	fallbackWindow:SetPoint("CENTER")
-	fallbackWindow:SetMovable(true)
-	fallbackWindow:EnableMouse(true)
-	fallbackWindow:RegisterForDrag("LeftButton")
-	fallbackWindow:SetScript("OnDragStart", fallbackWindow.StartMoving)
-	fallbackWindow:SetScript("OnDragStop", fallbackWindow.StopMovingOrSizing)
-	tinsert(UISpecialFrames, "NyteLytePaladinToolkitSettings")
+	fallbackWindow = PK.Theme.CreateWindow("NyteLytePaladinToolkitSettings", PK.displayName, 650, 720)
+	fallbackWindow.titleText:Hide() -- the panel draws its own title
+	fallbackWindow.titleIcon:Hide()
 	panel:SetParent(fallbackWindow)
-	panel:SetPoint("TOPLEFT", 8, -24)
-	fallbackWindow:Hide()
+	panel:SetPoint("TOPLEFT", 8, -8)
 end
 
 function S:Open()
