@@ -18,7 +18,7 @@
 | Addon messages | allowed | **restricted** (`AreOutgoingAddonChatMessagesRestricted`) | Comm queue |
 | Settings API (canvas category) | works | works | UI/Settings.lua |
 | Party members' auras | **unverified** | assumed secret | Roster (unreadable = unknown) |
-| Talent trees (`C_Traits`) | **unverified** (needs level 10+) | - | SpecProfile (stubbed) |
+| Talent trees (`C_Traits`) | readable: **one tree, three columns** | - | Compat.GetTalentPointsByTree |
 
 ## Launch-day checklist (Nov 4 2026)
 
@@ -29,7 +29,7 @@
    (`python tests/read_sv.py probe.api probe.secrecy probe.registry.unresolved`).
 5. `/ptk probe combat` in a real fight, then `/reload`, and check the table's
    "In combat" column.
-6. Talents: C_Traits tree dump -> implement `Compat.GetTalentPointsByTree()`.
+6. Talents: re-check the column bounds in `SpecDecision.TREE_X_BOUNDS` against a fresh `probe.traits` dump.
 7. Verify the guessed names and durations: Seal of Fury, Twist of Light Echo
    ("Echo", 10s), Iron Creed (6s), Templar's Bulwark, Light's Vigil,
    Righteous Fury duration. Fix `Data/Spells.lua` and `DEFAULT_DURATION` in
@@ -184,3 +184,31 @@ Seal of Righteousness, Holy Strike, Blessing of Might, Judgement. Zero Lua error
 
 Still pending: static `/ptk probe` at level 10+ with a talent point spent,
 covering spellbook flyouts (Blessings/Auras) and the C_Traits talent trees.
+
+## Probe #3 (2026-09-24, level 10, 1 point in Divine Intellect)
+
+- **Talents:** `C_ClassTalents.GetActiveConfigID()` -> config 7516683
+  ("Paladin"). **One trait tree (1100) with 52 nodes**, the Classic trees side
+  by side: Holy x ~1020-2820, Protection x ~5020-6820, Retribution
+  x ~9080-10880 (y ~2130 top to 5730 bottom). `GetNodeInfo` gives readable
+  `ranksPurchased`, `maxRanks`, `posX` and `posY`, and entry -> definition
+  -> spellID works. Divine Intellect showed rank 1/5, matching the point
+  spent. `Compat.GetTalentPointsByTree()` sums ranks per column.
+- **Confirmed talents** (spellID): Holy: Light's Vigil (1310911), Holy Shock
+  (1311606), Divine Favor (20216), Infusion of Light (426065, 2 ranks),
+  Divine Precision, Reverence, Consecrated Ground, Voice of Truth, Improved
+  Holy Strike, Purifying Power. Protection: Templar's Bulwark (1311015),
+  **Holy Shield** (20925), **Iron Creed (1311034, 5 ranks)**, Improved Seal of
+  Fury, Swift Judgement, Sacred Duty, Improved Righteous Fury. Retribution:
+  Twist of Light (1310735), Seal of Command (20375, a talent), Repentance,
+  Sacred Arbiter (1311087), Sanctified Judgement (1311074), Crusade
+  (1311083), Champion of the Light (1311084), Instrument of Law, Holy
+  Conduit.
+- **Not in Forever's tree:** Blessed Life (removed from the registry) and
+  Blessing of Sanctuary. **Seal of Fury is not a talent**, so it must be a
+  trained spell (not seen yet).
+- **Spellbook flyouts** list every rank, including unlearned ones:
+  Blessings (Might, Wisdom, Kings, Light, Salvation) and Auras (Devotion,
+  Retribution, Concentration, **Sanctity**, Fire/Frost/Shadow Resistance).
+  **No Greater Blessings anywhere**, so assume Forever has none. Blessing of
+  Kings is trainable (in the flyout).

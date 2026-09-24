@@ -73,6 +73,9 @@ r = D.Decide("bogus", {})
 assert(r.mode == "auto", "invalid mode treated as auto")
 assert(D.NextMode("auto") == "holy" and D.NextMode("ret") == "auto" and D.NextMode("x") == "auto")
 
+assert(D.SpecForTalentX(1620) == "holy" and D.SpecForTalentX(5620) == "prot" and D.SpecForTalentX(10880) == "ret")
+assert(D.SpecForTalentX(nil) == nil, "no x, no tree")
+
 -- Config helpers
 local target = { a = 1, list = { "x" }, sub = { keep = false } }
 C.FillDefaults(target, { a = 2, b = 3, list = { "x", "y", "z" }, sub = { keep = true, add = 1 } })
@@ -80,7 +83,7 @@ assert(target.a == 1 and target.b == 3, "fill keeps existing, adds missing")
 assert(#target.list == 1, "lists are not merged")
 assert(target.sub.keep == false and target.sub.add == 1, "nested fill")
 local db = C.Migrate({})
-assert(db.version == 3 and db.profiles and db.profileKeys, "migrate from nothing")
+assert(db.version == 4 and db.profiles and db.profileKeys, "migrate from nothing")
 local oldHoly = C.DeepCopy(P.Presets.previousCooldownLists.holy[1])
 db = C.Migrate({ version = 1, profileKeys = {}, profiles = {
 	untouched = { cooldownLists = { holy = oldHoly } },

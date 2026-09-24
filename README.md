@@ -8,7 +8,8 @@ Protection or Retribution**, with every part switchable per spec.
 
 ## What it does
 
-- **Spec choice:** Auto, Holy, Protection or Retribution. Each spec has its
+- **Spec choice:** Auto (from where your talent points are spent), Holy,
+  Protection or Retribution. Each spec has its
   own modules, cooldown bar and frame positions. Switch with `/ptk holy`
   and so on, from the settings panel, or with a keybind. No reload needed.
 - **Buff Sentinel:** icons pop up when your Aura or Blessing is missing, or
@@ -85,11 +86,8 @@ spec mode, Lock/unlock frames, Open Blessing grid.
 
 - Forever's beta has a reported bug where saved settings don't load on a
   fresh client start. Use `/ptk export` now and then.
-- Auto spec detection currently uses tree-specific spells you know. Detection
-  from talent points will be added once it's verified on a level 10+
-  character.
 - Beta characters are capped at level 20. Some later spells and talents
-  (Seal of Fury, Templar's Bulwark, Twist of Light, Iron Creed) couldn't be
+  (Seal of Fury, and the buffs from Twist of Light and Iron Creed) couldn't be
   verified yet. Their names and durations are best guesses that correct
   themselves once the addon sees the real buffs.
 - Whether party members' buffs can be read out of combat hasn't been checked

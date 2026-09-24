@@ -144,11 +144,40 @@ function Compat.GetSpellTexture(spellID)
 end
 
 -- Talent points spent per tree: { holy = n, prot = n, ret = n }, or nil and
--- a reason. Forever's talents live in C_Traits; how its three trees map to
--- trait nodes is not known yet (needs a probe from a level 10+ character with
--- points spent), so this reports "unknown" rather than guessing.
+-- a reason. Forever's talents are one C_Traits tree with Holy / Protection /
+-- Retribution side by side, so each node's column (posX) says which tree it
+-- belongs to (see SpecDecision.SpecForTalentX).
 function Compat.GetTalentPointsByTree()
-	return nil, "talent tree mapping not verified yet"
+	local CT, T = _G.C_ClassTalents, _G.C_Traits
+	if not (CT and CT.GetActiveConfigID and T and T.GetConfigInfo and T.GetTreeNodes and T.GetNodeInfo) then
+		return nil, "no talent API"
+	end
+	local ok, configID = pcall(CT.GetActiveConfigID)
+	if not ok or Compat.IsSecret(configID) or type(configID) ~= "number" then
+		return nil, "no active talent config"
+	end
+	local okInfo, info = pcall(T.GetConfigInfo, configID)
+	if not okInfo or type(info) ~= "table" or type(info.treeIDs) ~= "table" then
+		return nil, "no talent trees"
+	end
+	local points = { holy = 0, prot = 0, ret = 0 }
+	local SafeNumber = PK.Secrets.SafeNumber
+	for _, treeID in ipairs(info.treeIDs) do
+		local okNodes, nodes = pcall(T.GetTreeNodes, treeID)
+		if okNodes and type(nodes) == "table" then
+			for _, nodeID in ipairs(nodes) do
+				local okNode, node = pcall(T.GetNodeInfo, configID, nodeID)
+				if okNode and type(node) == "table" then
+					local ranks = SafeNumber(node.ranksPurchased) or 0
+					local spec = PK.SpecDecision.SpecForTalentX(SafeNumber(node.posX))
+					if spec and ranks > 0 then
+						points[spec] = points[spec] + ranks
+					end
+				end
+			end
+		end
+	end
+	return points
 end
 
 -- Adds the spells inside a spellbook flyout (Forever groups Blessings and

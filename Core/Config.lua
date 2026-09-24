@@ -4,7 +4,7 @@ local _, PK = ...
 -- profile export/import.
 --
 -- NyteLytePaladinToolkitDB = {
---   version = 3,
+--   version = 4,
 --   profileKeys = { ["Char-Realm"] = "Default" },
 --   profiles = { Default = { specMode, locked, modules, layout, cooldownLists, alerts, blessing } },
 --   meta, probe, probeCombat, errors, debugLog, debug  -- diagnostics, not part of profiles
@@ -17,7 +17,7 @@ local Presets = PK.Presets
 local Config = {}
 PK.Config = Config
 
-local DB_VERSION = 3
+local DB_VERSION = 4
 Config.DB_VERSION = DB_VERSION
 
 -- Table helpers ----------------------------------------------------------------------
@@ -89,6 +89,18 @@ function Config.BuildDefaults()
 	}
 end
 
+local function sameList(a, b)
+	if type(a) ~= "table" or #a ~= #b then
+		return false
+	end
+	for i = 1, #b do
+		if a[i] ~= b[i] then
+			return false
+		end
+	end
+	return true
+end
+
 -- Migration --------------------------------------------------------------------------------
 
 -- Upgrades an older saved-variables table in place. Add a step per version bump.
@@ -114,20 +126,22 @@ function Config.Migrate(db)
 		end
 		v = 3
 	end
+	if v < 4 then
+		-- Tank Kit gained Holy Shield (a real Forever talent).
+		for _, profile in pairs(db.profiles) do
+			local tk = type(profile) == "table" and profile.moduleSettings and profile.moduleSettings.TankKit
+			if tk then
+				for _, old in ipairs(Presets.previousTankKitSpells) do
+					if sameList(tk.spells, old) then
+						tk.spells = deepCopy(Presets.moduleSettings.TankKit.spells)
+					end
+				end
+			end
+		end
+		v = 4
+	end
 	db.version = v
 	return db
-end
-
-local function sameList(a, b)
-	if type(a) ~= "table" or #a ~= #b then
-		return false
-	end
-	for i = 1, #b do
-		if a[i] ~= b[i] then
-			return false
-		end
-	end
-	return true
 end
 
 -- Replaces a spec's cooldown list with the current default if it exactly
