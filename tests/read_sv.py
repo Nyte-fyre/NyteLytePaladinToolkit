@@ -3,11 +3,22 @@
 Usage: python tests/read_sv.py probe.auraPaths probeCombat.events ...
 With no arguments prints an overview. Noisy aura fields are hidden.
 """
+import glob
+import os
 import sys
 
 from lupa.lua51 import LuaRuntime
 
-SV = r"C:\Program Files (x86)\World of Warcraft\_classic_beta_\WTF\Account\<account>\SavedVariables\NyteLytePaladinToolkit.lua"
+# Set WOW_WTF_DIR to read another client's WTF folder (default: the Forever beta).
+WTF = os.environ.get("WOW_WTF_DIR", r"C:\Program Files (x86)\World of Warcraft\_classic_beta_\WTF")
+
+
+def find_sv():
+    """The most recently written SavedVariables file across all accounts."""
+    matches = glob.glob(os.path.join(WTF, "Account", "*", "SavedVariables", "NyteLytePaladinToolkit.lua"))
+    if not matches:
+        sys.exit("no NyteLytePaladinToolkit.lua under " + WTF)
+    return max(matches, key=os.path.getmtime)
 
 DUMP = r'''
 function(t, maxdepth)
@@ -48,7 +59,7 @@ end
 
 def main():
     lua = LuaRuntime()
-    with open(SV, encoding="utf-8") as f:
+    with open(find_sv(), encoding="utf-8") as f:
         lua.execute(f.read())
     dump = lua.eval(DUMP)
     db = lua.globals().NyteLytePaladinToolkitDB
