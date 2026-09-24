@@ -253,14 +253,56 @@ function Compat.GetSpellCooldown(spellID)
 	return nil
 end
 
--- Duration object for display-only cooldown swipes, or nil.
-function Compat.GetSpellCooldownDuration(spellID)
+-- Duration object for display-only cooldown swipes, or nil. ignoreGCD asks
+-- the client to leave out the global cooldown (ignored if unsupported).
+function Compat.GetSpellCooldownDuration(spellID, ignoreGCD)
 	local fn = Compat.Resolve("C_Spell.GetSpellCooldownDuration")
 	if not fn then
 		return nil
 	end
-	local ok, d = pcall(fn, spellID)
+	local ok, d = pcall(fn, spellID, ignoreGCD)
+	if not ok then
+		ok, d = pcall(fn, spellID)
+	end
 	return ok and d or nil
+end
+
+-- usable, noMana for a spell (either may be nil if unreadable).
+function Compat.IsSpellUsable(spellID)
+	local fn = Compat.Resolve("C_Spell.IsSpellUsable") or _G.IsUsableSpell
+	if not fn then
+		return nil, nil
+	end
+	local ok, usable, noMana = pcall(fn, spellID)
+	if not ok then
+		return nil, nil
+	end
+	return PK.Secrets.SafeBool(usable), PK.Secrets.SafeBool(noMana)
+end
+
+-- The active Paladin aura via the stance bar (readable in combat on
+-- Forever, unlike aura queries). Returns spellID, icon or nil.
+function Compat.GetActiveStanceSpell()
+	local getForm, getInfo = _G.GetShapeshiftForm, _G.GetShapeshiftFormInfo
+	if not (getForm and getInfo) then
+		return nil
+	end
+	local ok, index = pcall(getForm)
+	if not ok or Compat.IsSecret(index) or type(index) ~= "number" or index < 1 then
+		return nil
+	end
+	local ok2, icon, active, _, spellID = pcall(getInfo, index)
+	if not ok2 or Compat.IsSecret(spellID) or Compat.IsSecret(active) or not active then
+		return nil
+	end
+	return spellID, icon
+end
+
+function Compat.PlaySound(kitName, fallbackID)
+	local id = (_G.SOUNDKIT and _G.SOUNDKIT[kitName]) or fallbackID
+	if id and _G.PlaySound then
+		pcall(_G.PlaySound, id, "Master")
+	end
 end
 
 -- Auras ------------------------------------------------------------------------

@@ -14,7 +14,51 @@ local SPECS = { "holy", "prot", "ret" }
 local MODE_BUTTONS = { "auto", "holy", "prot", "ret" }
 
 local panel, category, fallbackWindow
-local modeButtons, checkboxes = {}, {}
+local modeButtons, checkboxes, optionBoxes = {}, {}, {}
+
+local function ms(module)
+	return PK.Config:GetModuleSettings(module)
+end
+
+-- Module options shown as checkboxes: { label, get(), set(value) }.
+local OPTIONS = {
+	{ "Sound alerts", function()
+		return PK.profile.alerts.sound
+	end, function(v)
+		PK.profile.alerts.sound = v
+	end },
+	{ "Buff Sentinel: also show buffs that are fine", function()
+		return ms("BuffSentinel").showAll
+	end, function(v)
+		ms("BuffSentinel").showAll = v
+	end },
+	{ "Righteous Fury warning as Protection", function()
+		return ms("BuffSentinel").rfSpecs.prot
+	end, function(v)
+		ms("BuffSentinel").rfSpecs.prot = v
+	end },
+	{ "Righteous Fury warning as Holy/Retribution", function()
+		return ms("BuffSentinel").rfSpecs.holy
+	end, function(v)
+		ms("BuffSentinel").rfSpecs.holy = v
+		ms("BuffSentinel").rfSpecs.ret = v
+	end },
+	{ "Seal Tracker: time bar", function()
+		return ms("SealTracker").showBar
+	end, function(v)
+		ms("SealTracker").showBar = v
+	end },
+	{ "Cooldown HUD: show unlearned spells", function()
+		return ms("CooldownHUD").showUnknown
+	end, function(v)
+		ms("CooldownHUD").showUnknown = v
+	end },
+	{ "Cooldown HUD: vertical", function()
+		return ms("CooldownHUD").direction == "DOWN"
+	end, function(v)
+		ms("CooldownHUD").direction = v and "DOWN" or "RIGHT"
+	end },
+}
 local statusText, lockButton, profileText
 
 local function header(parent, text, y)
@@ -74,7 +118,7 @@ end
 
 local function Build()
 	panel = CreateFrame("Frame")
-	panel:SetSize(620, 560)
+	panel:SetSize(620, 600)
 	panel.name = PK.displayName
 
 	local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -134,24 +178,48 @@ local function Build()
 	end)
 	reset:SetPoint("LEFT", lockButton, "RIGHT", 8, 0)
 
+	-- Module options (right column)
+	local optX = 340
+	local optHeader = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	optHeader:SetPoint("TOPLEFT", optX, framesY)
+	optHeader:SetText("Options")
+	for i, opt in ipairs(OPTIONS) do
+		local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+		cb:SetPoint("TOPLEFT", optX - 4, framesY - 16 - (i - 1) * 24)
+		cb:SetSize(24, 24)
+		local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+		label:SetText(opt[1])
+		cb:SetScript("OnClick", function(self)
+			opt[3](self:GetChecked() and true or false)
+			PK:Fire("PK_SETTINGS_CHANGED")
+		end)
+		optionBoxes[i] = cb
+	end
+	local cdNote = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	cdNote:SetPoint("TOPLEFT", optX, framesY - 24 - #OPTIONS * 24)
+	cdNote:SetWidth(270)
+	cdNote:SetJustifyH("LEFT")
+	cdNote:SetText("Edit this spec's cooldown bar with /ptk cd (list, add, remove, reset).")
+
 	-- Profile
 	local profileY = framesY - 64
 	header(panel, "Profile", profileY)
 	profileText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	profileText:SetPoint("TOPLEFT", 16, profileY - 20)
-	local export = button(panel, "Export", 110, exportProfile)
+	local export = button(panel, "Export", 100, exportProfile)
 	export:SetPoint("TOPLEFT", 16, profileY - 40)
-	local import = button(panel, "Import", 110, importProfile)
+	local import = button(panel, "Import", 100, importProfile)
 	import:SetPoint("LEFT", export, "RIGHT", 8, 0)
-	local resetProfile = button(panel, "Reset profile", 130, function()
+	local resetProfile = button(panel, "Reset profile", 208, function()
 		if StaticPopup_Show then
 			StaticPopup_Show("NLPT_RESET_PROFILE")
 		end
 	end)
-	resetProfile:SetPoint("LEFT", import, "RIGHT", 8, 0)
+	resetProfile:SetPoint("TOPLEFT", export, "BOTTOMLEFT", 0, -6)
 	local note = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	note:SetPoint("TOPLEFT", 16, profileY - 72)
-	note:SetWidth(580)
+	note:SetPoint("TOPLEFT", 16, profileY - 104)
+	note:SetWidth(310)
 	note:SetJustifyH("LEFT")
 	note:SetText("Export your profile now and then: the Forever beta has a reported bug where saved settings "
 		.. "can reset on a fresh client start. Type /ptk help for all commands.")
@@ -187,6 +255,9 @@ function S:Refresh()
 		for _, spec in ipairs(SPECS) do
 			row[spec]:SetChecked(PK.Config:IsModuleEnabled(module, spec))
 		end
+	end
+	for i, opt in ipairs(OPTIONS) do
+		optionBoxes[i]:SetChecked(opt[2]() and true or false)
 	end
 	lockButton:SetText(PK.profile.locked and "Unlock frames" or "Lock frames")
 	profileText:SetText("Current profile: |cffffffff" .. tostring(PK.Config:GetProfileName()) .. "|r")
@@ -248,6 +319,7 @@ PK:On("PK_SPEC_EVALUATED", S, refresh)
 PK:On("PK_PROFILE_CHANGED", S, refresh)
 PK:On("PK_MODULES_CHANGED", S, refresh)
 PK:On("PK_LOCK_CHANGED", S, refresh)
+PK:On("PK_SETTINGS_CHANGED", S, refresh)
 
 PK:RegisterCommand("config", function()
 	S:Open()
