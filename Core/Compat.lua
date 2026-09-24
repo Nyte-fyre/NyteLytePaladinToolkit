@@ -342,15 +342,35 @@ function Compat.AurasAreSecret()
 end
 
 -- Whether addon messages can be sent right now (false in combat on Forever).
+-- Never in combat. Otherwise ask C_RestrictedActions per restriction type
+-- (Chat, Combat, Encounter). Don't use
+-- C_ChatInfo.AreOutgoingAddonChatMessagesRestricted: in the party probe
+-- (2026-09-24) it said true out of combat, but the message was delivered
+-- and every per-type restriction was inactive.
 function Compat.CanSendAddonMessages()
-	local fn = Compat.Resolve("C_ChatInfo.AreOutgoingAddonChatMessagesRestricted")
-	if fn then
-		local ok, restricted = pcall(fn)
-		if ok and type(restricted) == "boolean" then
-			return not restricted
+	if Compat.InCombat() then
+		return false
+	end
+	local active = Compat.Resolve("C_RestrictedActions.IsAddOnRestrictionActive")
+	local types = _G.Enum and _G.Enum.AddOnRestrictionType
+	if active and type(types) == "table" then
+		for _, name in ipairs({ "Chat", "Combat", "Encounter" }) do
+			if types[name] ~= nil then
+				local ok, on = pcall(active, types[name])
+				if ok and on == true then
+					return false
+				end
+			end
 		end
 	end
-	return not Compat.InCombat()
+	local lockdown = Compat.Resolve("C_ChatInfo.InChatMessagingLockdown")
+	if lockdown then
+		local ok, locked = pcall(lockdown)
+		if ok and locked == true then
+			return false
+		end
+	end
+	return true
 end
 
 function Compat.PlaySound(kitName, fallbackID)

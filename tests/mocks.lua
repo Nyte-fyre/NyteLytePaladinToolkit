@@ -514,8 +514,10 @@ end
 
 -- Addon messages -----------------------------------------------------------------------
 C_ChatInfo = {
+	-- The real client said true even out of combat while messages went
+	-- through (party probe, 2026-09-24), so the addon must not rely on it.
 	AreOutgoingAddonChatMessagesRestricted = function()
-		return MOCK.combat
+		return true
 	end,
 	RegisterAddonMessagePrefix = function()
 		return 0
@@ -547,9 +549,11 @@ C_Secrets = {
 		return 1
 	end,
 }
+Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
 C_RestrictedActions = {
-	IsAddOnRestrictionActive = function()
-		return false
+	-- Combat and Chat restrictions are active in combat.
+	IsAddOnRestrictionActive = function(kind)
+		return MOCK.combat and (kind == 0 or kind == 5)
 	end,
 }
 Enum.SecretAspect = { Name = 1, Value = 2 }

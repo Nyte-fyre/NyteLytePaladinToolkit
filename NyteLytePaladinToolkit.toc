@@ -2,7 +2,7 @@
 ## Title: Nyte Lyte's Paladin Toolkit
 ## Notes: All-in-one Paladin toolkit for WoW: Forever (buffs, seals, cooldowns, blessings)
 ## Author: Nyte-fyre
-## Version: 0.5.3
+## Version: 0.5.4
 ## X-License: MIT
 ## X-Website: https://github.com/Nyte-fyre/NyteLytePaladinToolkit
 ## SavedVariables: NyteLytePaladinToolkitDB

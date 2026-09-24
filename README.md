@@ -95,8 +95,6 @@ spec mode, Lock/unlock frames, Open Blessing grid.
   (Seal of Fury, and the buffs from Twist of Light and Iron Creed) couldn't be
   verified yet. Their names and durations are best guesses that correct
   themselves once the addon sees the real buffs.
-- Whether party members' buffs can be read out of combat hasn't been checked
-  yet. If they can't be read, the buff button won't treat them as missing.
 
 ## Diagnostics and bug reports
 

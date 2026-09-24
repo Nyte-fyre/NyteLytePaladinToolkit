@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.4
+
+- Fixed: Blessing sync never sent anything. The game's blanket "addon chat
+  restricted" check says yes even out of combat, while messages go
+  through fine. Sending now uses the specific restriction checks (still
+  never in combat or during boss fights).
+- Verified in a party: group members' buffs are readable out of combat, so
+  the buff button works on your group.
+
 ## 0.5.3
 
 - Buff button shows who's next: class icon, class-colored name, and
