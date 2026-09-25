@@ -1,12 +1,12 @@
 <Bindings>
 	<Binding name="NLPT_CYCLE_SPEC" header="NYTELYTEPALADINTOOLKIT" category="ADDONS">
-		NyteLytePaladinToolkit.SpecProfile:Cycle()
+		if not NyteLytePaladinToolkit.dormant then NyteLytePaladinToolkit.SpecProfile:Cycle() end
 	</Binding>
 	<Binding name="NLPT_TOGGLE_LOCK" category="ADDONS">
-		NyteLytePaladinToolkit.Frames:ToggleLock()
+		if not NyteLytePaladinToolkit.dormant then NyteLytePaladinToolkit.Frames:ToggleLock() end
 	</Binding>
 	<Binding name="CLICK NyteLytePaladinToolkitBuffButton:LeftButton" category="ADDONS"/>
 	<Binding name="NLPT_TOGGLE_GRID" category="ADDONS">
-		NyteLytePaladinToolkit.BlessingGrid:Toggle()
+		if not NyteLytePaladinToolkit.dormant then NyteLytePaladinToolkit.BlessingGrid:Toggle() end
 	</Binding>
 </Bindings>

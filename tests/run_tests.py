@@ -35,6 +35,8 @@ def new_runtime(flags):
     lua = LuaRuntime(unpack_returned_tuples=True)
     for flag in flags:
         lua.execute(f"{flag} = true")
+    if "MOCK_CLASS_WARRIOR" in flags:
+        lua.execute('MOCK_CLASS = "WARRIOR"')
     lua.execute(read(os.path.join(ROOT, "tests", "mocks.lua")))
     loader = lua.eval("""function(src, name, ns)
         local f, err = loadstring(src, "@" .. name)
@@ -158,11 +160,36 @@ def leaked_globals(lua):
             and not n.startswith(ALLOWED_GLOBAL_PREFIXES)]
 
 
+DORMANT_CHECKS = r"""
+MOCK.fire("ADDON_LOADED", "NyteLytePaladinToolkit")
+MOCK.fire("PLAYER_LOGIN")
+MOCK.fire("SPELLS_CHANGED")
+MOCK.fire("UNIT_AURA", "player", {})
+MOCK.fire("PLAYER_REGEN_DISABLED")
+MOCK.runTimers()
+local P = NyteLytePaladinToolkit
+assert(P.dormant == true and P.playerClass == "WARRIOR", "dormant on a Warrior")
+assert(NyteLytePaladinToolkitDB == nil, "saved settings untouched (not even created)")
+assert(P.profile == nil, "no profile loaded")
+assert(_G.NyteLytePaladinToolkitBuffButton == nil, "no buff button")
+assert(MOCK.settingsOpened == 0, "no settings opened")
+local printed = #MOCK.printed
+SlashCmdList.NYTELYTEPALADINTOOLKIT("")
+SlashCmdList.NYTELYTEPALADINTOOLKIT("probe")
+assert(#MOCK.printed == printed + 2 and MOCK.printed[#MOCK.printed]:find("only runs on Paladins"), "slash explains")
+assert(MOCK.settingsOpened == 0, "settings still not opened")
+for _, f in ipairs({ "PLAYER_LOGOUT" }) do MOCK.fire(f) end
+assert(NyteLytePaladinToolkitCharDB == nil, "no character backup written")
+RESULT = { errorsCaptured = 0, errorsRaised = 0, decision = "dormant (Warrior)", unresolved = 0,
+  probeTextLength = 0, combatUnitHealth = "-", combatCooldown = "-" }
+"""
+
 SCENARIOS = [
     ("forever-shaped client", []),
     ("no issecretvalue", ["MOCK_NO_SECRETS"]),
     ("no C_SpellBook / C_UnitAuras", ["MOCK_NO_SPELLBOOK", "MOCK_NO_AURAS"]),
     ("account file lost, character backup restores", ["MOCK_CHAR_BACKUP"]),
+    ("non-Paladin (Warrior): dormant", ["MOCK_CLASS_WARRIOR"]),
 ]
 
 
@@ -171,6 +198,15 @@ def main():
     for name, flags in SCENARIOS:
         try:
             lua = new_runtime(flags)
+            if "MOCK_CLASS_WARRIOR" in flags:
+                lua.execute(DORMANT_CHECKS)
+                r = lua.globals().RESULT
+                errors = lua.eval("#NyteLytePaladinToolkit.errorList + #MOCK.errorsRaised")
+                leaked = leaked_globals(lua)
+                ok = errors == 0 and not leaked
+                print(f"[{'PASS' if ok else 'FAIL'}] {name}: {r.decision}" + (f", leaked {leaked}" if leaked else ""))
+                failed += 0 if ok else 1
+                continue
             lua.execute(CHECKS)
             for extra in ("m1_flows.lua", "m2_flows.lua", "m3_flows.lua", "m4_flows.lua", "logic_spec.lua"):
                 lua.execute(read(os.path.join(ROOT, "tests", extra)))

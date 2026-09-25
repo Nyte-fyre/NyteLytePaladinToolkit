@@ -103,6 +103,9 @@ function UnitClass(unit)
 	if m then
 		return m.class, m.class, 0
 	end
+	if MOCK_CLASS then
+		return MOCK_CLASS:sub(1, 1) .. MOCK_CLASS:sub(2):lower(), MOCK_CLASS, 1
+	end
 	return "Paladin", "PALADIN", 2
 end
 function GetNumGroupMembers()

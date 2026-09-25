@@ -240,6 +240,10 @@ end
 SLASH_NYTELYTEPALADINTOOLKIT1 = "/ptk"
 SLASH_NYTELYTEPALADINTOOLKIT2 = "/paladintoolkit"
 SlashCmdList.NYTELYTEPALADINTOOLKIT = function(msg)
+	if PK.dormant then
+		PK:Print("this addon only runs on Paladins.")
+		return
+	end
 	local words, raw = {}, {}
 	for w in (msg or ""):gmatch("%S+") do
 		raw[#raw + 1] = w
@@ -275,11 +279,41 @@ end, "show captured Lua errors")
 -- Lifecycle ------------------------------------------------------------------
 local lifecycle = {}
 
+-- Paladins only. WoW can't skip loading an addon per class, so on any other
+-- class the addon goes dormant: every event is unhooked, nothing is built,
+-- and saved Paladin settings are left untouched.
+local function isOtherClass()
+	local ok, _, class = pcall(UnitClass, "player")
+	if ok and type(class) == "string" and class ~= "PALADIN" then
+		return true, class
+	end
+	return false, ok and class or nil
+end
+
+local function goDormant(class)
+	PK.dormant = true
+	PK.playerClass = class
+	PK.isPaladin = false
+	eventFrame:UnregisterAllEvents()
+	for event in pairs(handlers) do
+		handlers[event] = nil
+	end
+	for msg in pairs(listeners) do
+		listeners[msg] = nil
+	end
+end
+
 PK:RegisterEvent("ADDON_LOADED", lifecycle, function(_, _, name)
 	if name ~= ADDON_NAME then
 		return
 	end
 	PK:UnregisterEvent("ADDON_LOADED", lifecycle)
+
+	local other, class = isOtherClass()
+	if other then
+		goDormant(class)
+		return
+	end
 
 	local meta = (C_AddOns and C_AddOns.GetAddOnMetadata) or _G.GetAddOnMetadata
 	if meta then
@@ -320,6 +354,12 @@ PK:RegisterEvent("ADDON_LOADED", lifecycle, function(_, _, name)
 end)
 
 PK:RegisterEvent("PLAYER_LOGIN", lifecycle, function()
+	-- Second check, in case the class wasn't known yet at ADDON_LOADED.
+	local other, otherClass = isOtherClass()
+	if other then
+		goDormant(otherClass)
+		return
+	end
 	local _, class = UnitClass("player")
 	PK.playerClass = class
 	PK.isPaladin = class == "PALADIN"
