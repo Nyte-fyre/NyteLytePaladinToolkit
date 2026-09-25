@@ -65,7 +65,9 @@ addon follows Blizzard's rules:
    - Beta: `World of Warcraft\_classic_beta_\Interface\AddOns\`
    - Launch: the Forever client's `Interface\AddOns\` folder. The final
      folder name wasn't known yet at the time of writing.
-3. Log in and type `/ptk`.
+3. Log in on a Paladin and type `/ptk`. On other classes the addon stays
+   dormant (no frames, no settings page), so it's safe to leave enabled
+   account-wide.
 
 ## Commands
 

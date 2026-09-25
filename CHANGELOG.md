@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.7
+
+- Paladins only: on any other class the addon stays dormant. It shows no
+  frames or settings page, and your Paladin settings are left untouched.
+  `/ptk` just says it only runs on Paladins.
+
 ## 0.5.6
 
 - Fixed: casting a Seal in combat didn't update the Seal Tracker once you
