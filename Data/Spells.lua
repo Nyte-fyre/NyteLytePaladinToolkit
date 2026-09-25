@@ -17,7 +17,7 @@ S.list = {
 	{ key = "SEAL_LIGHT", names = { "Seal of Light" }, category = "seal" },
 	{ key = "SEAL_WISDOM", names = { "Seal of Wisdom" }, category = "seal" },
 	{ key = "SEAL_CRUSADER", names = { "Seal of the Crusader", "Seal of Crusader" }, category = "seal" },
-	{ key = "SEAL_FURY", names = { "Seal of Fury" }, category = "seal", spec = "prot", verify = true },
+	{ key = "SEAL_FURY", names = { "Seal of Fury" }, category = "seal", spec = "prot" },
 
 	-- Blessings (Sanctuary is removed in Forever; kept only to confirm that)
 	{ key = "BLESSING_MIGHT", names = { "Blessing of Might" }, category = "blessing" },
@@ -92,15 +92,24 @@ for _, entry in ipairs(S.list) do
 end
 
 -- Builds a lowercase name -> spellbook entry index from Compat.ScanSpellbook().
+-- Forever's spellbook lists every learned rank separately (Seal of
+-- Righteousness 21084 and 20287 at level 11, lowest rank first), and casts
+-- report the rank actually cast. So each entry keeps `ids`, the set of all
+-- learned rank IDs, and the entry itself is the last (highest) learned rank.
 function S.IndexSpellbook(book)
 	local index = {}
 	for _, item in ipairs(book) do
 		if type(item.name) == "string" then
 			local lname = item.name:lower()
-			-- Prefer a learned spell over a "future" one of the same name.
+			local learned = item.itemType ~= "FutureSpell"
 			local prev = index[lname]
-			if not prev or (prev.itemType == "FutureSpell" and item.itemType ~= "FutureSpell") then
-				index[lname] = item
+			local ids = prev and prev.ids or {}
+			if learned and item.spellID then
+				ids[item.spellID] = true
+			end
+			-- The first entry, or any later learned rank, becomes the entry.
+			if not prev or learned then
+				index[lname] = setmetatable({ ids = ids }, { __index = item })
 			end
 		end
 	end
@@ -116,6 +125,7 @@ function S.Resolve(entry, bookIndex)
 			local future = item.itemType == "FutureSpell"
 			return {
 				spellID = item.spellID,
+				ids = item.ids,
 				name = item.name,
 				method = future and "futureSpell" or "spellbook",
 				known = not future,
@@ -127,6 +137,7 @@ function S.Resolve(entry, bookIndex)
 		if info and info.spellID then
 			return {
 				spellID = info.spellID,
+				ids = { [info.spellID] = true },
 				name = info.name,
 				method = "C_Spell",
 				known = PK.Compat.IsSpellKnown(info.spellID),

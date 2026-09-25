@@ -267,3 +267,21 @@ covering spellbook flyouts (Blessings/Auras) and the C_Traits talent trees.
   (`WTF\Account\<account>\70\Nyte-Fyre\SavedVariables\NyteLytePaladinToolkit.lua`)
   is written on every save.
 - Talent detection still correct: 2 Holy points -> Holy.
+
+## Combat probe #3 (2026-09-24, level 11, solo vs. Greater Duskbat)
+
+- **Spell ranks:** the spellbook lists every learned rank separately, lowest
+  first: Seal of Righteousness 21084 **and 20287**, Holy Light 635 and 639.
+  Casts report the rank actually cast: Seal of Righteousness **20287**, Holy
+  Strike **678** (rank 1 was 679). The registry only kept rank 1, so a Seal
+  cast in combat wasn't recognized and the Seal Tracker never updated. Fixed
+  in 0.5.6: each registry entry keeps `ids` (all learned ranks), uses the
+  highest rank as `spellID`, and cast matching falls back to the spell name.
+- **`UNIT_SPELLCAST_SENT` in combat is readable, including the target name**
+  (Judgement / Holy Strike -> "Greater Duskbat"; a self-cast Seal -> nil).
+  This is the key signal for in-combat rebuff tracking: when you Bless
+  someone mid-fight, the addon can know who.
+- `UNIT_AURA` for the player in combat: the unit token is readable, and
+  updateInfo stays secret.
+- **Seal of Fury is a trained spell, learned by level 11:** spellID 1311649,
+  in the Protection skill line.
