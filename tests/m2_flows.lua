@@ -52,8 +52,13 @@ assert(AS.frozen, "frozen in combat")
 assert(statusOf("blessing") == "expiring", "blessing state kept while frozen")
 assert(statusOf("seal") == "ok", "seal kept while frozen")
 
--- Casting a Seal in combat predicts it.
-MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-9", 21084)
+-- The registry uses the highest learned rank but knows every rank.
+local sor = P.SpellRegistry:Get("SEAL_RIGHTEOUSNESS")
+assert(sor.spellID == 20287 and sor.ids[21084] and sor.ids[20287], "both Seal of Righteousness ranks known")
+-- Casting a Seal in combat predicts it, whichever rank was cast.
+MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-8", 21084)
+assert(select(2, AS:GetSeal()) == "predicted", "rank 1 cast recognized")
+MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-9", 20287)
 local seal, source = AS:GetSeal()
 assert(seal and source == "predicted", "seal predicted from cast")
 assert(seal.duration == 30, "learned 30s duration")

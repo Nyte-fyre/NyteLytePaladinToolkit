@@ -130,6 +130,9 @@ local function idsForCategory(category)
 	for _, r in pairs(PK.SpellRegistry.byKey) do
 		if r.category == category and r.spellID then
 			ids[r.spellID] = true
+			for id in pairs(r.ids or {}) do
+				ids[id] = true
+			end
 		end
 	end
 	return ids
@@ -180,7 +183,7 @@ function AS:GetByKey(key)
 		return nil
 	end
 	return self:Find(function(a)
-		return a.spellID == r.spellID or a.name == r.name
+		return a.spellID == r.spellID or (r.ids and r.ids[a.spellID]) or a.name == r.name
 	end)
 end
 
@@ -211,10 +214,20 @@ local DEFAULT_DURATION = { TWIST_ECHO = 10, IRON_CREED = 6 }
 -- Seals whose replacement grants Twist of Light's Echo (Ret talent).
 local TWISTABLE = { SEAL_COMMAND = true, SEAL_RIGHTEOUSNESS = true, SEAL_FURY = true, SEAL_JUSTICE = true }
 
+-- Registry entry for a cast: any learned rank's ID matches, and if the ID is
+-- new (e.g. a rank learned since the last spellbook scan) the name decides.
 local function registryKeyFor(spellID)
 	for key, r in pairs(PK.SpellRegistry.byKey) do
-		if r.spellID == spellID then
+		if r.spellID == spellID or (r.ids and r.ids[spellID]) then
 			return key, r
+		end
+	end
+	local name = Compat.GetSpellName(spellID)
+	if type(name) == "string" and not Compat.IsSecret(name) then
+		for key, r in pairs(PK.SpellRegistry.byKey) do
+			if r.known and r.name == name then
+				return key, r
+			end
 		end
 	end
 	return nil

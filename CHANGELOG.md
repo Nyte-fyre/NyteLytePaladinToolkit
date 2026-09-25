@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.6
+
+- Fixed: casting a Seal in combat didn't update the Seal Tracker once you
+  had learned a higher rank (rank 2 of Seal of Righteousness has a
+  different spell ID). The addon now knows every rank you've learned and
+  uses the highest one for cooldowns.
+- Seal of Fury confirmed as a trained spell.
+
 ## 0.5.5
 
 - Diagnostics: the combat probe also records group events (party

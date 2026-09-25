@@ -372,6 +372,7 @@ Enum = {
 }
 MOCK.book = {
 	{ name = "Seal of Righteousness", spellID = 21084, itemType = 1 },
+	{ name = "Seal of Righteousness", spellID = 20287, itemType = 1 }, -- rank 2, listed after rank 1
 	{ name = "Devotion Aura", spellID = 465, itemType = 1 },
 	{ name = "Blessing of Might", spellID = 19740, itemType = 1 },
 	{ name = "Judgement", spellID = 20271, itemType = 1 },
