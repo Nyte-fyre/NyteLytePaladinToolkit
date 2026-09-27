@@ -93,7 +93,7 @@ function Roster:Scan()
 	local members, paladins = {}, {}
 	for _, unit in ipairs(units()) do
 		if safeCall(UnitExists, unit) then
-			local name = safeCall(UnitName, unit)
+			local name = Compat.UnitDisplayName(unit) or safeCall(UnitName, unit)
 			-- UnitClass returns localized name, token; pcall adds a leading ok flag.
 			local _, _, class = pcall(UnitClass, unit)
 			class = Secrets.SafeString(class)
@@ -103,6 +103,7 @@ function Roster:Scan()
 				local visible = safeCall(UnitIsVisible, unit) ~= false
 				local m = {
 					unit = unit,
+					guid = Compat.UnitGUID(unit),
 					name = name,
 					class = class,
 					online = online,
@@ -123,15 +124,24 @@ function Roster:Scan()
 	return true
 end
 
--- Is `name` (short) the group leader or an assistant?
-function Roster:IsLeaderOrAssist(name)
-	if not (IsInGroup and IsInGroup()) then
-		return name == UnitName("player")
-	end
+-- The member with this GUID (or, failing that, this display name).
+function Roster:Find(id)
 	for _, m in ipairs(self.members) do
-		if m.name == name then
-			return safeCall(UnitIsGroupLeader, m.unit) == true or safeCall(UnitIsGroupAssistant, m.unit) == true
+		if (m.guid and m.guid == id) or m.name == id then
+			return m
 		end
+	end
+	return nil
+end
+
+-- Is this player (GUID or name) the group leader or an assistant?
+function Roster:IsLeaderOrAssist(id)
+	if not (IsInGroup and IsInGroup()) then
+		return id == Compat.UnitGUID("player") or id == Compat.UnitDisplayName("player")
+	end
+	local m = self:Find(id)
+	if m then
+		return safeCall(UnitIsGroupLeader, m.unit) == true or safeCall(UnitIsGroupAssistant, m.unit) == true
 	end
 	return false
 end

@@ -7,7 +7,7 @@ local _, PK = ...
 --  * the player is in a group (PARTY or RAID; never whispers or public chat).
 -- The queue drains slowly (one message every 0.25s). Duplicate keys replace
 -- older queued messages, so a burst of grid edits sends only the latest row.
--- Incoming messages fire PK_COMM_MESSAGE(text, senderShortName).
+-- Incoming messages fire PK_COMM_MESSAGE(text, senderShortName, senderRaw).
 
 local Compat = PK.Compat
 local Comm = { prefix = "NLPT", queue = {}, order = {}, inEncounter = false }
@@ -141,7 +141,7 @@ PK:RegisterEvent("CHAT_MSG_ADDON", Comm, function(_, _, prefix, text, channel, s
 		return
 	end
 	local short = Comm.ShortName(sender)
-	if not short or short == Comm.PlayerName() then
+	if not short or short == Comm.PlayerName() or short == Compat.UnitDisplayName("player") then
 		s.echoes = s.echoes + 1 -- our own message coming back
 		return
 	end
@@ -151,7 +151,7 @@ PK:RegisterEvent("CHAT_MSG_ADDON", Comm, function(_, _, prefix, text, channel, s
 	s.lastReceived = text:match("^(%u+)")
 	s.lastReceivedAt = time()
 	PK:Debug("Comm recv from %s (%s): %s", short, tostring(sender), text)
-	PK:Fire("PK_COMM_MESSAGE", text, short)
+	PK:Fire("PK_COMM_MESSAGE", text, short, tostring(sender))
 end)
 
 PK:RegisterEvent("PLAYER_LOGOUT", Comm, function()

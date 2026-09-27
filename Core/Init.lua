@@ -363,6 +363,12 @@ PK:RegisterEvent("PLAYER_LOGIN", lifecycle, function()
 	local _, class = UnitClass("player")
 	PK.playerClass = class
 	PK.isPaladin = class == "PALADIN"
+	if PK.Config and PK.Config.ResolveCharacter then
+		PK.Config:ResolveCharacter()
+	end
+	if PK.Config and PK.Config.ResolveCharacter then
+		PK.Config:ResolveCharacter()
+	end
 	for _, name in ipairs(PK.moduleOrder) do
 		if PK.modules[name].alwaysOn then
 			PK:EnableModule(name)

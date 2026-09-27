@@ -162,11 +162,18 @@ end
 
 -- Setup -------------------------------------------------------------------------------------
 
+-- Which profile belongs to this character: keyed by GUID (names aren't
+-- stable on Forever, and can be unavailable while the addon loads).
 local function characterKey()
-	local ok, name = pcall(UnitName, "player")
+	local guid = PK.Compat.UnitGUID("player")
+	if guid then
+		return guid
+	end
+	local name = PK.Compat.UnitDisplayName("player")
 	local okR, realm = pcall(GetRealmName)
-	return (ok and name or "Unknown") .. "-" .. (okR and realm or "Unknown")
+	return (name or "Unknown") .. "-" .. (okR and realm or "Unknown")
 end
+Config.CharacterKey = characterKey
 
 function Config:Init(db)
 	self.db = Config.Migrate(db)
@@ -195,6 +202,44 @@ function Config:SaveCharacterBackup()
 		profileName = self.profileName,
 		profile = PK.profile,
 	}
+end
+
+-- At login the GUID is always known; move the character's profile mapping
+-- from a provisional (name-based or "Unknown") key to it.
+function Config:ResolveCharacter()
+	local key = characterKey()
+	if not self.db or key == self.charKey then
+		return
+	end
+	local old = self.charKey
+	local profile = self.db.profileKeys[key] or self.profileName or "Default"
+	if old and old:find("^Unknown%-") then
+		self.db.profileKeys[old] = nil
+	end
+	self.charKey = key
+	self.db.profileKeys[key] = profile
+	if profile ~= self.profileName then
+		self:SetProfile(profile, true)
+	end
+end
+
+-- At login the GUID is always known; move the character's profile mapping
+-- from a provisional (name-based or "Unknown") key to it.
+function Config:ResolveCharacter()
+	local key = characterKey()
+	if not self.db or key == self.charKey then
+		return
+	end
+	local old = self.charKey
+	local profile = self.db.profileKeys[key] or self.profileName or "Default"
+	if old and old:find("^Unknown%-") then
+		self.db.profileKeys[old] = nil
+	end
+	self.charKey = key
+	self.db.profileKeys[key] = profile
+	if profile ~= self.profileName then
+		self:SetProfile(profile, true)
+	end
 end
 
 -- Switches this character to profile `name`, creating it from defaults if new.

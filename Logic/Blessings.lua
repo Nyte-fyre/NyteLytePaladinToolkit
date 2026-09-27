@@ -176,9 +176,13 @@ function B.ApplyRow(assignments, paladin, row, meta)
 end
 
 -- Messages ---------------------------------------------------------------------------------------
--- HELLO|<version>|<blessing codes>|<aura codes>   who I am and what I know
--- ROW|<seq>|<ts>|<paladin>|<aura code>|WA=KI,PA=MI  one paladin's full row
--- REQ                                               please send your rows
+-- HELLO|<version>|<blessing codes>|<aura codes>|<GUID>|<name>
+--                                   who I am (GUID = identity) and what I know
+-- ROW|<seq>|<ts>|<paladin GUID>|<aura code>|WA=KI,PA=MI  one paladin's full row
+-- REQ                               please introduce yourself and send your rows
+-- Players are identified by GUID, never by name: Forever names have two
+-- parts and different APIs return different parts. A HELLO without a GUID
+-- comes from 0.6.0 or older.
 -- All messages stay far below the 255-byte addon message limit.
 
 local MAX_NAME = 48
@@ -208,9 +212,21 @@ local function decodeSet(text, map)
 	return set
 end
 
-function B.EncodeHello(version, blessings, auras)
+-- "Player-4621-0ABCDEF1"
+function B.IsGUID(s)
+	return type(s) == "string" and #s <= 40 and s:match("^Player%-[%w%-]+$") ~= nil
+end
+
+local function cleanName(name)
+	if type(name) ~= "string" then
+		return ""
+	end
+	return (name:gsub("[|,=]", ""):sub(1, MAX_NAME))
+end
+
+function B.EncodeHello(version, blessings, auras, guid, name)
 	return "HELLO|" .. tostring(version):sub(1, 20):gsub("|", "") .. "|" .. codes(blessings, BLESSING_CODE)
-		.. "|" .. codes(auras, AURA_CODE)
+		.. "|" .. codes(auras, AURA_CODE) .. "|" .. (B.IsGUID(guid) and guid or "") .. "|" .. cleanName(name)
 end
 
 function B.EncodeRow(paladin, row)
@@ -240,11 +256,15 @@ function B.Decode(text)
 	end
 	local kind = fields[1]
 	if kind == "HELLO" then
+		local name = fields[6]
 		return {
 			type = "HELLO",
 			version = fields[2] or "?",
 			blessings = decodeSet(fields[3], CODE_BLESSING),
 			auras = decodeSet(fields[4], CODE_AURA),
+			guid = B.IsGUID(fields[5]) and fields[5] or nil, -- nil: sent by 0.6.0 or older
+			name = (validName(name) or (type(name) == "string" and #name > 0 and #name <= MAX_NAME
+				and not name:find("[|,=]"))) and name or nil,
 		}
 	elseif kind == "ROW" then
 		local seq, ts, paladin = tonumber(fields[2]), tonumber(fields[3]), fields[4]

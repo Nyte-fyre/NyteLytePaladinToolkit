@@ -17,7 +17,11 @@ local Comm = PK.Comm
 local Roster = PK.Roster
 local Theme = PK.Theme
 local M = PK:RegisterModule("BlessingManager", {})
-M.peers = {} -- [name] = { version, blessings = set, auras = set, seen }
+-- Paladins are identified by GUID everywhere (assignments, peers, rows);
+-- names are only for display (see M:NameOf).
+M.peers = {} -- [guid] = { name, version, blessings = set, auras = set, seen }
+M.senders = {} -- [chat sender] = guid, learned from HELLO
+M.legacy = {} -- [chat sender] = version, for paladins on 0.6.0 or older
 
 local BUTTON_NAME = "NyteLytePaladinToolkitBuffButton"
 local button, gridButton, countText, targetText, classIcon
@@ -32,8 +36,23 @@ local function assignments()
 	return PK.profile.blessing.assignments
 end
 
+-- Your identity: GUID (falls back to "player" only if the game hasn't
+-- provided one yet).
 local function me()
-	return UnitName("player")
+	return PK.Compat.UnitGUID("player") or "player"
+end
+
+-- Display name for a paladin id: roster, then what they told us, then the id.
+function M:NameOf(id)
+	if id == me() then
+		return PK.Compat.UnitDisplayName("player") or "you"
+	end
+	local m = Roster:Find(id)
+	if m and m.name then
+		return m.name
+	end
+	local peer = self.peers[id]
+	return peer and peer.name or tostring(id)
 end
 
 local function inGroup()
@@ -57,36 +76,36 @@ function M:KnownSets()
 	return blessings, auras
 end
 
--- Paladins shown in the grid: you, group paladins, and paladins heard from.
+-- Paladins shown in the grid (ids): you, then the group's paladins by name.
 function M:Paladins()
-	local names, seen = {}, {}
-	local function add(name)
-		if name and not seen[name] then
-			seen[name] = true
-			names[#names + 1] = name
+	local ids, seen = {}, {}
+	local function add(id)
+		if id and not seen[id] then
+			seen[id] = true
+			ids[#ids + 1] = id
 		end
 	end
 	add(me())
 	for _, p in ipairs(Roster.paladins) do
-		add(p.name)
+		add(p.guid or p.name)
 	end
-	table.sort(names, function(a, b)
+	table.sort(ids, function(a, b)
 		if a == me() then
 			return true
 		elseif b == me() then
 			return false
 		end
-		return a < b
+		return self:NameOf(a) < self:NameOf(b)
 	end)
-	return names
+	return ids
 end
 
 -- What a paladin knows: yours from the spellbook, others' from HELLO, else nil.
-function M:KnownFor(name)
-	if name == me() then
+function M:KnownFor(id)
+	if id == me() then
 		return self:KnownSets()
 	end
-	local peer = self.peers[name]
+	local peer = self.peers[id]
 	if peer then
 		return peer.blessings, peer.auras
 	end
@@ -171,8 +190,8 @@ function M:Announce()
 		return
 	end
 	local eff = self:Effective()
-	for _, name in ipairs(self:Paladins()) do
-		local row = eff[name]
+	for _, id in ipairs(self:Paladins()) do
+		local row = eff[id]
 		if row then
 			local byBlessing = {}
 			for _, class in ipairs(B.CLASSES) do
@@ -190,7 +209,7 @@ function M:Announce()
 				end
 			end
 			local auraEntry = row.aura and PK.Spells.byKey[row.aura]
-			local line = name .. " - " .. table.concat(parts, "; ")
+			local line = self:NameOf(id) .. " - " .. table.concat(parts, "; ")
 				.. (auraEntry and (" | Aura: " .. auraEntry.names[1]) or "")
 			pcall(send, line:sub(1, 250), channel)
 		end
@@ -201,7 +220,7 @@ end
 
 function M:SendHello(withRequest)
 	local blessings, auras = self:KnownSets()
-	Comm:Send(B.EncodeHello(PK.version, blessings, auras), "HELLO")
+	Comm:Send(B.EncodeHello(PK.version, blessings, auras, me(), self:NameOf(me())), "HELLO")
 	local mine = assignments()[me()]
 	if mine then
 		Comm:Send(B.EncodeRow(me(), mine), "ROW:" .. me())
@@ -211,30 +230,72 @@ function M:SendHello(withRequest)
 	end
 end
 
-function M:OnMessage(text, sender)
+-- sender: the short chat name; raw: the chat sender exactly as received
+-- (the key HELLO ties to a GUID, so later ROWs from that sender are trusted).
+function M:OnMessage(text, sender, raw)
 	local msg = B.Decode(text)
 	if not msg then
 		return
 	end
+	raw = raw or sender
 	if msg.type == "HELLO" then
-		local isNew = self.peers[sender] == nil
-		self.peers[sender] = { version = msg.version, blessings = msg.blessings, auras = msg.auras, seen = time() }
+		if not msg.guid then
+			self.legacy[raw] = msg.version -- 0.6.0 or older: can't sync, show "update"
+			PK:Fire("PK_BLESSINGS_CHANGED")
+			return
+		end
+		if msg.guid == me() then
+			return -- our own message
+		end
+		local isNew = self.peers[msg.guid] == nil
+		self.senders[raw] = msg.guid
+		self.legacy[raw] = nil
+		self.peers[msg.guid] = { name = msg.name or sender, version = msg.version, blessings = msg.blessings,
+			auras = msg.auras, seen = time() }
 		if isNew then
 			self:SendHello(false) -- introduce ourselves back once
 		end
 		PK:Fire("PK_BLESSINGS_CHANGED")
 	elseif msg.type == "ROW" then
+		local from = self.senders[raw]
+		if from == me() then
+			return
+		end
+		if not from then
+			-- Haven't been introduced yet: ask, and ignore this row until then.
+			Comm:Send(B.EncodeRequest(), "REQ")
+			return
+		end
+		if not B.IsGUID(msg.paladin) then
+			return
+		end
 		local ok = B.ApplyRow(assignments(), msg.paladin, msg,
-			{ sender = sender, senderIsLeader = Roster:IsLeaderOrAssist(sender) })
+			{ sender = from, senderIsLeader = Roster:IsLeaderOrAssist(from) })
 		if ok then
 			PK:Fire("PK_BLESSINGS_CHANGED")
 		end
 	elseif msg.type == "REQ" then
-		-- Send every row we authored (our own, plus others' if we're the leader).
-		for name, row in pairs(assignments()) do
+		-- Introduce ourselves (so they can trust our rows), then send every
+		-- row we authored (our own, plus others' if we're the leader).
+		self:SendHello(false)
+		for id, row in pairs(assignments()) do
 			if row.by == me() then
-				Comm:Send(B.EncodeRow(name, row), "ROW:" .. name)
+				Comm:Send(B.EncodeRow(id, row), "ROW:" .. id)
 			end
+		end
+	end
+end
+
+-- Assignments saved before 0.6.1 were keyed by name; names aren't reliable
+-- on Forever, so those rows are dropped (they re-sync or are re-suggested).
+function M:PruneLegacyAssignments()
+	if not B.IsGUID(me()) then
+		return
+	end
+	local a = assignments()
+	for id in pairs(a) do
+		if not B.IsGUID(id) then
+			a[id] = nil
 		end
 	end
 end
@@ -538,9 +599,10 @@ function M:OnEnable()
 	PK:On("PK_SPELLS_UPDATED", self, update)
 	PK:On("PK_SETTINGS_CHANGED", self, update)
 	PK:On("PK_PROFILE_CHANGED", self, update)
-	PK:On("PK_COMM_MESSAGE", self, function(_, _, text, sender)
-		M:OnMessage(text, sender)
+	PK:On("PK_COMM_MESSAGE", self, function(_, _, text, sender, raw)
+		M:OnMessage(text, sender, raw)
 	end)
+	self:PruneLegacyAssignments()
 	wasInGroup = inGroup()
 	if wasInGroup then
 		self:SendHello(true)
@@ -603,20 +665,28 @@ function M:PrintSyncStatus()
 	local s = Comm.stats
 	local channel = Comm:Channel()
 	local can, why = Comm:CanSend()
-	PK:Print(Theme.Color("gold", "Sync: ") .. "you are " .. tostring(me()) .. ", channel "
+	PK:Print(Theme.Color("gold", "Sync: ") .. "you are " .. self:NameOf(me()) .. ", channel "
 		.. tostring(channel or "none (not in a group)") .. ", sending " .. (can and "allowed" or ("blocked: " .. tostring(why))))
 	PK:Print(string.format("sent %d (last %s, result %s), received %d (last from %s), own echoes %d, ignored %d%s",
 		s.sent, tostring(s.lastSent or "-"), tostring(s.lastResult or "-"), s.received, tostring(s.lastFromRaw or "-"),
 		s.echoes, s.ignored, s.lastIgnored and (" (" .. s.lastIgnored .. ")") or ""))
 	local heard = {}
-	for name, peer in pairs(self.peers) do
-		heard[#heard + 1] = name .. " (v" .. tostring(peer.version) .. ")"
+	for id, peer in pairs(self.peers) do
+		heard[#heard + 1] = self:NameOf(id) .. " (v" .. tostring(peer.version) .. ")"
 	end
 	table.sort(heard)
 	PK:Print("paladins heard from: " .. (#heard > 0 and table.concat(heard, ", ") or "none yet"))
+	local old = {}
+	for sender, version in pairs(self.legacy) do
+		old[#old + 1] = sender .. " (v" .. tostring(version) .. ")"
+	end
+	if #old > 0 then
+		table.sort(old)
+		PK:Print(Theme.Color("alarm", "need to update the addon to sync: ") .. table.concat(old, ", "))
+	end
 	local group = {}
 	for _, p in ipairs(Roster.paladins) do
-		if p.name ~= me() then
+		if (p.guid or p.name) ~= me() then
 			group[#group + 1] = p.name
 		end
 	end

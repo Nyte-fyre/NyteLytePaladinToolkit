@@ -33,6 +33,9 @@ local function receive(text, sender, channel)
 	MOCK.fire("CHAT_MSG_ADDON", "NLPT", text, channel or "PARTY", sender)
 end
 local button = _G.NyteLytePaladinToolkitBuffButton
+local ME, TANK = "Player-1-TESTER", "Player-1-TANKADIN"
+local TANK_SENDER = "Tankadin-Beta Realm"
+local TANK_HELLO = "HELLO|0.6.1|KI,MI,WI|DE,RE|" .. TANK .. "|Tankadin"
 
 slash("holy")
 assert(BM.enabled, "Blessing Manager on for Holy")
@@ -41,8 +44,8 @@ P.profile.blessing.assignments = {}
 
 -- Solo: your own row is suggested from what you know (only Might at level 8 in the mocks).
 local eff = BM:Effective()
-assert(eff.Tester and eff.Tester.classes.PALADIN == "BLESSING_MIGHT", "solo suggestion: Might for yourself")
-assert(eff.Tester.classes.MAGE == nil, "no Might on mages")
+assert(eff[ME] and eff[ME].classes.PALADIN == "BLESSING_MIGHT", "solo suggestion: Might for yourself")
+assert(eff[ME].classes.MAGE == nil, "no Might on mages")
 
 if not MOCK_NO_AURAS then
 	P.Roster:Scan()
@@ -81,45 +84,57 @@ flush()
 local sent = table.concat(sentTexts(), "\n")
 assert(sent:find("PARTY HELLO|", 1, true), "HELLO sent to party: " .. sent)
 assert(sent:find("PARTY REQ", 1, true), "REQ sent")
-assert(#BM:Paladins() == 2 and BM:Paladins()[1] == "Tester", "you first, then Tankadin")
+assert(#BM:Paladins() == 2 and BM:Paladins()[1] == ME and BM:Paladins()[2] == TANK, "you first, then Tankadin")
 
 -- A peer introduces themselves; we answer once.
 MOCK.sent = {}
-receive("HELLO|0.4.0|KI,MI,WI|DE,RE", "Tankadin-Beta Realm")
+receive(TANK_HELLO, TANK_SENDER)
 flush()
-assert(BM.peers.Tankadin and BM.peers.Tankadin.blessings.BLESSING_KINGS, "peer knowledge stored")
+assert(BM.peers[TANK] and BM.peers[TANK].blessings.BLESSING_KINGS, "peer knowledge stored by GUID")
 assert(lastSentStarting("HELLO|"), "introduced ourselves back")
 MOCK.sent = {}
-receive("HELLO|0.4.0|KI,MI,WI|DE,RE", "Tankadin-Beta Realm")
+receive(TANK_HELLO, TANK_SENDER)
 flush()
 assert(lastSentStarting("HELLO|") == nil, "only once")
+-- Our own messages coming back are ignored (matched by GUID, not name).
+receive("HELLO|0.6.1|MI|DE|" .. ME .. "|Tester", "Tester Surname")
+assert(BM.peers[ME] == nil, "own HELLO ignored")
+-- A paladin on an old version (no GUID in HELLO) is listed as needing an update.
+receive("HELLO|0.5.7|MI|DE", "Oldie")
+assert(BM.legacy.Oldie == "0.5.7", "old version noticed")
 
 -- Rows: a paladin sets their own row; others can't set ours unless leader.
 local A = P.profile.blessing.assignments
-receive("ROW|1|100|Tankadin|RE|WA=KI,RO=KI,MA=WI", "Tankadin")
-assert(A.Tankadin and A.Tankadin.classes.WARRIOR == "BLESSING_KINGS" and A.Tankadin.aura == "AURA_RETRIBUTION", "own row accepted")
-receive("ROW|1|100|Tester|DE|WA=MI", "Tankadin")
-assert(A.Tester == nil, "non-leader can't set our row")
+receive("ROW|1|100|" .. TANK .. "|RE|WA=KI,RO=KI,MA=WI", TANK_SENDER)
+assert(A[TANK] and A[TANK].classes.WARRIOR == "BLESSING_KINGS" and A[TANK].aura == "AURA_RETRIBUTION", "own row accepted")
+receive("ROW|1|100|" .. ME .. "|DE|WA=MI", TANK_SENDER)
+assert(A[ME] == nil, "non-leader can't set our row")
 MOCK.leader = "party1"
-receive("ROW|1|100|Tester|DE|WA=MI,RO=MI", "Tankadin")
-assert(A.Tester and A.Tester.classes.ROGUE == "BLESSING_MIGHT", "leader can set our row")
-receive("ROW|1|50|Tester|DE|WA=WI", "Tankadin")
-assert(A.Tester.classes.WARRIOR == "BLESSING_MIGHT", "older update ignored")
+receive("ROW|1|100|" .. ME .. "|DE|WA=MI,RO=MI", TANK_SENDER)
+assert(A[ME] and A[ME].classes.ROGUE == "BLESSING_MIGHT", "leader can set our row")
+receive("ROW|1|50|" .. ME .. "|DE|WA=WI", TANK_SENDER)
+assert(A[ME].classes.WARRIOR == "BLESSING_MIGHT", "older update ignored")
 MOCK.leader = nil
+-- Rows from a sender we haven't been introduced to are ignored (and we ask them to introduce themselves).
+MOCK.sent = {}
+receive("ROW|5|500|" .. TANK .. "|DE|WA=WI", "Stranger")
+flush()
+assert(A[TANK].classes.WARRIOR == "BLESSING_KINGS", "unknown sender's row ignored")
+assert(lastSentStarting("REQ"), "asked the stranger to introduce themselves")
 
 -- Garbage and non-group channels are ignored.
-receive("ROW|x|y|Tester||", "Tankadin")
-receive(string.rep("A", 300), "Tankadin")
-receive("ROW|9|999|Tester|DE|WA=WI", "Tankadin", "WHISPER")
-assert(A.Tester.classes.WARRIOR == "BLESSING_MIGHT", "garbage/whispers ignored")
+receive("ROW|x|y|" .. ME .. "||", TANK_SENDER)
+receive(string.rep("A", 300), TANK_SENDER)
+receive("ROW|9|999|" .. ME .. "|DE|WA=WI", TANK_SENDER, "WHISPER")
+assert(A[ME].classes.WARRIOR == "BLESSING_MIGHT", "garbage/whispers ignored")
 
 -- Local edits: our row yes, theirs no (we aren't leader).
 MOCK.sent = {}
-assert(BM:SetAssignment("Tester", "MAGE", "BLESSING_WISDOM") == true)
-assert(BM:SetAssignment("Tankadin", "MAGE", "BLESSING_MIGHT") == false, "can't edit another paladin's row")
+assert(BM:SetAssignment(ME, "MAGE", "BLESSING_WISDOM") == true)
+assert(BM:SetAssignment(TANK, "MAGE", "BLESSING_MIGHT") == false, "can't edit another paladin's row")
 flush()
 local row = lastSentStarting("ROW|")
-assert(row and row.text:find("|Tester|", 1, true) and row.text:find("MA=WI", 1, true), "edit synced: " .. tostring(row and row.text))
+assert(row and row.text:find("|" .. ME .. "|", 1, true) and row.text:find("MA=WI", 1, true), "edit synced: " .. tostring(row and row.text))
 
 -- Buff button targets the first member missing *our* assignment (Stabby, rogue, Might).
 if not MOCK_NO_AURAS then
@@ -144,7 +159,7 @@ P.Roster:Scan() -- refuses in combat
 BM:UpdateButton()
 assert(button:GetAttribute("unit") == unitBefore, "secure attributes untouched in combat")
 MOCK.sent = {}
-BM:SetAssignment("Tester", "HUNTER", "BLESSING_MIGHT")
+BM:SetAssignment(ME, "HUNTER", "BLESSING_MIGHT")
 flush()
 assert(#sentTexts() == 0, "nothing sent in combat")
 MOCK.combat = false
@@ -157,7 +172,7 @@ assert(lastSentStarting("ROW|"), "queued row sent after combat")
 -- Encounters hold messages too.
 MOCK.fire("ENCOUNTER_START", 1, "Boss", 1, 10)
 MOCK.sent = {}
-BM:SetAssignment("Tester", "PRIEST", "BLESSING_WISDOM")
+BM:SetAssignment(ME, "PRIEST", "BLESSING_WISDOM")
 flush()
 assert(#sentTexts() == 0, "nothing sent during an encounter")
 MOCK.fire("ENCOUNTER_END", 1, "Boss", 1, 10, 1)
@@ -165,12 +180,12 @@ flush()
 assert(lastSentStarting("ROW|"), "sent after the encounter")
 
 -- Auto-suggest as a non-leader only changes our row.
-local theirs = A.Tankadin.seq
+local theirs = A[TANK].seq
 BM:ApplySuggestion()
-assert(A.Tankadin.seq == theirs, "other rows untouched when not leader")
+assert(A[TANK].seq == theirs, "other rows untouched when not leader")
 MOCK.leader = "player"
 BM:ApplySuggestion()
-assert(A.Tankadin.seq == theirs + 1, "leader's suggestion covers everyone")
+assert(A[TANK].seq == theirs + 1, "leader's suggestion covers everyone")
 MOCK.leader = nil
 
 -- Grid and announce.
@@ -183,18 +198,27 @@ assert(#MOCK.chat >= 1 and MOCK.chat[1].channel == "PARTY", "announce posts to p
 
 -- REQ: we resend rows we authored.
 MOCK.sent = {}
-receive("REQ", "Tankadin")
+receive("REQ", TANK_SENDER)
 flush()
-assert(lastSentStarting("ROW|"), "REQ answered")
+assert(lastSentStarting("ROW|") and lastSentStarting("HELLO|"), "REQ answered with an introduction and rows")
 
--- Forever names can contain a space; sync must still match them.
-MOCK.party[#MOCK.party + 1] = { unit = "party4", name = "Testered Pally", class = "PALADIN" }
+-- Forever two-part names: UnitName says "Testered", chat says "Testered Pally".
+-- Identity is the GUID, and the full name is what's displayed.
+local TG = "Player-2-TESTERED"
+MOCK.party[#MOCK.party + 1] = { unit = "party4", name = "Testered", fullName = "Testered Pally", guid = TG, class = "PALADIN" }
 MOCK.fire("GROUP_ROSTER_UPDATE")
 settle()
-receive("HELLO|0.6.0|MI|DE", "Testered Pally-Beta Realm")
-assert(BM.peers["Testered Pally"], "peer with a space in the name recognized")
-receive("ROW|1|100|Testered Pally||RO=MI", "Testered Pally-Beta Realm")
-assert(A["Testered Pally"] and A["Testered Pally"].classes.ROGUE == "BLESSING_MIGHT", "their row accepted")
+assert(P.Roster:Find(TG).name == "Testered Pally", "roster shows the full name")
+receive("HELLO|0.6.1|KI,MI|DE|" .. TG .. "|Testered Pally", "Testered Pally")
+assert(BM.peers[TG] and BM:NameOf(TG) == "Testered Pally", "peer matched by GUID despite the name mismatch")
+local ids = BM:Paladins()
+local found = false
+for _, id in ipairs(ids) do
+	found = found or id == TG
+end
+assert(found, "Testered is a grid row, not a stray name")
+receive("ROW|1|100|" .. TG .. "||RO=MI", "Testered Pally")
+assert(A[TG] and A[TG].classes.ROGUE == "BLESSING_MIGHT", "their row accepted")
 slash("sync")
 assert(P.Comm.stats.received > 0 and P.Comm.stats.lastFrom == "Testered Pally", "sync stats recorded")
 table.remove(MOCK.party)
@@ -204,7 +228,7 @@ MOCK.inGroup = false
 MOCK.party = {}
 MOCK.fire("GROUP_ROSTER_UPDATE")
 settle()
-BM:SetAssignment("Tester", "DRUID", "BLESSING_WISDOM")
+BM:SetAssignment(ME, "DRUID", "BLESSING_WISDOM")
 flush()
 assert(P.Comm:Pending() == 0, "queue dropped when solo")
 

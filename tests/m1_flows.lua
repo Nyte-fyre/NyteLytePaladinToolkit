@@ -5,7 +5,7 @@ local function slash(msg)
 end
 
 assert(NyteLytePaladinToolkitDB.version == 4, "db version")
-assert(NyteLytePaladinToolkitDB.profileKeys["Tester-Beta Realm"] == "Default", "profile key")
+assert(NyteLytePaladinToolkitDB.profileKeys["Player-1-TESTER"] == "Default", "profile keyed by GUID")
 assert(P.profile and P.profile.specMode == "auto", "default spec mode")
 
 -- Spec switching

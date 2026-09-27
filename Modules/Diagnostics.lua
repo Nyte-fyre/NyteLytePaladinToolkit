@@ -224,6 +224,14 @@ local function probeClient()
 	c.class = class
 	c.level = UnitLevel("player")
 	c.race = select(2, UnitRace("player"))
+	c.names = {
+		UnitName = tryPath("UnitName", "player"),
+		UnitNameUnmodified = tryPath("UnitNameUnmodified", "player"),
+		UnitFullName = tryPath("UnitFullName", "player"),
+		GetUnitName = tryPath("GetUnitName", "player", true),
+		display = Compat.UnitDisplayName("player"),
+		guid = Compat.UnitGUID("player"),
+	}
 	c.inGroup = IsInGroup and IsInGroup() or false
 	c.inRaid = IsInRaid and IsInRaid() or false
 	return c
