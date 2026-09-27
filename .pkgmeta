@@ -1,9 +1,18 @@
 package-as: NyteLytePaladinToolkit
 
+# Shown as each file's changelog on CurseForge.
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+# Development files that don't belong in the game's AddOns folder.
 ignore:
   - tests
   - tools
   - docs
+  - private
   - CLAUDE.md
   - .luacheckrc
   - .gitignore
+  - .gitattributes
+  - .pkgmeta
