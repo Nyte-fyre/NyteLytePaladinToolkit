@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0
+
+- After a fight, the buff button pulses and chat lists anyone who now needs
+  your Blessing (they died, were dispelled, or it ran out mid-fight). It
+  only speaks up when more people need it than before the pull.
+- New `/ptk buffs` (also on every ready check): who is missing your
+  Blessing, and whose runs out in the next 10 minutes.
+- Seal Tracker: in combat, the last 5 seconds of your Seal turn the bar red
+  and pulse the icon (optional sound).
+- Settings panel scrolls, with room for the new options.
+
 ## 0.5.7
 
 - Paladins only: on any other class the addon stays dormant. It shows no

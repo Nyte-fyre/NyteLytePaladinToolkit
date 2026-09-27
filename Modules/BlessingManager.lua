@@ -21,6 +21,7 @@ M.peers = {} -- [name] = { version, blessings = set, auras = set, seen }
 
 local BUTTON_NAME = "NyteLytePaladinToolkitBuffButton"
 local button, gridButton, countText, targetText, classIcon
+local preCombatNeeding, awaitingPostCombat = 0, false
 local wasInGroup = false
 
 local function settings()
@@ -261,23 +262,17 @@ function M:UpdateButton()
 		end
 		button:Show()
 		local eff = M:Effective()
-		local members = {}
-		for _, m in ipairs(Roster.members) do
-			local key = B.AssignedFor(eff, me(), m.class)
-			local spell = key and blessingSpell(key)
-			if spell then
-				members[#members + 1] = {
-					unit = m.unit, name = m.name, class = m.class, buffs = m.buffs,
-					usable = m.usable and Roster:InRange(spell, m.unit) ~= false,
-				}
-			end
-		end
+		local members = M:Members(eff)
 		local now = GetTime()
 		local refreshSec = (PK.profile.blessing.refreshMinutes or 5) * 60
 		local target, key, left, reason = B.PickTarget(eff, me(), members, now, refreshSec,
 			settings().refreshLowest)
 		local needing, names = B.CountNeeding(eff, me(), members, now, refreshSec)
 		M.missingNames = names
+		M.needingCount = needing
+		if needing == 0 then
+			M:SetPulse(false)
+		end
 		M.next = target and { name = target.name, class = target.class, key = key, left = left, reason = reason }
 		if target then
 			local spell, icon = blessingSpell(key)
@@ -296,6 +291,45 @@ function M:UpdateButton()
 		M:UpdateButtonText()
 		countText:SetText(needing > 0 and Theme.Color("gold", needing .. " need" .. (needing == 1 and "s" or "") .. " it") or "")
 	end)
+end
+
+-- Group members you could Bless, with range/usability for the buff button.
+function M:Members(eff)
+	local members = {}
+	for _, m in ipairs(Roster.members) do
+		local key = B.AssignedFor(eff, me(), m.class)
+		local spell = key and blessingSpell(key)
+		if spell then
+			members[#members + 1] = {
+				unit = m.unit, name = m.name, class = m.class, buffs = m.buffs,
+				usable = m.usable and Roster:InRange(spell, m.unit) ~= false,
+			}
+		end
+	end
+	return members
+end
+
+-- A gold pulse around the buff button (texture animation only, so it is safe
+-- on a secure button at any time). Stops by itself after 20 seconds.
+function M:SetPulse(on)
+	if not button or not button.glow then
+		return
+	end
+	local pulse = button.pulse -- nil if animations are unavailable: steady glow
+	if on then
+		button.glow:Show()
+		if pulse and not pulse:IsPlaying() then
+			pulse:Play()
+		end
+		C_Timer.After(20, function()
+			M:SetPulse(false)
+		end)
+	else
+		if pulse then
+			pulse:Stop()
+		end
+		button.glow:Hide()
+	end
 end
 
 local function formatLeft(sec)
@@ -369,6 +403,21 @@ local function buildButton()
 	local hl = button:CreateTexture(nil, "HIGHLIGHT")
 	hl:SetAllPoints()
 	hl:SetColorTexture(1, 0.9, 0.5, 0.25)
+	button.glow = button:CreateTexture(nil, "OVERLAY")
+	button.glow:SetPoint("TOPLEFT", -4, 4)
+	button.glow:SetPoint("BOTTOMRIGHT", 4, -4)
+	button.glow:SetColorTexture(1, 0.85, 0.3, 0.45)
+	button.glow:SetBlendMode("ADD")
+	button.glow:Hide()
+	local ag = button.glow.CreateAnimationGroup and button.glow:CreateAnimationGroup()
+	if ag then
+		ag:SetLooping("BOUNCE")
+		local a = ag:CreateAnimation("Alpha")
+		a:SetFromAlpha(1)
+		a:SetToAlpha(0.1)
+		a:SetDuration(0.6)
+		button.pulse = ag
+	end
 
 	classIcon = anchor:CreateTexture(nil, "ARTWORK")
 	classIcon:SetSize(16, 16)
@@ -460,6 +509,30 @@ function M:OnEnable()
 		end
 		wasInGroup = grouped
 		update()
+		-- First rescan after a fight: flag anyone who newly needs a Blessing
+		-- (died, was dispelled, or it ran out mid-fight).
+		if awaitingPostCombat and not PK.Compat.InCombat() then
+			awaitingPostCombat = false
+			local now = M.needingCount or 0
+			if settings().postCombatAlert and now > preCombatNeeding then
+				M:SetPulse(true)
+				PK:Print(PK.Theme.Color("gold", "After combat: ") .. now .. " need your Blessing: "
+					.. table.concat(M.missingNames or {}, ", "))
+				if PK.profile.alerts.sound then
+					PK.Compat.PlaySound("RAID_WARNING", 8959)
+				end
+			end
+		end
+	end)
+	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, function()
+		preCombatNeeding = M.needingCount or 0
+		awaitingPostCombat = false
+	end)
+	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, function()
+		awaitingPostCombat = true
+	end)
+	PK:RegisterEvent("READY_CHECK", self, function()
+		M:PrintReport("Ready check")
 	end)
 	PK:On("PK_BLESSINGS_CHANGED", self, update)
 	PK:On("PK_SPELLS_UPDATED", self, update)
@@ -480,6 +553,11 @@ function M:OnDisable()
 		"PK_SETTINGS_CHANGED", "PK_PROFILE_CHANGED", "PK_COMM_MESSAGE" }) do
 		PK:Off(msg, self)
 	end
+	for _, ev in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "READY_CHECK" }) do
+		PK:UnregisterEvent(ev, self)
+	end
+	awaitingPostCombat = false
+	self:SetPulse(false)
 	if button then
 		PK.CombatQueue:Run("BlessingButton", function()
 			button:Hide()
@@ -493,6 +571,36 @@ end
 function M:OnSpecChanged()
 	self:UpdateButton()
 end
+
+-- Prints who is missing your Blessing and whose runs out soon.
+function M:PrintReport(reason)
+	if PK.Compat.InCombat() then
+		PK:Print("group buffs can't be read in combat; try again after the fight.")
+		return
+	end
+	Roster:Scan()
+	local minutes = settings().prepullMinutes or 10
+	local missing, expiring = B.Report(self:Effective(), me(), self:Members(self:Effective()), GetTime(), minutes * 60)
+	local label = Theme.Color("gold", (reason or "Blessings") .. ": ")
+	if #missing == 0 and #expiring == 0 then
+		PK:Print(label .. "all your Blessings last more than " .. minutes .. " minutes.")
+		return
+	end
+	if #missing > 0 then
+		PK:Print(label .. Theme.Color("alarm", "missing") .. " on " .. table.concat(missing, ", "))
+	end
+	if #expiring > 0 then
+		local parts = {}
+		for _, e in ipairs(expiring) do
+			parts[#parts + 1] = e.name .. " (" .. formatLeft(e.left) .. ")"
+		end
+		PK:Print(label .. "running out within " .. minutes .. "m on " .. table.concat(parts, ", "))
+	end
+end
+
+PK:RegisterCommand("buffs", function()
+	M:PrintReport("Blessings")
+end, "who is missing your Blessing, and whose runs out soon")
 
 PK:RegisterCommand("bless", function()
 	if PK.BlessingGrid then

@@ -18,7 +18,8 @@ Protection or Retribution**, with every part switchable per spec.
   about to run out (they pulse with the time left). Also covers Righteous
   Fury as Protection, and your Seal while you're in combat. `/ptk check` and
   ready checks report everything in chat.
-- **Seal Tracker:** your active Seal with a draining time bar. For
+- **Seal Tracker:** your active Seal with a draining time bar, which turns red
+  in the last 5 seconds in combat. For
   Retribution it also shows **Twist of Light's Echo**.
 - **Cooldown HUD:** a row of your spec's cooldowns with swipes that work in
   combat. It ignores the global cooldown, and dispels only show while you're
@@ -34,6 +35,9 @@ Protection or Retribution**, with every part switchable per spec.
     default) the lowest timer, so repeated presses refresh the oldest
     Blessings. It shows the target's class icon and name, and it never
     casts on its own.
+  - After a fight it pulses and lists anyone who now needs a rebuff (they
+    died or lost it mid-fight); `/ptk buffs` and ready checks report who's
+    missing a Blessing or about to lose it.
 - **Profile export/import** as one text string. It's the workaround for the
   beta's settings-reset bug, and a way to share setups.
 
@@ -80,6 +84,7 @@ addon follows Blizzard's rules:
 | `/ptk check` | Check your Seal, Aura, Blessing and Righteous Fury now |
 | `/ptk cd` | List this spec's cooldowns; `add <spell>`, `remove <spell>`, `group <spell>` (show only in a group), `reset` |
 | `/ptk bless` | Open the Blessing assignment grid |
+| `/ptk buffs` | Who is missing your Blessing, and whose runs out within 10 minutes (also on ready checks) |
 | `/ptk export` / `import` | Copy your profile as text / paste one in |
 | `/ptk errors` | Show Lua errors the addon caught this session |
 | `/ptk probe`, `/ptk probe combat`, `/ptk show`, `/ptk debug` | Diagnostics (see below) |

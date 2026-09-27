@@ -68,6 +68,18 @@ local function build()
 	echoLabel:SetText("Echo")
 	echoIcon:Hide()
 
+	if icon.CreateAnimationGroup then
+		local ag = icon:CreateAnimationGroup()
+		if ag then
+			ag:SetLooping("BOUNCE")
+			local a = ag:CreateAnimation("Alpha")
+			a:SetFromAlpha(1)
+			a:SetToAlpha(0.3)
+			a:SetDuration(0.35)
+			icon.warnPulse = ag
+		end
+	end
+
 	-- Redraw the bar ~10 times a second from the known expiration time.
 	local elapsed = 0
 	container:SetScript("OnUpdate", function(_, dt)
@@ -113,6 +125,33 @@ function M:UpdateTimer()
 		bar:SetValue(remaining / current.duration)
 		timeText:SetText(formatTime(remaining))
 	end
+	self:UpdateWarning(remaining)
+end
+
+-- In combat, the last few seconds of a Seal turn the bar red and pulse the
+-- icon (plus an optional sound, once per Seal). A reminder, not advice.
+function M:UpdateWarning(remaining)
+	local s = settings()
+	local warn = PK.Compat.InCombat() and (s.warnSeconds or 0) > 0 and remaining ~= nil
+		and remaining ~= math.huge and remaining <= s.warnSeconds
+	if warn then
+		bar:SetStatusBarColor(1, 0.25, 0.2)
+		if icon.warnPulse and not icon.warnPulse:IsPlaying() then
+			icon.warnPulse:Play()
+		end
+		local id = current and current.expirationTime
+		if s.warnSound and id and self.warnedFor ~= id then
+			self.warnedFor = id
+			PK.Compat.PlaySound("RAID_WARNING", 8959)
+		end
+	else
+		bar:SetStatusBarColor(0.95, 0.75, 0.25)
+		if icon.warnPulse then
+			icon.warnPulse:Stop()
+			icon:SetAlpha(1)
+		end
+	end
+	self.warning = warn and true or false
 end
 
 function M:Render()
@@ -166,6 +205,7 @@ function M:Render()
 		end
 		bar:SetValue(0)
 		timeText:SetText("")
+		self:UpdateWarning(nil)
 	end
 end
 
