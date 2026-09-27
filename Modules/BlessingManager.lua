@@ -598,6 +598,41 @@ function M:PrintReport(reason)
 	end
 end
 
+-- Shows what the sync is doing and re-announces you to the group.
+function M:PrintSyncStatus()
+	local s = Comm.stats
+	local channel = Comm:Channel()
+	local can, why = Comm:CanSend()
+	PK:Print(Theme.Color("gold", "Sync: ") .. "you are " .. tostring(me()) .. ", channel "
+		.. tostring(channel or "none (not in a group)") .. ", sending " .. (can and "allowed" or ("blocked: " .. tostring(why))))
+	PK:Print(string.format("sent %d (last %s, result %s), received %d (last from %s), own echoes %d, ignored %d%s",
+		s.sent, tostring(s.lastSent or "-"), tostring(s.lastResult or "-"), s.received, tostring(s.lastFromRaw or "-"),
+		s.echoes, s.ignored, s.lastIgnored and (" (" .. s.lastIgnored .. ")") or ""))
+	local heard = {}
+	for name, peer in pairs(self.peers) do
+		heard[#heard + 1] = name .. " (v" .. tostring(peer.version) .. ")"
+	end
+	table.sort(heard)
+	PK:Print("paladins heard from: " .. (#heard > 0 and table.concat(heard, ", ") or "none yet"))
+	local group = {}
+	for _, p in ipairs(Roster.paladins) do
+		if p.name ~= me() then
+			group[#group + 1] = p.name
+		end
+	end
+	if #group > 0 then
+		PK:Print("paladins in your group: " .. table.concat(group, ", "))
+	end
+	if channel then
+		self:SendHello(true)
+		PK:Print("re-announced you to the group; run /ptk sync again in a few seconds.")
+	end
+end
+
+PK:RegisterCommand("sync", function()
+	M:PrintSyncStatus()
+end, "show Blessing sync status and re-announce yourself to the group")
+
 PK:RegisterCommand("buffs", function()
 	M:PrintReport("Blessings")
 end, "who is missing your Blessing, and whose runs out soon")

@@ -10,6 +10,9 @@
 - Seal Tracker: in combat, the last 5 seconds of your Seal turn the bar red
   and pulse the icon (optional sound).
 - Settings panel scrolls, with room for the new options.
+- New `/ptk sync`: shows whether Blessing sync can send, what it sent and
+  received, and which paladins it has heard from; also re-announces you.
+- Blessing grid: names with a space no longer wrap onto two lines.
 
 ## 0.5.7
 

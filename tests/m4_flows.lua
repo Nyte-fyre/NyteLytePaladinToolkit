@@ -187,6 +187,18 @@ receive("REQ", "Tankadin")
 flush()
 assert(lastSentStarting("ROW|"), "REQ answered")
 
+-- Forever names can contain a space; sync must still match them.
+MOCK.party[#MOCK.party + 1] = { unit = "party4", name = "Testered Pally", class = "PALADIN" }
+MOCK.fire("GROUP_ROSTER_UPDATE")
+settle()
+receive("HELLO|0.6.0|MI|DE", "Testered Pally-Beta Realm")
+assert(BM.peers["Testered Pally"], "peer with a space in the name recognized")
+receive("ROW|1|100|Testered Pally||RO=MI", "Testered Pally-Beta Realm")
+assert(A["Testered Pally"] and A["Testered Pally"].classes.ROGUE == "BLESSING_MIGHT", "their row accepted")
+slash("sync")
+assert(P.Comm.stats.received > 0 and P.Comm.stats.lastFrom == "Testered Pally", "sync stats recorded")
+table.remove(MOCK.party)
+
 -- Leaving the group drops pending sends.
 MOCK.inGroup = false
 MOCK.party = {}

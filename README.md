@@ -85,6 +85,7 @@ addon follows Blizzard's rules:
 | `/ptk cd` | List this spec's cooldowns; `add <spell>`, `remove <spell>`, `group <spell>` (show only in a group), `reset` |
 | `/ptk bless` | Open the Blessing assignment grid |
 | `/ptk buffs` | Who is missing your Blessing, and whose runs out within 10 minutes (also on ready checks) |
+| `/ptk sync` | Blessing sync status (what was sent and received, who was heard from), and re-announce yourself |
 | `/ptk export` / `import` | Copy your profile as text / paste one in |
 | `/ptk errors` | Show Lua errors the addon caught this session |
 | `/ptk probe`, `/ptk probe combat`, `/ptk show`, `/ptk debug` | Diagnostics (see below) |

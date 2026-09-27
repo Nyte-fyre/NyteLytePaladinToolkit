@@ -11,6 +11,9 @@ local _, PK = ...
 
 local Compat = PK.Compat
 local Comm = { prefix = "NLPT", queue = {}, order = {}, inEncounter = false }
+-- What happened on the wire, for /ptk sync and bug reports (copied into the
+-- saved data on logout).
+Comm.stats = { sent = 0, received = 0, echoes = 0, ignored = 0 }
 PK.Comm = Comm
 
 local SEND_INTERVAL = 0.25
@@ -25,8 +28,15 @@ function Comm:Channel()
 	return nil
 end
 
+-- Returns true, or false and a short reason.
 function Comm:CanSend()
-	return not self.inEncounter and Compat.CanSendAddonMessages() and self:Channel() ~= nil
+	if self.inEncounter then
+		return false, "boss encounter"
+	end
+	if not self:Channel() then
+		return false, "not in a group"
+	end
+	return Compat.CanSendAddonMessages()
 end
 
 -- Queues a message. key: optional; a newer message with the same key replaces it.
@@ -54,20 +64,29 @@ function Comm:Flush()
 		end
 		return
 	end
-	if not self:CanSend() then
+	local can, why = self:CanSend()
+	if not can then
+		self.stats.blocked = why
 		if not self:Channel() then
 			-- Not in a group: nothing to sync with; drop the queue.
 			self.queue, self.order = {}, {}
 		end
 		return
 	end
+	self.stats.blocked = nil
 	local key = table.remove(self.order, 1)
 	local text = self.queue[key]
 	self.queue[key] = nil
 	local send = Compat.Resolve("C_ChatInfo.SendAddonMessage")
 	if send and text then
-		local ok, err = pcall(send, self.prefix, text, self:Channel())
-		PK:Debug("Comm send %s: %s", tostring(ok), tostring(ok and text or err))
+		local ok, result = pcall(send, self.prefix, text, self:Channel())
+		local s = self.stats
+		s.sent = s.sent + 1
+		-- SendAddonMessage returns an Enum.SendAddonMessageResult (0 = success).
+		s.lastResult = ok and (Compat.IsSecret(result) and "<secret>" or tostring(result)) or ("error: " .. tostring(result))
+		s.lastSent = text:match("^(%u+)")
+		s.lastSentAt = time()
+		PK:Debug("Comm send %s -> %s", tostring(text), s.lastResult)
 	end
 end
 
@@ -110,17 +129,35 @@ PK:RegisterEvent("CHAT_MSG_ADDON", Comm, function(_, _, prefix, text, channel, s
 	if Compat.IsSecret(prefix) or prefix ~= Comm.prefix then
 		return
 	end
+	local s = Comm.stats
 	if Compat.IsSecret(text) or Compat.IsSecret(sender) or type(text) ~= "string" then
+		s.ignored = s.ignored + 1
+		s.lastIgnored = "secret or non-text payload"
 		return
 	end
 	if channel ~= "PARTY" and channel ~= "RAID" and channel ~= "INSTANCE_CHAT" then
+		s.ignored = s.ignored + 1
+		s.lastIgnored = "channel " .. tostring(channel)
 		return
 	end
 	local short = Comm.ShortName(sender)
 	if not short or short == Comm.PlayerName() then
-		return -- our own echo
+		s.echoes = s.echoes + 1 -- our own message coming back
+		return
 	end
+	s.received = s.received + 1
+	s.lastFrom = short
+	s.lastFromRaw = tostring(sender)
+	s.lastReceived = text:match("^(%u+)")
+	s.lastReceivedAt = time()
+	PK:Debug("Comm recv from %s (%s): %s", short, tostring(sender), text)
 	PK:Fire("PK_COMM_MESSAGE", text, short)
+end)
+
+PK:RegisterEvent("PLAYER_LOGOUT", Comm, function()
+	if PK.db then
+		PK.db.commStats = Comm.stats
+	end
 end)
 
 PK:RegisterEvent("ENCOUNTER_START", Comm, function()

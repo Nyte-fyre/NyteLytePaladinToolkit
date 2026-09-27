@@ -178,6 +178,7 @@ local function build()
 		row.name:SetPoint("TOPLEFT", LEFT, y - 8)
 		row.name:SetWidth(NAME_WIDTH - 6)
 		row.name:SetJustifyH("LEFT")
+		row.name:SetWordWrap(false) -- "Nyte Fyre (no addon)" truncates instead of wrapping
 		for i, class in ipairs(B.CLASSES) do
 			local cell = makeCell(window, row, class)
 			cell:SetPoint("TOPLEFT", LEFT + NAME_WIDTH + (i - 1) * (CELL + GAP), y)
