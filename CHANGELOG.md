@@ -13,6 +13,15 @@
 - New `/ptk sync`: shows whether Blessing sync can send, what it sent and
   received, and which paladins it has heard from; also re-announces you.
 - Blessing grid: names with a space no longer wrap onto two lines.
+- Fixed: Blessing sync didn't work with Forever's two-part names ("Nyte
+  Fyre"). The game's name functions return different parts of the name, so
+  paladins are now identified by their character GUID, and the full name is
+  shown everywhere. Paladins on older versions are listed by `/ptk sync` as
+  needing an update (the sync format changed).
+- Blessing grid: for a paladin whose spells the addon doesn't know yet, you
+  can pick any Blessing or Aura (it used to offer only Might and Wisdom).
+- Your profile is now tied to your character's GUID, so a name change or a
+  name that isn't ready at login can't split your settings.
 
 ## 0.5.7
 

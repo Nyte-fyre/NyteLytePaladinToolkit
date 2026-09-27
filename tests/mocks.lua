@@ -152,6 +152,25 @@ function UnitName(unit)
 	end
 	return "Tester"
 end
+-- Party members may have a second name part (Forever): UnitName gives the
+-- first part only, UnitNameUnmodified the full name.
+function UnitNameUnmodified(unit)
+	local m = partyMember(unit)
+	if m then
+		return m.fullName or m.name
+	end
+	return "Tester"
+end
+function UnitGUID(unit)
+	if unit == "player" then
+		return "Player-1-TESTER"
+	end
+	local m = partyMember(unit)
+	if m and MOCK.inGroup then
+		return m.guid or ("Player-1-" .. m.name:upper():gsub("%s", ""))
+	end
+	return nil
+end
 function GetRealmName()
 	return "Beta Realm"
 end

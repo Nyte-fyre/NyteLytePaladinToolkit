@@ -76,6 +76,100 @@ function Compat.ArithmeticCheck(v)
 	return ok and "ok" or ("error: " .. tostring(err))
 end
 
+-- Units -----------------------------------------------------------------------
+
+-- A unit's GUID ("Player-4621-0ABCDEF1"): the stable identity of a character.
+function Compat.UnitGUID(unit)
+	local fn = _G.UnitGUID
+	if not fn then
+		return nil
+	end
+	local ok, guid = pcall(fn, unit)
+	if ok and type(guid) == "string" and not Compat.IsSecret(guid) and guid ~= "" then
+		return guid
+	end
+	return nil
+end
+
+-- A unit's name as players see it. Forever names can have two parts
+-- ("Nyte Fyre"), and on the beta UnitName returned the full name on one
+-- build and only the first part on a later one, while chat always used the
+-- full name. So: the longest name any name API returns, realm removed.
+function Compat.UnitDisplayName(unit)
+	local best
+	local function consider(v)
+		if type(v) ~= "string" or Compat.IsSecret(v) or v == "" then
+			return
+		end
+		v = v:match("^([^%-]+)") or v -- drop "-Realm"
+		if not best or #v > #best then
+			best = v
+		end
+	end
+	for _, fn in ipairs({ _G.UnitName, _G.UnitNameUnmodified, _G.UnitFullName }) do
+		if fn then
+			local ok, v = pcall(fn, unit)
+			if ok then
+				consider(v)
+			end
+		end
+	end
+	if _G.GetUnitName then
+		local ok, v = pcall(_G.GetUnitName, unit, false)
+		if ok then
+			consider(v)
+		end
+	end
+	return best
+end
+
+-- Units -----------------------------------------------------------------------
+
+-- A unit's GUID ("Player-4621-0ABCDEF1"): the stable identity of a character.
+function Compat.UnitGUID(unit)
+	local fn = _G.UnitGUID
+	if not fn then
+		return nil
+	end
+	local ok, guid = pcall(fn, unit)
+	if ok and type(guid) == "string" and not Compat.IsSecret(guid) and guid ~= "" then
+		return guid
+	end
+	return nil
+end
+
+-- A unit's name as players see it. Forever names can have two parts
+-- ("Nyte Fyre"), and on the beta UnitName returned the full name on one
+-- build and only the first part on a later one, while chat always used the
+-- full name. So: the longest name any name API returns, realm removed.
+function Compat.UnitDisplayName(unit)
+	local best
+	local function consider(v)
+		if type(v) ~= "string" or Compat.IsSecret(v) or v == "" then
+			return
+		end
+		v = v:match("^([^%-]+)") or v -- drop "-Realm"
+		if not best or #v > #best then
+			best = v
+		end
+	end
+	for _, fn in ipairs({ _G.UnitName, _G.UnitNameUnmodified, _G.UnitFullName }) do
+		if fn then
+			local ok, v = pcall(fn, unit)
+			if ok then
+				consider(v)
+			end
+		end
+	end
+	if _G.GetUnitName then
+		local ok, v = pcall(_G.GetUnitName, unit, false)
+		if ok then
+			consider(v)
+		end
+	end
+	return best
+end
+
 -- Addon metadata ---------------------------------------------------------------
 function Compat.GetAddOnMetadata(addon, field)
 	local fn = Compat.Resolve("C_AddOns.GetAddOnMetadata") or _G.GetAddOnMetadata

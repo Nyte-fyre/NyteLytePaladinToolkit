@@ -43,23 +43,17 @@ local function spellName(key)
 	return e and e.names[1] or "none"
 end
 
--- Ordered options for a paladin's cell: Blessings (or Auras) they know.
+-- Ordered options for a paladin's cell: the Blessings (or Auras) they know,
+-- or every one if the addon doesn't know their spells (they may know more
+-- than we can tell, e.g. a higher-level paladin not running the addon).
 local function options(paladin, isAura)
 	local blessings, auras = manager():KnownFor(paladin)
 	local out = {}
-	if isAura then
-		auras = auras or B.ASSUMED_AURAS
-		for _, key in ipairs(B.AURA_PRIORITY) do
-			if auras[key] then
-				out[#out + 1] = key
-			end
-		end
-	else
-		blessings = blessings or B.ASSUMED_BLESSINGS
-		for _, key in ipairs(B.ASSIGNABLE) do
-			if blessings[key] then
-				out[#out + 1] = key
-			end
+	local list = isAura and B.AURA_PRIORITY or B.ASSIGNABLE
+	local known = isAura and auras or blessings
+	for _, key in ipairs(list) do
+		if not known or known[key] then
+			out[#out + 1] = key
 		end
 	end
 	return out
@@ -125,7 +119,7 @@ local function makeCell(parent, row, class)
 			return
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:AddLine(Theme.Color("gold", (self.row.paladin or "?") .. " → "
+		GameTooltip:AddLine(Theme.Color("gold", (self.row.paladin and manager():NameOf(self.row.paladin) or "?") .. " → "
 			.. (self.class and CLASS_NAMES[self.class] or "Aura")))
 		GameTooltip:AddLine(spellName(self.key), 1, 1, 1)
 		if self.row.editable then
@@ -216,6 +210,7 @@ function Grid:Refresh()
 	local m = manager()
 	local eff = m:Effective()
 	local paladins = m:Paladins()
+	local myId = paladins[1] -- Paladins() always lists you first
 	local withAddon = 0
 	for r = 1, MAX_ROWS do
 		local row = rows[r]
@@ -223,11 +218,13 @@ function Grid:Refresh()
 		row.paladin = paladin
 		row.editable = paladin ~= nil and m:CanEdit(paladin)
 		if paladin then
-			local hasAddon = paladin == UnitName("player") or m.peers[paladin] ~= nil
-			if hasAddon and paladin ~= UnitName("player") then
+			local mine = paladin == myId
+			local hasAddon = mine or m.peers[paladin] ~= nil
+			if hasAddon and not mine then
 				withAddon = withAddon + 1
 			end
-			row.name:SetText((row.editable and Theme.Color("light", paladin) or Theme.Color("dim", paladin))
+			local name = m:NameOf(paladin)
+			row.name:SetText((row.editable and Theme.Color("light", name) or Theme.Color("dim", name))
 				.. (hasAddon and "" or Theme.Color("dim", " (no addon)")))
 		else
 			row.name:SetText("")
