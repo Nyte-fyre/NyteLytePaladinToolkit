@@ -347,9 +347,10 @@ end
 -- C_ChatInfo.AreOutgoingAddonChatMessagesRestricted: in the party probe
 -- (2026-09-24) it said true out of combat, but the message was delivered
 -- and every per-type restriction was inactive.
+-- Returns true, or false and a short reason.
 function Compat.CanSendAddonMessages()
 	if Compat.InCombat() then
-		return false
+		return false, "in combat"
 	end
 	local active = Compat.Resolve("C_RestrictedActions.IsAddOnRestrictionActive")
 	local types = _G.Enum and _G.Enum.AddOnRestrictionType
@@ -358,7 +359,7 @@ function Compat.CanSendAddonMessages()
 			if types[name] ~= nil then
 				local ok, on = pcall(active, types[name])
 				if ok and on == true then
-					return false
+					return false, name .. " restriction active"
 				end
 			end
 		end
@@ -367,7 +368,7 @@ function Compat.CanSendAddonMessages()
 	if lockdown then
 		local ok, locked = pcall(lockdown)
 		if ok and locked == true then
-			return false
+			return false, "chat messaging lockdown"
 		end
 	end
 	return true
