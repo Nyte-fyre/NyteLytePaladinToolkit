@@ -22,6 +22,8 @@ local M = PK:RegisterModule("BlessingManager", {})
 M.peers = {} -- [guid] = { name, version, blessings = set, auras = set, seen }
 M.senders = {} -- [chat sender] = guid, learned from HELLO
 M.legacy = {} -- [chat sender] = version, for paladins on 0.6.0 or older
+-- What happened to incoming rows, for /ptk sync and bug reports.
+M.rowStats = { accepted = 0, rejected = 0 }
 
 local BUTTON_NAME = "NyteLytePaladinToolkitBuffButton"
 local button, gridButton, countText, targetText, classIcon
@@ -261,18 +263,24 @@ function M:OnMessage(text, sender, raw)
 		if from == me() then
 			return
 		end
+		local rs = self.rowStats
 		if not from then
 			-- Haven't been introduced yet: ask, and ignore this row until then.
+			rs.rejected, rs.lastRejected = rs.rejected + 1, "sender not introduced (" .. tostring(raw) .. ")"
 			Comm:Send(B.EncodeRequest(), "REQ")
 			return
 		end
 		if not B.IsGUID(msg.paladin) then
+			rs.rejected, rs.lastRejected = rs.rejected + 1, "old-format row (no GUID)"
 			return
 		end
-		local ok = B.ApplyRow(assignments(), msg.paladin, msg,
+		local ok, why = B.ApplyRow(assignments(), msg.paladin, msg,
 			{ sender = from, senderIsLeader = Roster:IsLeaderOrAssist(from) })
 		if ok then
+			rs.accepted = rs.accepted + 1
 			PK:Fire("PK_BLESSINGS_CHANGED")
+		else
+			rs.rejected, rs.lastRejected = rs.rejected + 1, tostring(why) .. " (row for " .. self:NameOf(msg.paladin) .. ")"
 		end
 	elseif msg.type == "REQ" then
 		-- Introduce ourselves (so they can trust our rows), then send every
@@ -670,6 +678,9 @@ function M:PrintSyncStatus()
 	PK:Print(string.format("sent %d (last %s, result %s), received %d (last from %s), own echoes %d, ignored %d%s",
 		s.sent, tostring(s.lastSent or "-"), tostring(s.lastResult or "-"), s.received, tostring(s.lastFromRaw or "-"),
 		s.echoes, s.ignored, s.lastIgnored and (" (" .. s.lastIgnored .. ")") or ""))
+	local rs = self.rowStats
+	PK:Print(string.format("rows received: %d accepted, %d rejected%s", rs.accepted, rs.rejected,
+		rs.lastRejected and (" (last: " .. rs.lastRejected .. ")") or ""))
 	local heard = {}
 	for id, peer in pairs(self.peers) do
 		heard[#heard + 1] = self:NameOf(id) .. " (v" .. tostring(peer.version) .. ")"

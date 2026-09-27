@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0
+## 0.6.1
 
 - After a fight, the buff button pulses and chat lists anyone who now needs
   your Blessing (they died, were dispelled, or it ran out mid-fight). It

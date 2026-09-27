@@ -157,6 +157,8 @@ end)
 PK:RegisterEvent("PLAYER_LOGOUT", Comm, function()
 	if PK.db then
 		PK.db.commStats = Comm.stats
+		local bm = PK.modules.BlessingManager
+		PK.db.rowStats = bm and bm.rowStats or nil
 	end
 end)
 
