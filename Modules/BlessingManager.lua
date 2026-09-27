@@ -114,6 +114,17 @@ function M:KnownFor(id)
 	return nil, nil
 end
 
+-- Group members in the tank role (when the game reports roles).
+function M:Tanks()
+	local tanks = {}
+	for _, m in ipairs(Roster.members) do
+		if m.role == "TANK" and m.guid then
+			tanks[#tanks + 1] = { guid = m.guid, class = m.class, name = m.name }
+		end
+	end
+	return tanks
+end
+
 -- Assignments with your own row filled in from a suggestion when you haven't
 -- set one yet, so the buff button works out of the box.
 function M:Effective()
@@ -126,7 +137,7 @@ function M:Effective()
 	for k, v in pairs(a) do
 		out[k] = v
 	end
-	out[me()] = B.Suggest({ { name = me(), blessings = blessings, auras = auras } })[me()]
+	out[me()] = B.Suggest({ { name = me(), blessings = blessings, auras = auras } }, { tanks = self:Tanks() })[me()]
 	return out
 end
 
@@ -141,9 +152,12 @@ function M:SetAssignment(paladin, class, blessingKey, auraKey)
 		return false
 	end
 	local cur = assignments()[paladin] or self:Effective()[paladin] or { classes = {} }
-	local row = { classes = {}, aura = cur.aura, seq = (tonumber(cur.seq) or 0) + 1, ts = time() }
+	local row = { classes = {}, overrides = {}, aura = cur.aura, seq = (tonumber(cur.seq) or 0) + 1, ts = time() }
 	for c, k in pairs(cur.classes or {}) do
 		row.classes[c] = k
+	end
+	for target, k in pairs(cur.overrides or {}) do
+		row.overrides[target] = k
 	end
 	if class then
 		row.classes[class] = blessingKey
@@ -156,6 +170,63 @@ function M:SetAssignment(paladin, class, blessingKey, auraKey)
 	return true
 end
 
+-- Sets (or with key = nil clears) a per-player exception on a paladin's row.
+-- key: a blessing key, or B.NONE for "don't buff this player".
+function M:SetOverride(paladin, target, key)
+	if not self:CanEdit(paladin) then
+		PK:Print("only the group leader or an assistant can change another paladin's Blessings.")
+		return false
+	end
+	local cur = assignments()[paladin] or self:Effective()[paladin] or { classes = {} }
+	local row = { classes = {}, overrides = {}, aura = cur.aura, seq = (tonumber(cur.seq) or 0) + 1, ts = time() }
+	local count = 0
+	for c, k in pairs(cur.classes or {}) do
+		row.classes[c] = k
+	end
+	for t, k in pairs(cur.overrides or {}) do
+		row.overrides[t] = k
+		count = count + 1
+	end
+	if key and not row.overrides[target] and count >= B.MAX_OVERRIDES then
+		PK:Print("a paladin can have at most " .. B.MAX_OVERRIDES .. " player exceptions.")
+		return false
+	end
+	row.overrides[target] = key
+	B.ApplyRow(assignments(), paladin, row, { sender = me(), senderIsLeader = Roster:IsLeaderOrAssist(me()) })
+	Comm:Send(B.EncodeRow(paladin, assignments()[paladin]), "ROW:" .. paladin)
+	PK:Fire("PK_BLESSINGS_CHANGED")
+	return true
+end
+
+-- Whole-group coverage from every paladin's assignments (out of combat data).
+function M:Coverage()
+	local members = {}
+	for _, m in ipairs(Roster.members) do
+		members[#members + 1] = { name = m.name, class = m.class, guid = m.guid, buffs = m.buffs }
+	end
+	return B.Coverage(self:Effective(), self:Paladins(), members, GetTime())
+end
+
+-- "Stabby (Kings, Might), Frosty (Wisdom)" and "Priest, Mage".
+function M:CoverageText()
+	local gaps, uncovered = self:Coverage()
+	local parts = {}
+	for _, g in ipairs(gaps) do
+		local names = {}
+		for _, key in ipairs(g.missing) do
+			local e = PK.Spells.byKey[key]
+			names[#names + 1] = e and e.names[1]:gsub("Blessing of ", "") or key
+		end
+		parts[#parts + 1] = g.name .. " (" .. table.concat(names, ", ") .. ")"
+	end
+	local classes = {}
+	for class in pairs(uncovered) do
+		classes[#classes + 1] = class:sub(1, 1) .. class:sub(2):lower()
+	end
+	table.sort(classes)
+	return table.concat(parts, ", "), table.concat(classes, ", ")
+end
+
 -- Fills the grid from the auto-suggest layout. Rows you can't edit are left alone.
 function M:ApplySuggestion()
 	local list = {}
@@ -163,13 +234,14 @@ function M:ApplySuggestion()
 		local blessings, auras = self:KnownFor(name)
 		list[#list + 1] = { name = name, blessings = blessings, auras = auras }
 	end
-	local suggestion = B.Suggest(list)
+	local suggestion = B.Suggest(list, { tanks = self:Tanks() })
 	local leader = Roster:IsLeaderOrAssist(me())
 	local changed = 0
 	for name, sug in pairs(suggestion) do
 		if name == me() or leader then
 			local cur = assignments()[name]
-			local row = { classes = sug.classes, aura = sug.aura, seq = (cur and tonumber(cur.seq) or 0) + 1, ts = time() }
+			local row = { classes = sug.classes, overrides = sug.overrides, aura = sug.aura,
+				seq = (cur and tonumber(cur.seq) or 0) + 1, ts = time() }
 			if B.ApplyRow(assignments(), name, row, { sender = me(), senderIsLeader = leader }) then
 				Comm:Send(B.EncodeRow(name, assignments()[name]), "ROW:" .. name)
 				changed = changed + 1
@@ -366,11 +438,11 @@ end
 function M:Members(eff)
 	local members = {}
 	for _, m in ipairs(Roster.members) do
-		local key = B.AssignedFor(eff, me(), m.class)
+		local key = B.AssignedFor(eff, me(), m.class, m.guid)
 		local spell = key and blessingSpell(key)
 		if spell then
 			members[#members + 1] = {
-				unit = m.unit, name = m.name, class = m.class, buffs = m.buffs,
+				unit = m.unit, name = m.name, class = m.class, guid = m.guid, buffs = m.buffs,
 				usable = m.usable and Roster:InRange(spell, m.unit) ~= false,
 			}
 		end
@@ -517,6 +589,15 @@ local function buildButton()
 		if M.missingNames and #M.missingNames > 0 then
 			GameTooltip:AddLine("Need it: " .. table.concat(M.missingNames, ", "), 1, 0.82, 0.25, true)
 		end
+		if inGroup() and not PK.Compat.InCombat() then
+			local gaps, uncovered = M:CoverageText()
+			if gaps ~= "" then
+				GameTooltip:AddLine("Group missing (any paladin): " .. gaps, 0.9, 0.7, 0.5, true)
+			end
+			if uncovered ~= "" then
+				GameTooltip:AddLine("No Blessings assigned for: " .. uncovered, 0.9, 0.5, 0.4, true)
+			end
+		end
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", function()
@@ -652,6 +733,15 @@ function M:PrintReport(reason)
 	local minutes = settings().prepullMinutes or 10
 	local missing, expiring = B.Report(self:Effective(), me(), self:Members(self:Effective()), GetTime(), minutes * 60)
 	local label = Theme.Color("gold", (reason or "Blessings") .. ": ")
+	if inGroup() then
+		local gaps, uncovered = self:CoverageText()
+		if gaps ~= "" then
+			PK:Print(label .. "group missing (any paladin): " .. gaps)
+		end
+		if uncovered ~= "" then
+			PK:Print(label .. "no Blessings assigned for " .. uncovered)
+		end
+	end
 	if #missing == 0 and #expiring == 0 then
 		PK:Print(label .. "all your Blessings last more than " .. minutes .. " minutes.")
 		return

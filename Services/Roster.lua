@@ -105,6 +105,8 @@ function Roster:Scan()
 					unit = unit,
 					guid = Compat.UnitGUID(unit),
 					name = name,
+					-- "TANK" / "HEALER" / "DAMAGER" / "NONE" when the game reports roles.
+					role = Secrets.SafeString(safeCall(UnitGroupRolesAssigned, unit)),
 					class = class,
 					online = online,
 					dead = dead,

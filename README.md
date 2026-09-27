@@ -28,8 +28,13 @@ Protection or Retribution**, with every part switchable per spec.
   the tanking core, **TAUNT** on Judgement under Seal of Fury, and an Iron
   Creed timer.
 - **Blessing Manager**, PallyPower-style:
-  - An assignment grid for every paladin in the group.
-  - Auto-suggest, and syncing between paladins who run the addon.
+  - An assignment grid for every paladin in the group, with per-player
+    exceptions (right-click a class cell), e.g. Kings instead of Salvation
+    on the tank.
+  - Auto-suggest (tank-aware when the game reports roles), and syncing
+    between paladins who run the addon.
+  - Group coverage: who is missing a Blessing from any paladin, and which
+    classes nobody covers. Two paladins on the same Aura get flagged.
   - A buff button: **one press casts your assigned Blessing on the next
     person who needs it**: missing first, then about to expire, then (by
     default) the lowest timer, so repeated presses refresh the oldest

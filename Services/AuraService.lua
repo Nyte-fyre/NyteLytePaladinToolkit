@@ -39,6 +39,8 @@ local function readAura(a)
 		expirationTime = expiration, -- 0 = no expiry
 		instanceID = Secrets.SafeNumber(select(2, Secrets.Field(a, "auraInstanceID"))),
 		fromPlayer = Secrets.SafeBool(select(2, Secrets.Field(a, "isFromPlayerOrPlayerPet"))),
+		-- Who cast it ("player", "party1", ...), readable out of combat.
+		source = Secrets.SafeString(select(2, Secrets.Field(a, "sourceUnit"))),
 	}
 end
 
@@ -170,6 +172,22 @@ function AS:GetPaladinAura()
 		return aura, "aura"
 	end
 	return nil
+end
+
+-- Another paladin's Aura of the same kind as yours, on you. Auras of one
+-- kind don't stack, so one of the two is wasted. Out of combat only (the
+-- snapshot is frozen in combat). Returns that aura or nil.
+function AS:GetDuplicateAura()
+	if self.frozen then
+		return nil
+	end
+	local mine = self:GetPaladinAura()
+	if not mine or not mine.name then
+		return nil
+	end
+	return self:Find(function(a)
+		return a.name == mine.name and a.source ~= nil and a.source ~= "player"
+	end)
 end
 
 -- Any Blessing on the player (from anyone, any rank).

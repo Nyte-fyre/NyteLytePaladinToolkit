@@ -32,6 +32,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("BuffSentinel").showAll = v
 	end },
+	{ "Buff Sentinel: warn about a duplicate Aura", function()
+		return ms("BuffSentinel").checkDuplicateAura
+	end, function(v)
+		ms("BuffSentinel").checkDuplicateAura = v
+	end },
 	{ "Righteous Fury warning as Protection", function()
 		return ms("BuffSentinel").rfSpecs.prot
 	end, function(v)
@@ -164,7 +169,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 820)
+	content:SetSize(600, 860)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)
