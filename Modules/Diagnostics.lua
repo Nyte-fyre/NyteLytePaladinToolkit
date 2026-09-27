@@ -720,12 +720,23 @@ local function probeGroup()
 				inRange = tryPath("C_Spell.IsSpellInRange", "Blessing of Might", unit),
 				leader = tryPath("UnitIsGroupLeader", unit),
 				dead = tryPath("UnitIsDeadOrGhost", unit),
+				role = tryPath("UnitGroupRolesAssigned", unit),
 				connected = tryPath("UnitIsConnected", unit),
 				name = tryPath("UnitName", unit),
 			}
 		end
 	end
 	out.addonChatRestricted = tryPath("C_ChatInfo.AreOutgoingAddonChatMessagesRestricted")
+	out.playerRole = tryPath("UnitGroupRolesAssigned", "player")
+	-- Paladin Auras and Blessings on you from other players (duplicate-Aura check).
+	local others = {}
+	for _, a in ipairs((Compat.GetAuras("player", "HELPFUL"))) do
+		local src = Describe(a.sourceUnit)
+		if type(src) == "string" and src ~= "player" then
+			others[#others + 1] = tostring(Describe(a.name)) .. " from " .. src
+		end
+	end
+	out.buffsFromOthers = others
 	return out
 end
 

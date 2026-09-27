@@ -321,6 +321,28 @@ function B.PickTarget(assignments, me, members, now, refreshSec, refreshLowest)
 	return nil
 end
 
+-- Pre-pull report: who is missing your assigned Blessing, and whose copy
+-- runs out within `withinSec`. Returns missing (names, group order) and
+-- expiring ({ name, left }, soonest first). Unreadable members are skipped.
+function B.Report(assignments, me, members, now, withinSec)
+	local missing, expiring = {}, {}
+	for _, m in ipairs(members) do
+		local key = B.AssignedFor(assignments, me, m.class)
+		if key and m.buffs then
+			local left = B.Remaining(m, key, now)
+			if left == nil then
+				missing[#missing + 1] = m.name
+			elseif left ~= math.huge and left < withinSec then
+				expiring[#expiring + 1] = { name = m.name, left = left }
+			end
+		end
+	end
+	table.sort(expiring, function(a, b)
+		return a.left < b.left
+	end)
+	return missing, expiring
+end
+
 -- Members missing your assigned blessing or under refreshSec left
 -- (readable ones only, including those out of range).
 function B.CountNeeding(assignments, me, members, now, refreshSec)

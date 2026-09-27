@@ -219,11 +219,17 @@ function MOCK.tick(n)
 		end
 	end
 end
-function MOCK.runTimers()
+-- Runs pending timers. Timers of 10s or more (e.g. auto-stops) stay queued
+-- unless includeLong is set, since the mock ignores real time.
+function MOCK.runTimers(includeLong)
 	local list = MOCK.timers
 	MOCK.timers = {}
 	for _, t in ipairs(list) do
-		t.fn()
+		if includeLong or (t.delay or 0) < 10 then
+			t.fn()
+		else
+			MOCK.timers[#MOCK.timers + 1] = t
+		end
 	end
 end
 

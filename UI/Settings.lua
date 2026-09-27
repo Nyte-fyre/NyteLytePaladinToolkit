@@ -73,6 +73,21 @@ local OPTIONS = {
 	end, function(v)
 		ms("BlessingManager").refreshLowest = v
 	end },
+	{ "Buff button: alert after combat when someone needs a rebuff", function()
+		return ms("BlessingManager").postCombatAlert
+	end, function(v)
+		ms("BlessingManager").postCombatAlert = v
+	end },
+	{ "Seal Tracker: warn in the last 5 seconds (combat)", function()
+		return (ms("SealTracker").warnSeconds or 0) > 0
+	end, function(v)
+		ms("SealTracker").warnSeconds = v and 5 or 0
+	end },
+	{ "Seal Tracker: warning sound", function()
+		return ms("SealTracker").warnSound
+	end, function(v)
+		ms("SealTracker").warnSound = v
+	end },
 	{ "Cooldown HUD: show unlearned spells", function()
 		return ms("CooldownHUD").showUnknown
 	end, function(v)
@@ -143,42 +158,51 @@ local function Build()
 	panel:SetSize(620, 720)
 	panel.name = PK.displayName
 
-	PK.Theme.AddGlow(panel, 80)
-	local title = PK.Theme.Title(panel, PK.displayName, 16, -12)
-	local version = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	-- Everything lives in a scrolling area: the options list is taller than
+	-- the Settings window.
+	local scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
+	scroll:SetPoint("TOPLEFT", 0, 0)
+	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
+	local content = CreateFrame("Frame", nil, scroll)
+	content:SetSize(600, 820)
+	scroll:SetScrollChild(content)
+
+	PK.Theme.AddGlow(content, 80)
+	local title = PK.Theme.Title(content, PK.displayName, 16, -12)
+	local version = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	version:SetPoint("LEFT", title, "RIGHT", 8, 0)
 	version:SetText("v" .. PK.version)
 
 	-- Spec mode
-	header(panel, "Spec", -52)
+	header(content, "Spec", -52)
 	for i, mode in ipairs(MODE_BUTTONS) do
-		local b = button(panel, SP.LABELS[mode], 110, function()
+		local b = button(content, SP.LABELS[mode], 110, function()
 			SP:SetMode(mode)
 		end)
 		b:SetPoint("TOPLEFT", 16 + (i - 1) * 116, -72)
 		modeButtons[mode] = b
 	end
-	statusText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	statusText = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	statusText:SetPoint("TOPLEFT", 16, -102)
 	statusText:SetWidth(580)
 	statusText:SetJustifyH("LEFT")
 
 	-- Module matrix
-	header(panel, "Modules per spec", -132, 16, 590)
+	header(content, "Modules per spec", -132, 16, 590)
 	for i, spec in ipairs(SPECS) do
-		local fs = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		local fs = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		fs:SetPoint("TOPLEFT", 300 + (i - 1) * 90, -152)
 		fs:SetWidth(80)
 		fs:SetText(SP.LABELS[spec])
 	end
 	for row, module in ipairs(Presets.MODULES) do
 		local y = -170 - (row - 1) * 28
-		local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		local label = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 		label:SetPoint("TOPLEFT", 24, y - 6)
 		label.module = module
 		checkboxes[module] = { label = label }
 		for i, spec in ipairs(SPECS) do
-			local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+			local cb = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
 			cb:SetPoint("TOPLEFT", 318 + (i - 1) * 90, y)
 			cb:SetScript("OnClick", function(self)
 				PK.Config:SetModuleEnabled(module, spec, self:GetChecked())
@@ -189,24 +213,24 @@ local function Build()
 
 	-- Frames
 	local framesY = -170 - #Presets.MODULES * 28 - 16
-	header(panel, "Frames", framesY)
-	lockButton = button(panel, "Unlock frames", 150, function()
+	header(content, "Frames", framesY)
+	lockButton = button(content, "Unlock frames", 150, function()
 		PK.Frames:ToggleLock()
 	end)
 	lockButton:SetPoint("TOPLEFT", 16, framesY - 20)
-	local reset = button(panel, "Reset positions", 150, function()
+	local reset = button(content, "Reset positions", 150, function()
 		PK.Frames:ResetPositions()
 	end)
 	reset:SetPoint("LEFT", lockButton, "RIGHT", 8, 0)
 
 	-- Module options (right column)
 	local optX = 340
-	header(panel, "Options", framesY, optX, 270)
+	header(content, "Options", framesY, optX, 270)
 	for i, opt in ipairs(OPTIONS) do
-		local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+		local cb = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
 		cb:SetPoint("TOPLEFT", optX - 4, framesY - 16 - (i - 1) * 22)
 		cb:SetSize(24, 24)
-		local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		local label = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
 		label:SetText(opt[1])
 		cb:SetScript("OnClick", function(self)
@@ -215,7 +239,7 @@ local function Build()
 		end)
 		optionBoxes[i] = cb
 	end
-	local cdNote = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	local cdNote = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	cdNote:SetPoint("TOPLEFT", 16, framesY - 64 - 146)
 	cdNote:SetWidth(310)
 	cdNote:SetJustifyH("LEFT")
@@ -223,20 +247,20 @@ local function Build()
 
 	-- Profile
 	local profileY = framesY - 64
-	header(panel, "Profile", profileY)
-	profileText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	header(content, "Profile", profileY)
+	profileText = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	profileText:SetPoint("TOPLEFT", 16, profileY - 20)
-	local export = button(panel, "Export", 100, exportProfile)
+	local export = button(content, "Export", 100, exportProfile)
 	export:SetPoint("TOPLEFT", 16, profileY - 40)
-	local import = button(panel, "Import", 100, importProfile)
+	local import = button(content, "Import", 100, importProfile)
 	import:SetPoint("LEFT", export, "RIGHT", 8, 0)
-	local resetProfile = button(panel, "Reset profile", 208, function()
+	local resetProfile = button(content, "Reset profile", 208, function()
 		if StaticPopup_Show then
 			StaticPopup_Show("NLPT_RESET_PROFILE")
 		end
 	end)
 	resetProfile:SetPoint("TOPLEFT", export, "BOTTOMLEFT", 0, -6)
-	local note = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	local note = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	note:SetPoint("TOPLEFT", 16, profileY - 104)
 	note:SetWidth(310)
 	note:SetJustifyH("LEFT")

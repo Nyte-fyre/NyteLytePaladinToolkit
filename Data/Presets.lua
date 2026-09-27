@@ -105,10 +105,14 @@ Presets.moduleSettings = {
 		showBar = true,
 		iconSize = 30,
 		showEcho = true, -- Twist of Light Echo (Ret talent) next to the Seal
+		warnSeconds = 5, -- in combat, warn this long before the Seal runs out (0 = off)
+		warnSound = false,
 	},
 	BlessingManager = {
 		showWhenSolo = true, -- show the buff button when not in a group
 		refreshLowest = true, -- when nobody needs a Blessing, target the lowest timer
+		postCombatAlert = true, -- after a fight, flag new Blessing needs (deaths, dispels)
+		prepullMinutes = 10, -- ready check / "/ptk buffs": warn about Blessings ending this soon
 		buttonSize = 40,
 	},
 	TankKit = {

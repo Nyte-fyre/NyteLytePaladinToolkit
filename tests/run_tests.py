@@ -144,7 +144,7 @@ RESULT = {
 # Globals the addon is allowed to create (everything else is a leak, e.g. a
 # missing `local`). Frame names, slash commands and keybinding labels are fine.
 ALLOWED_GLOBAL_PREFIXES = ("NyteLytePaladinToolkit", "SLASH_NYTELYTEPALADINTOOLKIT", "BINDING_")
-TEST_GLOBALS = {"RESULT", "M1_OK", "M2_OK", "M3_OK", "M4_OK", "LOGIC_OK", "MOCK_GLOBALS_BEFORE"}
+TEST_GLOBALS = {"RESULT", "M1_OK", "M2_OK", "M3_OK", "M4_OK", "M5_OK", "LOGIC_OK", "MOCK_GLOBALS_BEFORE"}
 
 
 def leaked_globals(lua):
@@ -208,7 +208,7 @@ def main():
                 failed += 0 if ok else 1
                 continue
             lua.execute(CHECKS)
-            for extra in ("m1_flows.lua", "m2_flows.lua", "m3_flows.lua", "m4_flows.lua", "logic_spec.lua"):
+            for extra in ("m1_flows.lua", "m2_flows.lua", "m3_flows.lua", "m4_flows.lua", "m5_flows.lua", "logic_spec.lua"):
                 lua.execute(read(os.path.join(ROOT, "tests", extra)))
             r = lua.globals().RESULT
             leaked = leaked_globals(lua)

@@ -166,4 +166,17 @@ who = BL.PickTarget(assign, "Me", members, now, 300, true)
 assert(who.name == "Rogue", "permanent buffs never count as lowest")
 assert(BL.Remaining({ buffs = { [MIGHT] = now - 5 } }, MIGHT, now) == nil, "expired = missing")
 
+-- Blessings: pre-pull report
+local rep = {
+	{ name = "Gone", class = "ROGUE", buffs = {} },
+	{ name = "Soon", class = "ROGUE", buffs = { [MIGHT] = now + 120 } },
+	{ name = "Sooner", class = "WARRIOR", buffs = { [MIGHT] = now + 30 } },
+	{ name = "Fine", class = "ROGUE", buffs = { [MIGHT] = now + 3000 } },
+	{ name = "Blind", class = "ROGUE", buffs = nil },
+	{ name = "Mage", class = "MAGE", buffs = {} },
+}
+local miss, exp = BL.Report(assign, "Me", rep, now, 600)
+assert(#miss == 1 and miss[1] == "Gone", "report: missing")
+assert(#exp == 2 and exp[1].name == "Sooner" and exp[2].name == "Soon", "report: expiring, soonest first")
+
 LOGIC_OK = true
