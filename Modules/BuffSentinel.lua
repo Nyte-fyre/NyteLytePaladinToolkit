@@ -83,6 +83,20 @@ function M:Evaluate()
 	if s.checkAura and knowsAny("aura") then
 		add("aura", "Aura", (AS:GetPaladinAura()), registryIcon("AURA_DEVOTION"), false, false)
 	end
+	if s.checkDuplicateAura and not inCombat then
+		local dup = AS:GetDuplicateAura()
+		if dup then
+			local who = PK.Compat.UnitDisplayName(dup.source) or "another paladin"
+			results[#results + 1] = {
+				id = "auraDup",
+				label = "Aura",
+				status = "duplicate",
+				aura = dup,
+				icon = dup.icon,
+				other = who,
+			}
+		end
+	end
 	if s.rfSpecs[spec] and PK.SpellRegistry:IsKnown("RIGHTEOUS_FURY") then
 		add("rf", "Righteous Fury", AS:GetByKey("RIGHTEOUS_FURY"), registryIcon("RIGHTEOUS_FURY"), true, false)
 	end
@@ -125,7 +139,8 @@ function M:Render()
 
 	local shown = {}
 	for _, r in ipairs(results) do
-		if (s.showAll and r.status ~= "idle") or r.status == "missing" or r.status == "expiring" then
+		if (s.showAll and r.status ~= "idle") or r.status == "missing" or r.status == "expiring"
+			or r.status == "duplicate" then
 			shown[#shown + 1] = r
 		end
 	end
@@ -145,7 +160,11 @@ function M:Render()
 		else
 			icon:SetState("ready")
 		end
-		icon:SetText(r.status == "expiring" and formatTime(r.remaining) or "")
+		if r.status == "duplicate" then
+			icon:SetText("2x")
+		else
+			icon:SetText(r.status == "expiring" and formatTime(r.remaining) or "")
+		end
 		pulse(icon, r.status == "expiring")
 		icon:Show()
 	end
@@ -183,6 +202,10 @@ function M:PrintCheck(reason)
 			text = "|cffffd040" .. (r.aura and r.aura.name or "?") .. " (" .. formatTime(r.remaining) .. " left)|r"
 		elseif r.status == "idle" then
 			text = "|cff909090checked in combat|r"
+		elseif r.status == "duplicate" then
+			problems = problems + 1
+			text = "|cffffd040" .. (r.aura and r.aura.name or "?") .. " is also running from " .. tostring(r.other)
+				.. " (they don't stack)|r"
 		else
 			problems = problems + 1
 			text = "|cffff4040missing|r"

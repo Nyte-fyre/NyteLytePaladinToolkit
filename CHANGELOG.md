@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.7.0
+
+- Per-player exceptions (PallyPower style): right-click a class cell in the
+  Blessing grid to give individual players a different Blessing than
+  their class (e.g. Kings instead of Salvation on the tank), or None. Cells
+  with exceptions show a gold mark; exceptions sync, and the buff button
+  follows them. Up to 8 per paladin.
+- Tank-aware Auto-suggest: when the game reports group roles, tanks never
+  keep Salvation; they get an exception with the next best Blessing.
+- Group coverage: the grid, the buff button's tooltip and `/ptk buffs` show
+  who is missing a Blessing from any paladin, and which classes nobody is
+  assigned to.
+- Duplicate Aura warning: Buff Sentinel warns when another paladin is
+  running the same Aura as you (they don't stack), and the grid highlights
+  two paladins assigned the same Aura.
+- Grid clicks: click = next, Ctrl-click = previous, Shift-click = clear,
+  right-click = exceptions.
+
 ## 0.6.1
 
 - After a fight, the buff button pulses and chat lists anyone who now needs

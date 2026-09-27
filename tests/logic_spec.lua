@@ -179,4 +179,62 @@ local miss, exp = BL.Report(assign, "Me", rep, now, 600)
 assert(#miss == 1 and miss[1] == "Gone", "report: missing")
 assert(#exp == 2 and exp[1].name == "Sooner" and exp[2].name == "Soon", "report: expiring, soonest first")
 
+-- Exceptions (per-player overrides)
+local G1, G2 = "Player-4620-01058718", "Player-4618-00E29498"
+local KINGS, SALV = "BLESSING_KINGS", "BLESSING_SALVATION"
+local ex = { Me = { classes = { WARRIOR = SALV }, overrides = { [G1] = KINGS, [G2] = BL.NONE } } }
+assert(BL.AssignedFor(ex, "Me", "WARRIOR", G1) == KINGS, "exception wins")
+assert(BL.AssignedFor(ex, "Me", "WARRIOR", G2) == nil, "NONE = don't buff")
+assert(BL.AssignedFor(ex, "Me", "WARRIOR", "Player-1-OTHER") == SALV, "others keep the class Blessing")
+assert(BL.AssignedFor(ex, "Me", "WARRIOR") == SALV, "no target: class Blessing")
+local big = { classes = {}, overrides = {}, seq = 99999, ts = 1790235093 }
+for _, class in ipairs(BL.CLASSES) do
+	big.classes[class] = "BLESSING_WISDOM"
+end
+for i = 1, 10 do
+	big.overrides[string.format("Player-4620-%08X", i)] = (i % 2 == 0) and KINGS or BL.NONE
+end
+local encoded = BL.EncodeRow("Player-4618-00E29498", big)
+assert(#encoded < 255, "full row with max exceptions fits one message (" .. #encoded .. ")")
+local dec = BL.Decode(encoded)
+local n = 0
+for _, v in pairs(dec.overrides) do
+	n = n + 1
+	assert(v == KINGS or v == BL.NONE)
+end
+assert(n == BL.MAX_OVERRIDES, "exceptions capped at " .. BL.MAX_OVERRIDES .. ", got " .. n)
+local A2 = {}
+assert(BL.ApplyRow(A2, "Player-1-ME", dec, { sender = "Player-1-ME" }))
+n = 0
+for _ in pairs(A2["Player-1-ME"].overrides) do
+	n = n + 1
+end
+assert(n == BL.MAX_OVERRIDES, "ApplyRow keeps exceptions")
+assert(BL.Decode("ROW|1|2|Player-1-ME|DE|WA=KI|4620-0105=ZZ,bad=KI").overrides["Player-4620-0105"] == nil,
+	"bad exception codes dropped")
+assert(next(BL.Decode("ROW|1|2|Player-1-ME|DE|WA=KI").overrides) == nil, "0.6.1 rows still decode")
+
+-- Tank-aware suggestion: the tank never keeps Salvation.
+local tankSug = BL.Suggest({
+	{ name = "A", blessings = set(KINGS, "BLESSING_MIGHT", SALV) },
+	{ name = "B", blessings = set(SALV, "BLESSING_LIGHT") },
+}, { tanks = { { guid = G1, class = "DRUID" } } })
+local salvOwner = tankSug.A.classes.DRUID == SALV and "A" or (tankSug.B.classes.DRUID == SALV and "B")
+assert(salvOwner, "someone gives druids Salvation")
+local alt = tankSug[salvOwner].overrides[G1]
+assert(alt and alt ~= SALV, "the tank druid gets an exception instead of Salvation: " .. tostring(alt))
+local noTank = BL.Suggest({ { name = "A", blessings = set(KINGS, SALV) } })
+assert(next(noTank.A.overrides) == nil, "no tanks, no exceptions")
+
+-- Coverage across paladins
+local covA = { P1 = { classes = { ROGUE = "BLESSING_MIGHT" } }, P2 = { classes = { ROGUE = KINGS } } }
+local covM = {
+	{ name = "Rog", class = "ROGUE", buffs = { BLESSING_MIGHT = now + 1000 } },
+	{ name = "Pri", class = "PRIEST", buffs = {} },
+	{ name = "Blind", class = "ROGUE", buffs = nil },
+}
+local gaps, unc = BL.Coverage(covA, { "P1", "P2" }, covM, now)
+assert(#gaps == 1 and gaps[1].name == "Rog" and gaps[1].missing[1] == KINGS, "Rog lacks P2's Kings")
+assert(unc.PRIEST and not unc.ROGUE, "priests uncovered")
+
 LOGIC_OK = true

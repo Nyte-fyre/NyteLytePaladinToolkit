@@ -126,6 +126,13 @@ end
 function UnitIsGroupAssistant()
 	return false
 end
+function UnitGroupRolesAssigned(unit)
+	local m = partyMember(unit)
+	return m and m.role or "NONE"
+end
+function IsControlKeyDown()
+	return MOCK.ctrl == true
+end
 function Ambiguate(name)
 	return (name:match("^([^-]+)")) or name
 end
@@ -511,7 +518,7 @@ if not MOCK_NO_AURAS then
 			return {
 				name = MOCK.maybeSecret(a.name), spellId = MOCK.maybeSecret(a.spellId),
 				duration = MOCK.maybeSecret(a.duration), expirationTime = MOCK.maybeSecret(a.expirationTime),
-				auraInstanceID = i,
+				auraInstanceID = i, sourceUnit = MOCK.maybeSecret(a.source or "player"),
 			}
 		end,
 		GetUnitAuraInstanceIDs = function()

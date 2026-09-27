@@ -97,6 +97,7 @@ Presets.moduleSettings = {
 		showAll = false, -- also show buffs that are fine, not just problems
 		checkSeal = true,
 		checkAura = true,
+		checkDuplicateAura = true, -- warn when another paladin runs the same Aura
 		checkBlessing = true, -- warn if you have no Blessing at all
 		rfSpecs = { holy = false, prot = true, ret = false }, -- warn about Righteous Fury in these specs
 		iconSize = 32,
