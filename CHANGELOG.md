@@ -17,6 +17,13 @@
   two paladins assigned the same Aura.
 - Grid clicks: click = next, Ctrl-click = previous, Shift-click = clear,
   right-click = exceptions.
+- Buff Sentinel checks you against your own row in the Blessing grid, with
+  a new yellow border for "there, but not as assigned": running a
+  different Aura than assigned (it shows the one to switch to), or your
+  assigned Blessing on you coming from another paladin. Missing stays red.
+  Without a grid row, nothing changes.
+- Fixed: the duplicate Aura warning never fired (Forever hides who cast
+  other players' buffs); it now uses whether you cast it.
 
 ## 0.6.1
 

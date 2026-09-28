@@ -212,7 +212,8 @@ end
 
 local IconMixin = {}
 
--- state: "ready" | "cooldown" | "missing" | "unusable"
+-- state: "ready" | "cooldown" | "missing" (red border) | "wrong" (yellow
+-- border: there, but not as assigned) | "unusable"
 function IconMixin:SetState(state)
 	self.state = state
 	local desat = state == "missing" or state == "unusable"
@@ -220,6 +221,9 @@ function IconMixin:SetState(state)
 	self.icon:SetAlpha(state == "unusable" and 0.5 or 1)
 	if state == "missing" then
 		self.border:SetVertexColor(1, 0.1, 0.1, 1)
+		self.border:Show()
+	elseif state == "wrong" then
+		self.border:SetVertexColor(1, 0.85, 0.1, 1)
 		self.border:Show()
 	else
 		self.border:Hide()

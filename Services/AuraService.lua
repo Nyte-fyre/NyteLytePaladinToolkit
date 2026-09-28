@@ -192,6 +192,39 @@ function AS:GetDuplicateAura()
 	end)
 end
 
+-- A specific Blessing on the player (registry key, e.g. "BLESSING_MIGHT"),
+-- any rank, Greater version included. The aura's fromPlayer says whether
+-- you cast it (false = another paladin's).
+function AS:GetBlessingByKey(key)
+	local names = {}
+	local entry = PK.Spells.byKey[key]
+	for _, n in ipairs(entry and entry.names or {}) do
+		names[n] = true
+	end
+	local r = PK.SpellRegistry:Get(key)
+	if r and r.name then
+		names[r.name] = true
+	end
+	for gkey, base in pairs(PK.Blessings.GREATER) do
+		if base == key then
+			for _, n in ipairs(PK.Spells.byKey[gkey] and PK.Spells.byKey[gkey].names or {}) do
+				names[n] = true
+			end
+		end
+	end
+	-- Prefer your own copy if there are two.
+	local other
+	for _, a in ipairs(self.auras) do
+		if self:Remaining(a) and names[a.name] then
+			if a.fromPlayer ~= false then
+				return a
+			end
+			other = other or a
+		end
+	end
+	return other
+end
+
 -- Any Blessing on the player (from anyone, any rank).
 function AS:GetBlessing()
 	return self:FindByNamePrefix("Blessing of ") or self:FindByNamePrefix("Greater Blessing of ")

@@ -141,6 +141,42 @@ if not MOCK_NO_AURAS then
 	end
 end
 
+-- Yellow "not as assigned": wrong Aura, or your Blessing cast by someone else.
+if not MOCK_NO_AURAS then
+	local function status(id)
+		for _, r in ipairs(BS:Evaluate()) do
+			if r.id == id then
+				return r.status, r
+			end
+		end
+	end
+	P.profile.blessing.assignments = {}
+	assert(status("aura") == "ok", "no row: running any Aura is fine")
+	P.profile.blessing.assignments[ME] = { classes = { PALADIN = "BLESSING_MIGHT" }, aura = "AURA_RETRIBUTION",
+		seq = 1, ts = 1, by = ME }
+	local st, r = status("aura")
+	assert(st == "wrong" and r.detail:find("assigned: Retribution Aura", 1, true), "Devotion active, Retribution assigned: yellow")
+	-- Might on us from another paladin: yellow; from us: fine; missing: red.
+	local might = { name = "Blessing of Might", spellId = 19740, duration = 3600, expirationTime = GetTime() + 3000,
+		fromOther = true }
+	table.insert(MOCK.auras, might)
+	MOCK.fire("UNIT_AURA", "player", {})
+	settle()
+	st, r = status("blessing")
+	assert(st == "wrong" and r.detail:find("another paladin", 1, true), "Might from someone else: yellow")
+	might.fromOther = nil
+	MOCK.fire("UNIT_AURA", "player", {})
+	settle()
+	assert(status("blessing") == "ok", "our own Might: fine")
+	table.remove(MOCK.auras)
+	MOCK.fire("UNIT_AURA", "player", {})
+	settle()
+	assert(status("blessing") == "missing", "no Might: red")
+	BS:Render()
+	slash("check")
+	P.profile.blessing.assignments = {}
+end
+
 MOCK.unitAuras = {}
 MOCK.inGroup = false
 MOCK.party = {}
