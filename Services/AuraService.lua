@@ -38,10 +38,17 @@ local function readAura(a)
 		duration = duration,
 		expirationTime = expiration, -- 0 = no expiry
 		instanceID = Secrets.SafeNumber(select(2, Secrets.Field(a, "auraInstanceID"))),
+		-- "Cast by any player character" (not NPC), NOT "cast by you".
 		fromPlayer = Secrets.SafeBool(select(2, Secrets.Field(a, "isFromPlayerOrPlayerPet"))),
-		-- Who cast it ("player", "party1", ...), readable out of combat.
+		-- Who cast it. Forever only reveals "player" (you); other casters read
+		-- as nil. So `mine` (source == "player") is the reliable "you cast it".
 		source = Secrets.SafeString(select(2, Secrets.Field(a, "sourceUnit"))),
 	}
+end
+
+-- Did you cast this aura? (Predicted auras come from your own casts.)
+function AS.IsMine(aura)
+	return aura ~= nil and (aura.source == "player" or aura.predicted == true)
 end
 
 -- Rescans the player's buffs. Returns true if the result was trusted.
@@ -176,9 +183,9 @@ end
 
 -- Another paladin's Aura of the same kind as yours, on you. Auras of one
 -- kind don't stack, so one of the two is wasted. Forever only reveals the
--- caster (sourceUnit) when it's you, but "isFromPlayerOrPlayerPet" is
--- readable (group probe, 2026-09-27): an Aura like yours that you didn't
--- cast is someone else's. Out of combat only. Returns that aura or nil.
+-- caster (sourceUnit) when it's you (2026-09-27 probes), so an Aura like
+-- yours that isn't yours is someone else's. Out of combat only.
+-- ("isFromPlayerOrPlayerPet" can't tell: it's true for any player caster.)
 function AS:GetDuplicateAura()
 	if self.frozen then
 		return nil
@@ -188,13 +195,12 @@ function AS:GetDuplicateAura()
 		return nil
 	end
 	return self:Find(function(a)
-		return a.name == mine.name and (a.fromPlayer == false or (a.source ~= nil and a.source ~= "player"))
+		return a.name == mine.name and not AS.IsMine(a)
 	end)
 end
 
 -- A specific Blessing on the player (registry key, e.g. "BLESSING_MIGHT"),
--- any rank, Greater version included. The aura's fromPlayer says whether
--- you cast it (false = another paladin's).
+-- any rank, Greater version included. AS.IsMine(aura) says whether you cast it.
 function AS:GetBlessingByKey(key)
 	local names = {}
 	local entry = PK.Spells.byKey[key]
@@ -216,7 +222,7 @@ function AS:GetBlessingByKey(key)
 	local other
 	for _, a in ipairs(self.auras) do
 		if self:Remaining(a) and names[a.name] then
-			if a.fromPlayer ~= false then
+			if AS.IsMine(a) then
 				return a
 			end
 			other = other or a

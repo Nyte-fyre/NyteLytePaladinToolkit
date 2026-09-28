@@ -133,7 +133,7 @@ function M:Evaluate()
 			local aura = AS:GetBlessingByKey(expected)
 			local entry = PK.Spells.byKey[expected]
 			local fallback = registryIcon(expected) or registryIcon("BLESSING_MIGHT")
-			if aura and aura.fromPlayer == false and AS:Remaining(aura) then
+			if aura and not AS.IsMine(aura) and AS:Remaining(aura) then
 				-- It's there, but another paladin cast it: yellow.
 				results[#results + 1] = {
 					id = "blessing",

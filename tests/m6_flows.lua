@@ -164,6 +164,15 @@ if not MOCK_NO_AURAS then
 	settle()
 	st, r = status("blessing")
 	assert(st == "wrong" and r.detail:find("another paladin", 1, true), "Might from someone else: yellow")
+	-- An NPC/object buff never counts as a paladin's Blessing; our own copy wins if both exist.
+	table.insert(MOCK.auras, { name = "Blessing of Might", spellId = 19740, duration = 3600,
+		expirationTime = GetTime() + 3000 })
+	MOCK.fire("UNIT_AURA", "player", {})
+	settle()
+	assert(status("blessing") == "ok", "our own copy alongside theirs: fine")
+	table.remove(MOCK.auras)
+	MOCK.fire("UNIT_AURA", "player", {})
+	settle()
 	might.fromOther = nil
 	MOCK.fire("UNIT_AURA", "player", {})
 	settle()

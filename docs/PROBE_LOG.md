@@ -298,8 +298,16 @@ covering spellbook flyouts (Blessings/Auras) and the C_Traits talent trees.
   ("DAMAGER" for both when no role is set), so tank-aware suggestions can
   use it.
 - **Other players' buffs on you:** `sourceUnit` is **nil** unless you cast it
-  (Power Word: Fortitude from a priest -> nil). `isFromPlayerOrPlayerPet` is
-  readable (false for others). Duplicate-Aura detection uses "same Aura as
-  mine, not cast by me".
+  (Power Word: Fortitude from a priest -> nil). (See the correction below:
+  `isFromPlayerOrPlayerPet` is true for any player caster.)
 - The Blessing sync between the two accounts: 34 rows accepted, identical
   on both sides, no errors.
+
+## Correction: who cast a buff (2026-09-27, Blessing test with a stranger paladin)
+
+- `isFromPlayerOrPlayerPet` means **cast by any player character** (vs. an
+  NPC or object): another paladin's Blessing of Might on you read **true**,
+  Campfire Nearby read false. It does not mean "cast by you".
+- `sourceUnit` is `"player"` for buffs you cast and **nil** for everyone
+  else's. That is the reliable "you cast it" signal (`AuraService.IsMine`),
+  used by the duplicate-Aura and "Blessing from another paladin" checks.

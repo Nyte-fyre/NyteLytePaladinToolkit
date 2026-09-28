@@ -519,9 +519,11 @@ if not MOCK_NO_AURAS then
 				name = MOCK.maybeSecret(a.name), spellId = MOCK.maybeSecret(a.spellId),
 				duration = MOCK.maybeSecret(a.duration), expirationTime = MOCK.maybeSecret(a.expirationTime),
 				auraInstanceID = i,
-				-- Real client: the caster is only revealed when it's you.
-				sourceUnit = (not a.fromOther) and MOCK.maybeSecret("player") or nil,
-				isFromPlayerOrPlayerPet = MOCK.maybeSecret(not a.fromOther),
+				-- Real client: the caster is only revealed when it's you, and
+				-- isFromPlayerOrPlayerPet is true for ANY player caster (false for
+				-- NPC/object buffs like Campfire).
+				sourceUnit = (not a.fromOther and not a.fromNpc) and MOCK.maybeSecret("player") or nil,
+				isFromPlayerOrPlayerPet = MOCK.maybeSecret(not a.fromNpc),
 			}
 		end,
 		GetUnitAuraInstanceIDs = function()
