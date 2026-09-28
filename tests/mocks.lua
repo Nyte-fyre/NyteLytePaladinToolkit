@@ -518,7 +518,10 @@ if not MOCK_NO_AURAS then
 			return {
 				name = MOCK.maybeSecret(a.name), spellId = MOCK.maybeSecret(a.spellId),
 				duration = MOCK.maybeSecret(a.duration), expirationTime = MOCK.maybeSecret(a.expirationTime),
-				auraInstanceID = i, sourceUnit = MOCK.maybeSecret(a.source or "player"),
+				auraInstanceID = i,
+				-- Real client: the caster is only revealed when it's you.
+				sourceUnit = (not a.fromOther) and MOCK.maybeSecret("player") or nil,
+				isFromPlayerOrPlayerPet = MOCK.maybeSecret(not a.fromOther),
 			}
 		end,
 		GetUnitAuraInstanceIDs = function()

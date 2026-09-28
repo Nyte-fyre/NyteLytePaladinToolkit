@@ -86,7 +86,8 @@ function M:Evaluate()
 	if s.checkDuplicateAura and not inCombat then
 		local dup = AS:GetDuplicateAura()
 		if dup then
-			local who = PK.Compat.UnitDisplayName(dup.source) or "another paladin"
+			-- Forever hides who cast other players' buffs, so usually unknown.
+			local who = (dup.source and PK.Compat.UnitDisplayName(dup.source)) or "another paladin"
 			results[#results + 1] = {
 				id = "auraDup",
 				label = "Aura",
