@@ -80,8 +80,32 @@ function M:Evaluate()
 		local seal = AS:GetSeal()
 		add("seal", "Seal", seal, registryIcon("SEAL_RIGHTEOUSNESS"), false, true)
 	end
+	-- Your own row in the Blessing grid, only if one really exists (set by
+	-- you, Auto-suggest or your leader). No row: nothing to compare against.
+	local myRow, myId = nil, PK.Compat.UnitGUID("player")
+	if myId and PK.profile.blessing and PK.profile.blessing.assignments then
+		myRow = PK.profile.blessing.assignments[myId]
+	end
+
 	if s.checkAura and knowsAny("aura") then
-		add("aura", "Aura", (AS:GetPaladinAura()), registryIcon("AURA_DEVOTION"), false, false)
+		local current = AS:GetPaladinAura()
+		local assigned = myRow and myRow.aura
+		local assignedEntry = assigned and PK.Spells.byKey[assigned]
+		local assignedName = assignedEntry and (PK.SpellRegistry:Get(assigned) or {}).name or
+			(assignedEntry and assignedEntry.names[1])
+		if current and assignedName and current.name ~= assignedName then
+			-- Running an Aura, but not the assigned one: yellow, showing the one to switch to.
+			results[#results + 1] = {
+				id = "aura",
+				label = "Aura",
+				status = "wrong",
+				aura = current,
+				icon = registryIcon(assigned) or current.icon,
+				detail = current.name .. " active, assigned: " .. assignedName,
+			}
+		else
+			add("aura", "Aura", current, (assigned and registryIcon(assigned)) or registryIcon("AURA_DEVOTION"), false, false)
+		end
 	end
 	if s.checkDuplicateAura and not inCombat then
 		local dup = AS:GetDuplicateAura()
@@ -102,7 +126,30 @@ function M:Evaluate()
 		add("rf", "Righteous Fury", AS:GetByKey("RIGHTEOUS_FURY"), registryIcon("RIGHTEOUS_FURY"), true, false)
 	end
 	if s.checkBlessing and knowsAny("blessing") then
-		add("blessing", "Blessing", AS:GetBlessing(), registryIcon("BLESSING_MIGHT"), true, false)
+		local _, myClass = UnitClass("player")
+		local expected = myRow and PK.Blessings.AssignedFor({ [myId] = myRow }, myId, myClass, myId)
+		if expected then
+			-- Your row says which Blessing you give yourself.
+			local aura = AS:GetBlessingByKey(expected)
+			local entry = PK.Spells.byKey[expected]
+			local fallback = registryIcon(expected) or registryIcon("BLESSING_MIGHT")
+			if aura and aura.fromPlayer == false and AS:Remaining(aura) then
+				-- It's there, but another paladin cast it: yellow.
+				results[#results + 1] = {
+					id = "blessing",
+					label = "Blessing",
+					status = "wrong",
+					aura = aura,
+					icon = aura.icon or fallback,
+					remaining = AS:Remaining(aura),
+					detail = (entry and entry.names[1] or "Blessing") .. " is from another paladin, not you",
+				}
+			else
+				add("blessing", "Blessing", aura, fallback, true, false)
+			end
+		else
+			add("blessing", "Blessing", AS:GetBlessing(), registryIcon("BLESSING_MIGHT"), true, false)
+		end
 	end
 	return results
 end
@@ -141,7 +188,7 @@ function M:Render()
 	local shown = {}
 	for _, r in ipairs(results) do
 		if (s.showAll and r.status ~= "idle") or r.status == "missing" or r.status == "expiring"
-			or r.status == "duplicate" then
+			or r.status == "duplicate" or r.status == "wrong" then
 			shown[#shown + 1] = r
 		end
 	end
@@ -158,6 +205,8 @@ function M:Render()
 		icon.icon:SetTexture(r.icon or 134400)
 		if r.status == "missing" then
 			icon:SetState("missing")
+		elseif r.status == "wrong" then
+			icon:SetState("wrong")
 		else
 			icon:SetState("ready")
 		end
@@ -203,6 +252,9 @@ function M:PrintCheck(reason)
 			text = "|cffffd040" .. (r.aura and r.aura.name or "?") .. " (" .. formatTime(r.remaining) .. " left)|r"
 		elseif r.status == "idle" then
 			text = "|cff909090checked in combat|r"
+		elseif r.status == "wrong" then
+			problems = problems + 1
+			text = "|cffffd940" .. tostring(r.detail) .. "|r"
 		elseif r.status == "duplicate" then
 			problems = problems + 1
 			text = "|cffffd040" .. (r.aura and r.aura.name or "?") .. " is also running from " .. tostring(r.other)
