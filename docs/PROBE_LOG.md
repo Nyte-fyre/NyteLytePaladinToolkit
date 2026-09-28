@@ -285,3 +285,21 @@ covering spellbook flyouts (Blessings/Auras) and the C_Traits talent trees.
   updateInfo stays secret.
 - **Seal of Fury is a trained spell, learned by level 11:** spellID 1311649,
   in the Protection skill line.
+
+## Group probe (2026-09-27, Nyte Fyre level 18 + Testered Pally level 4)
+
+- **Names:** `UnitName("player")` returns *two* values, first and last name
+  ("Nyte", "Fyre"); the second value is normally the realm. So do
+  `UnitNameUnmodified` and `UnitFullName`. `GetUnitName("player", true)`
+  returns the full "Nyte Fyre". Chat and addon messages use the full name.
+  The addon shows the longest name any API returns, and identifies
+  players by GUID.
+- **Roles:** `UnitGroupRolesAssigned` works on party members and the player
+  ("DAMAGER" for both when no role is set), so tank-aware suggestions can
+  use it.
+- **Other players' buffs on you:** `sourceUnit` is **nil** unless you cast it
+  (Power Word: Fortitude from a priest -> nil). `isFromPlayerOrPlayerPet` is
+  readable (false for others). Duplicate-Aura detection uses "same Aura as
+  mine, not cast by me".
+- The Blessing sync between the two accounts: 34 rows accepted, identical
+  on both sides, no errors.

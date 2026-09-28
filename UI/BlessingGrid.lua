@@ -465,6 +465,7 @@ function Grid_OpenExceptions(paladin, class, anchorCell)
 	refreshPopup()
 end
 Grid.OpenExceptions = Grid_OpenExceptions
+Grid.popupRows = popupRows -- for tests and debugging
 
 function Grid:Toggle()
 	if not window then

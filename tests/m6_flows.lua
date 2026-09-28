@@ -80,6 +80,23 @@ P.BlessingGrid:Refresh()
 P.BlessingGrid.OpenExceptions(ME, "ROGUE")
 P.BlessingGrid:Refresh()
 assert(_G.NyteLytePaladinToolkitExceptions, "exceptions window built")
+-- Clicking the rogue's cell in the popup cycles: default -> first Blessing -> ... -> None -> default.
+local prow = P.BlessingGrid.popupRows[1]
+assert(prow.member and prow.member.guid == ROGUE2, "popup lists Stabby: " .. tostring(prow.member and prow.member.name))
+local click = prow.cell:GetScript("OnClick")
+click(prow.cell, "LeftButton")
+local first = BM:Effective()[ME].overrides[ROGUE2]
+assert(first and first ~= B.NONE, "first click sets a Blessing exception: " .. tostring(first))
+MOCK.ctrl = true
+click(prow.cell, "LeftButton")
+MOCK.ctrl = false
+assert(BM:Effective()[ME].overrides[ROGUE2] == nil, "ctrl-click steps back to the class default")
+click(prow.cell, "RightButton")
+assert(BM:Effective()[ME].overrides[ROGUE2] == B.NONE, "right-click from default goes to None")
+MOCK.shift = true
+click(prow.cell, "LeftButton")
+MOCK.shift = false
+assert(BM:Effective()[ME].overrides[ROGUE2] == nil, "shift-click clears")
 P.BlessingGrid:Hide()
 
 -- 5. Coverage: the rogue has nothing from anyone.
@@ -105,7 +122,7 @@ if not MOCK_NO_AURAS then
 			devotion = a
 		end
 	end
-	devotion.source = "party1"
+	devotion.fromOther = true -- another paladin's (stronger) Devotion Aura
 	MOCK.fire("UNIT_AURA", "player", {})
 	settle()
 	local dup
@@ -116,7 +133,7 @@ if not MOCK_NO_AURAS then
 	end
 	assert(dup and dup.status == "duplicate", "duplicate Aura detected")
 	slash("check")
-	devotion.source = nil
+	devotion.fromOther = nil
 	MOCK.fire("UNIT_AURA", "player", {})
 	settle()
 	for _, r in ipairs(BS:Evaluate()) do

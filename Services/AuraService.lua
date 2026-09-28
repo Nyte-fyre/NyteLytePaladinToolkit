@@ -175,8 +175,10 @@ function AS:GetPaladinAura()
 end
 
 -- Another paladin's Aura of the same kind as yours, on you. Auras of one
--- kind don't stack, so one of the two is wasted. Out of combat only (the
--- snapshot is frozen in combat). Returns that aura or nil.
+-- kind don't stack, so one of the two is wasted. Forever only reveals the
+-- caster (sourceUnit) when it's you, but "isFromPlayerOrPlayerPet" is
+-- readable (group probe, 2026-09-27): an Aura like yours that you didn't
+-- cast is someone else's. Out of combat only. Returns that aura or nil.
 function AS:GetDuplicateAura()
 	if self.frozen then
 		return nil
@@ -186,7 +188,7 @@ function AS:GetDuplicateAura()
 		return nil
 	end
 	return self:Find(function(a)
-		return a.name == mine.name and a.source ~= nil and a.source ~= "player"
+		return a.name == mine.name and (a.fromPlayer == false or (a.source ~= nil and a.source ~= "player"))
 	end)
 end
 
