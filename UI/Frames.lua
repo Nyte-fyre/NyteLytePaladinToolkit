@@ -82,9 +82,16 @@ function Frames:GetAnchor(module)
 	end
 	local label = mover:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	label:SetPoint("CENTER")
-	label:SetText(PK.Theme.InlineIcon(PK.Theme.ICON, 12) .. " " .. (Presets.MODULE_LABELS[module] or module))
 	mover:Hide()
 	anchor.mover = mover
+	anchor.moverLabel = label
+
+	-- Mouse wheel over an unlocked box resizes it.
+	anchor:SetScript("OnMouseWheel", function(self, delta)
+		if not PK.profile.locked and not (self.protected and PK.Compat.InCombat()) then
+			Frames:NudgeScale(self.module, delta > 0 and 1 or -1)
+		end
+	end)
 
 	self.anchors[module] = anchor
 	self:ApplyLayout(module)
@@ -109,11 +116,33 @@ function Frames:ApplyLayout(module)
 		end)
 		return
 	end
-	local scale = l.scale or 1
+	local scale = PK.Config.ClampScale(l.scale or 1)
 	anchor:SetScale(scale)
 	anchor:ClearAllPoints()
 	-- Offsets are stored in UIParent units; SetPoint uses the frame's own scale.
 	anchor:SetPoint(l.point or "CENTER", UIParent, l.point or "CENTER", (l.x or 0) / scale, (l.y or 0) / scale)
+	anchor.moverLabel:SetText(string.format("%s %s  %d%%", PK.Theme.InlineIcon(PK.Theme.ICON, 12),
+		Presets.MODULE_LABELS[module] or module, math.floor(scale * 100 + 0.5)))
+end
+
+-- Frame sizes (per spec, like positions) ------------------------------------------------------
+
+function Frames:GetScale(module)
+	local l = PK.Config:GetLayout(currentSpec(), module)
+	return PK.Config.ClampScale(l and l.scale or 1)
+end
+
+function Frames:SetScale(module, scale)
+	return PK.Config:SetScale(currentSpec(), module, scale)
+end
+
+function Frames:NudgeScale(module, steps)
+	return self:SetScale(module, self:GetScale(module) + steps * PK.Config.SCALE_STEP)
+end
+
+function Frames:DefaultScale(module)
+	local l = Presets.LayoutFor(currentSpec())[module]
+	return l and l.scale or 1
 end
 
 -- Shows movers (when unlocked) only for modules enabled in the current spec.
@@ -133,6 +162,7 @@ function Frames:Refresh()
 		elseif anchor then
 			self:ApplyLayout(module)
 			anchor:EnableMouse(unlocked and enabled or false)
+			anchor:EnableMouseWheel(unlocked and enabled or false)
 			if unlocked and enabled then
 				anchor.mover:Show()
 			else
@@ -147,7 +177,8 @@ function Frames:SetLocked(locked)
 	PK.profile.locked = locked and true or false
 	self:Refresh()
 	PK:Fire("PK_LOCK_CHANGED", PK.profile.locked)
-	PK:Print(locked and "frames locked." or "frames unlocked: drag the gold boxes, then /ptk lock.")
+	PK:Print(locked and "frames locked."
+		or "frames unlocked: drag the gold boxes, scroll the mouse wheel over one to resize it, then /ptk lock.")
 end
 
 function Frames:ToggleLock()
@@ -157,7 +188,7 @@ end
 function Frames:ResetPositions()
 	PK.Config:ResetLayout(currentSpec())
 	self:Refresh()
-	PK:Print("frame positions reset for " .. PK.SpecProfile.LABELS[currentSpec()] .. ".")
+	PK:Print("frame positions and sizes reset for " .. PK.SpecProfile.LABELS[currentSpec()] .. ".")
 end
 
 -- Alignment grid ----------------------------------------------------------------------------
@@ -369,4 +400,53 @@ PK:RegisterCommand("lock", function()
 end, "lock frames in place")
 PK:RegisterCommand("reset", function()
 	Frames:ResetPositions()
-end, "reset frame positions for the current spec")
+end, "reset frame positions and sizes for the current spec")
+
+-- Names accepted by /ptk scale.
+local SCALE_ALIASES = {
+	sentinel = "BuffSentinel", buffs = "BuffSentinel", buffsentinel = "BuffSentinel",
+	seal = "SealTracker", sealtracker = "SealTracker",
+	cd = "CooldownHUD", cooldowns = "CooldownHUD", hud = "CooldownHUD", cooldownhud = "CooldownHUD",
+	button = "BlessingManager", blessing = "BlessingManager", bless = "BlessingManager",
+	blessingmanager = "BlessingManager",
+	tank = "TankKit", tankkit = "TankKit",
+}
+
+local function listScales()
+	PK:Print("frame sizes for " .. PK.SpecProfile.LABELS[currentSpec()] .. ":")
+	for _, module in ipairs(Presets.MODULES) do
+		print(string.format("  %s: %d%%", Presets.MODULE_LABELS[module] or module,
+			math.floor(Frames:GetScale(module) * 100 + 0.5)))
+	end
+	print("  /ptk scale <sentinel|seal|cd|button|tank|all> <50-200>, or /ptk scale reset")
+	print("  Or /ptk unlock and scroll the mouse wheel over a gold box.")
+end
+
+PK:RegisterCommand("scale", function(args)
+	local which, value = args[1], args[2]
+	if which == "reset" then
+		for _, module in ipairs(Presets.MODULES) do
+			Frames:SetScale(module, Frames:DefaultScale(module))
+		end
+		PK:Print("frame sizes reset for " .. PK.SpecProfile.LABELS[currentSpec()] .. ".")
+		return
+	end
+	local modules
+	if which == "all" then
+		modules = Presets.MODULES
+	elseif which and SCALE_ALIASES[which] then
+		modules = { SCALE_ALIASES[which] }
+	end
+	local pct = value and tonumber((value:gsub("%%$", "")))
+	if not modules or not pct then
+		listScales()
+		return
+	end
+	for _, module in ipairs(modules) do
+		local s = Frames:SetScale(module, pct / 100)
+		PK:Print(string.format("%s: %d%%", Presets.MODULE_LABELS[module] or module, math.floor(s * 100 + 0.5)))
+	end
+	if PK.Compat.InCombat() then
+		PK:Print("the buff button resizes when combat ends.")
+	end
+end, "resize frames (e.g. /ptk scale button 150)")

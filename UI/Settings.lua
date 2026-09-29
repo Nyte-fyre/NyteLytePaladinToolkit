@@ -104,7 +104,8 @@ local OPTIONS = {
 		ms("CooldownHUD").direction = v and "DOWN" or "RIGHT"
 	end },
 }
-local statusText, lockButton, profileText
+local statusText, lockButton, profileText, scaleHeader
+local scaleRows = {}
 
 local function header(parent, text, y, x, width)
 	return PK.Theme.Header(parent, text, x or 16, y, width or 290)
@@ -169,7 +170,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 860)
+	content:SetSize(600, 900)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)
@@ -223,7 +224,7 @@ local function Build()
 		PK.Frames:ToggleLock()
 	end)
 	lockButton:SetPoint("TOPLEFT", 16, framesY - 20)
-	local reset = button(content, "Reset positions", 150, function()
+	local reset = button(content, "Reset layout", 150, function()
 		PK.Frames:ResetPositions()
 	end)
 	reset:SetPoint("LEFT", lockButton, "RIGHT", 8, 0)
@@ -249,6 +250,34 @@ local function Build()
 	cdNote:SetWidth(310)
 	cdNote:SetJustifyH("LEFT")
 	cdNote:SetText("Edit this spec's cooldown bar with /ptk cd (list, add, remove, reset).")
+
+	-- Frame sizes for the active spec (saved per spec, like positions).
+	local sizeY = framesY - 244
+	scaleHeader = header(content, "Frame size", sizeY)
+	for row, module in ipairs(Presets.MODULES) do
+		local y = sizeY - 22 - (row - 1) * 28
+		local label = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		label:SetPoint("TOPLEFT", 24, y - 6)
+		label:SetText(Presets.SHORT_LABELS[module] or module)
+		local minus = button(content, "-", 26, function()
+			PK.Frames:NudgeScale(module, IsShiftKeyDown and IsShiftKeyDown() and -5 or -1)
+		end)
+		minus:SetPoint("TOPLEFT", 170, y)
+		local value = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		value:SetPoint("LEFT", minus, "RIGHT", 4, 0)
+		value:SetWidth(48)
+		local plus = button(content, "+", 26, function()
+			PK.Frames:NudgeScale(module, IsShiftKeyDown and IsShiftKeyDown() and 5 or 1)
+		end)
+		plus:SetPoint("LEFT", value, "RIGHT", 4, 0)
+		scaleRows[module] = value
+	end
+	local sizeNote = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	sizeNote:SetPoint("TOPLEFT", 16, sizeY - 22 - #Presets.MODULES * 28 - 4)
+	sizeNote:SetWidth(310)
+	sizeNote:SetJustifyH("LEFT")
+	sizeNote:SetText("5% per click, 25% with Shift (50% to 200%). Or unlock frames and scroll the mouse "
+		.. "wheel over a gold box.")
 
 	-- Profile
 	local profileY = framesY - 64
@@ -317,6 +346,12 @@ function S:Refresh()
 		optionBoxes[i]:SetChecked(opt[2]() and true or false)
 	end
 	lockButton:SetText(PK.profile.locked and "Unlock frames" or "Lock frames")
+	for module, value in pairs(scaleRows) do
+		value:SetText(math.floor(PK.Frames:GetScale(module) * 100 + 0.5) .. "%")
+	end
+	if scaleHeader and scaleHeader.SetText and d then
+		scaleHeader:SetText("Frame size (" .. SP.LABELS[d.spec] .. ")")
+	end
 	profileText:SetText("Current profile: |cffffffff" .. tostring(PK.Config:GetProfileName()) .. "|r")
 end
 
@@ -370,6 +405,8 @@ PK:On("PK_PROFILE_CHANGED", S, refresh)
 PK:On("PK_MODULES_CHANGED", S, refresh)
 PK:On("PK_LOCK_CHANGED", S, refresh)
 PK:On("PK_SETTINGS_CHANGED", S, refresh)
+PK:On("PK_LAYOUT_CHANGED", S, refresh)
+PK:On("PK_SPEC_CHANGED", S, refresh)
 
 PK:RegisterCommand("config", function()
 	S:Open()

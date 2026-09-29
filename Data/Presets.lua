@@ -18,6 +18,15 @@ Presets.MODULE_LABELS = {
 	TankKit = "Tank Kit",
 }
 
+-- Short names for the frame-size rows.
+Presets.SHORT_LABELS = {
+	BuffSentinel = "Buff Sentinel",
+	SealTracker = "Seal Tracker",
+	CooldownHUD = "Cooldown bar",
+	BlessingManager = "Blessing buff button",
+	TankKit = "Tank Kit",
+}
+
 Presets.modules = {
 	holy = { BuffSentinel = true, SealTracker = true, CooldownHUD = true, BlessingManager = true, TankKit = false },
 	prot = { BuffSentinel = true, SealTracker = true, CooldownHUD = true, BlessingManager = true, TankKit = true },
