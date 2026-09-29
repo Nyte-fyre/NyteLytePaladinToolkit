@@ -309,6 +309,28 @@ function Config:SetLayout(spec, module, point, x, y)
 	end
 end
 
+-- Frame size, 50% to 200% in 5% steps. Positions are stored as the frame's
+-- center, so resizing keeps it centered where it was.
+Config.SCALE_MIN, Config.SCALE_MAX, Config.SCALE_STEP = 0.5, 2, 0.05
+
+function Config.ClampScale(scale)
+	if type(scale) ~= "number" or scale ~= scale then
+		return 1
+	end
+	scale = math.max(Config.SCALE_MIN, math.min(Config.SCALE_MAX, scale))
+	return math.floor(scale / Config.SCALE_STEP + 0.5) * Config.SCALE_STEP
+end
+
+function Config:SetScale(spec, module, scale)
+	local l = self:GetLayout(spec, module)
+	if not l then
+		return nil
+	end
+	l.scale = Config.ClampScale(scale)
+	PK:Fire("PK_LAYOUT_CHANGED", module, spec)
+	return l.scale
+end
+
 function Config:ResetLayout(spec)
 	PK.profile.layout[spec] = Presets.LayoutFor(spec)
 	PK:Fire("PK_LAYOUT_CHANGED", nil, spec)

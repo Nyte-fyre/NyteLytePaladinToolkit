@@ -192,4 +192,33 @@ MOCK.party = {}
 MOCK.fire("GROUP_ROSTER_UPDATE")
 settle()
 P.profile.blessing.assignments = {}
+-- Frame sizes: slash command, clamping, mouse wheel, reset.
+local F = P.Frames
+slash("scale button 150")
+assert(math.abs(F:GetScale("BlessingManager") - 1.5) < 1e-9, "button at 150%")
+slash("scale seal 500")
+assert(F:GetScale("SealTracker") == P.Config.SCALE_MAX, "clamped to 200%")
+slash("scale all 10%")
+for _, module in ipairs(P.Presets.MODULES) do
+	assert(F:GetScale(module) == P.Config.SCALE_MIN, "clamped to 50%: " .. module)
+end
+slash("scale all 100")
+slash("scale")
+slash("scale nonsense 120")
+assert(F:GetScale("TankKit") == 1, "unknown frame name changes nothing")
+F:SetLocked(false)
+local anchor = F:GetAnchor("BuffSentinel")
+anchor:GetScript("OnMouseWheel")(anchor, 1)
+assert(math.abs(F:GetScale("BuffSentinel") - 1.05) < 1e-9, "wheel up: +5%")
+F:SetLocked(true)
+anchor:GetScript("OnMouseWheel")(anchor, 1)
+assert(math.abs(F:GetScale("BuffSentinel") - 1.05) < 1e-9, "locked: wheel does nothing")
+-- A bad imported value never reaches the frame.
+P.Config:GetLayout(P.SpecProfile:GetSpec(), "CooldownHUD").scale = 40
+F:ApplyLayout("CooldownHUD")
+assert(F:GetScale("CooldownHUD") == P.Config.SCALE_MAX, "bad saved scale clamped")
+slash("scale reset")
+assert(F:GetScale("BuffSentinel") == F:DefaultScale("BuffSentinel"), "sizes reset")
+P.Settings:Refresh()
+
 M6_OK = true

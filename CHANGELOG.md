@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0
+
+- Resizable frames: every bar and the Blessing buff button can be sized
+  from 50% to 200%, saved per spec like positions. Three ways:
+  - Settings (`/ptk`) > Frame size: - / + buttons (5% per click, 25% with Shift).
+  - `/ptk unlock`, then scroll the mouse wheel over a gold box.
+  - `/ptk scale button 150`, `/ptk scale all 90`, `/ptk scale reset`
+    (names: sentinel, seal, cd, button, tank, all).
+- Frames resize around their center, so they stay where you put them.
+- "Reset layout" (and `/ptk reset`) now resets sizes along with positions.
+
 ## 0.7.0
 
 - Per-player exceptions (PallyPower style): right-click a class cell in the
