@@ -84,6 +84,100 @@ local function layoutIcon(i, icon, s)
 		dir == "LEFT" and "TOPRIGHT" or "TOPLEFT", x, y)
 end
 
+-- Reordering ------------------------------------------------------------------------------
+-- While frames are unlocked: click an icon to pick it up, then click the
+-- spot it should go (it takes that icon's place; the others shift over).
+-- Right-click or clicking it again cancels. Dragging still moves the bar.
+
+local picked -- list index of the picked-up icon
+
+local function clearPick()
+	picked = nil
+	for _, icon in ipairs(icons) do
+		if icon.pickGlow then
+			icon.pickGlow:Hide()
+		end
+	end
+end
+
+-- Moves entry `from` of this spec's list to position `to`.
+function M:MoveEntry(from, to)
+	local list = currentList()
+	if not list[from] or type(to) ~= "number" then
+		return false
+	end
+	to = math.max(1, math.min(#list, math.floor(to)))
+	if from ~= to then
+		table.insert(list, to, table.remove(list, from))
+		PK:Fire("PK_SETTINGS_CHANGED")
+	end
+	return true
+end
+
+local function onIconClick(icon, button)
+	if PK.profile.locked then
+		return
+	end
+	if button == "RightButton" or picked == icon.listIndex then
+		clearPick()
+	elseif not picked then
+		picked = icon.listIndex
+		icon.pickGlow:Show()
+	else
+		local from = picked
+		clearPick()
+		M:MoveEntry(from, icon.listIndex)
+	end
+end
+
+local function forwardToBar(script)
+	return function(self)
+		self.dragged = true
+		local bar = self:GetParent()
+		local fn = bar and bar:GetScript(script)
+		if fn then
+			fn(bar)
+		end
+	end
+end
+
+local function makeArrangeable(icon)
+	if not icon.pickGlow then
+		icon.pickGlow = icon:CreateTexture(nil, "OVERLAY")
+		icon.pickGlow:SetAllPoints()
+		icon.pickGlow:SetColorTexture(1, 0.85, 0.3, 0.45)
+		icon.pickGlow:SetBlendMode("ADD")
+	end
+	icon.pickGlow:SetShown(picked ~= nil and picked == icon.listIndex)
+	icon:EnableMouse(not PK.profile.locked)
+	icon:RegisterForDrag("LeftButton")
+	icon:SetScript("OnMouseDown", function(self)
+		self.dragged = false
+	end)
+	icon:SetScript("OnMouseUp", function(self, button)
+		if not self.dragged then
+			onIconClick(self, button)
+		end
+	end)
+	icon:SetScript("OnDragStart", forwardToBar("OnDragStart"))
+	icon:SetScript("OnDragStop", forwardToBar("OnDragStop"))
+	icon:SetScript("OnEnter", function(self)
+		if GameTooltip and not PK.profile.locked then
+			GameTooltip:SetOwner(self, "ANCHOR_TOP")
+			GameTooltip:SetText(PK.displayName)
+			GameTooltip:AddLine(picked and "Click to put the picked-up icon here. Right-click cancels."
+				or "Click to pick up this icon, then click where it should go.", 1, 1, 1, true)
+			GameTooltip:AddLine("Drag to move the whole bar.", 0.7, 0.7, 0.7, true)
+			GameTooltip:Show()
+		end
+	end)
+	icon:SetScript("OnLeave", function()
+		if GameTooltip then
+			GameTooltip:Hide()
+		end
+	end)
+end
+
 -- Rebuilds the icon list (spec change, list edit, spells learned).
 function M:Rebuild()
 	if not self.enabled then
@@ -96,16 +190,18 @@ function M:Rebuild()
 	end
 	icons = {}
 	local grouped = inGroup()
-	for _, entry in ipairs(currentList()) do
+	for index, entry in ipairs(currentList()) do
 		local spell = resolveEntry(entry)
 		local _, groupOnly = splitEntry(entry)
 		if spell and spell.spellID and (spell.known or s.showUnknown) and (grouped or not groupOnly) then
 			local icon = Frames:AcquireIcon(anchor, s.iconSize)
 			icon:SetSpell(spell.spellID)
 			icon.known = spell.known
+			icon.listIndex = index
 			icon.cooldown:SetHideCountdownNumbers(false)
 			icons[#icons + 1] = icon
 			layoutIcon(#icons, icon, s)
+			makeArrangeable(icon)
 		end
 	end
 	local size, spacing = s.iconSize or 36, s.spacing or 4
@@ -146,6 +242,10 @@ function M:OnEnable()
 	PK:On("PK_SPELLS_UPDATED", self, rebuild)
 	PK:On("PK_PROFILE_CHANGED", self, rebuild)
 	PK:On("PK_SETTINGS_CHANGED", self, rebuild)
+	PK:On("PK_LOCK_CHANGED", self, function()
+		clearPick()
+		rebuild()
+	end)
 	PK:RegisterEvent("SPELL_UPDATE_COOLDOWN", self, update)
 	PK:RegisterEvent("SPELL_UPDATE_USABLE", self, update)
 	PK:RegisterEvent("SPELL_UPDATE_CHARGES", self, update)
@@ -161,6 +261,8 @@ function M:OnDisable()
 	PK:Off("PK_SPELLS_UPDATED", self)
 	PK:Off("PK_PROFILE_CHANGED", self)
 	PK:Off("PK_SETTINGS_CHANGED", self)
+	PK:Off("PK_LOCK_CHANGED", self)
+	clearPick()
 	for _, ev in ipairs({ "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES",
 		"PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "GROUP_ROSTER_UPDATE" }) do
 		PK:UnregisterEvent(ev, self)
@@ -172,11 +274,17 @@ function M:OnDisable()
 end
 
 function M:OnSpecChanged()
+	clearPick()
 	self:Rebuild()
 end
 
 function M:IconCount()
 	return #icons
+end
+
+-- The bar's icons in display order (tests).
+function M:GetIcons()
+	return icons
 end
 
 -- spellID -> icon state, for tests and debugging.
@@ -258,18 +366,46 @@ PK:RegisterCommand("cd", function(args, raw)
 		end
 		PK:Print("not on the list: " .. name)
 		return
+	elseif sub == "move" and #raw >= 3 then
+		-- /ptk cd move <spell name> <position | first | last>
+		local where = args[#args]
+		local spellName = table.concat(raw, " ", 2, #raw - 1)
+		local to = where == "first" and 1 or where == "last" and #list or tonumber(where)
+		local key = findRegistryKey(spellName) or ("name:" .. spellName)
+		local from
+		for i, e in ipairs(list) do
+			if splitEntry(e) == key or plainLabel(e):lower() == spellName:lower() then
+				from = i
+				break
+			end
+		end
+		if not from then
+			PK:Print("not on the list: " .. spellName)
+			return
+		end
+		if not to then
+			PK:Print("usage: /ptk cd move <spell> <position, first or last>")
+			return
+		end
+		to = math.max(1, math.min(#list, math.floor(to)))
+		M:MoveEntry(from, to)
+		PK:Print(string.format("%s is now #%d of %d.", plainLabel(list[to]), to, #list))
+		return
 	elseif sub == "reset" then
 		PK.profile.cooldownLists[spec] = PK.Config.DeepCopy(PK.Presets.cooldownLists[spec])
 		PK:Print("cooldown list reset for " .. PK.SpecProfile.LABELS[spec] .. ".")
 	else
 		local names = {}
-		for _, e in ipairs(list) do
+		for i, e in ipairs(list) do
 			local spell = resolveEntry(e)
-			names[#names + 1] = entryLabel(e) .. ((spell and spell.known) and "" or " |cff808080(not learned)|r")
+			names[#names + 1] = i .. ". " .. entryLabel(e)
+				.. ((spell and spell.known) and "" or " |cff808080(not learned)|r")
 		end
 		PK:Print(PK.SpecProfile.LABELS[spec] .. " cooldowns: " .. (#names > 0 and table.concat(names, ", ") or "none"))
-		PK:Print("change with /ptk cd add <spell>, remove <spell>, group <spell> (toggle group-only), reset")
+		PK:Print("change with /ptk cd add <spell>, remove <spell>, move <spell> <position|first|last>, "
+			.. "group <spell> (toggle group-only), reset")
+		PK:Print("or /ptk unlock, click an icon on the bar, then click where it should go.")
 		return
 	end
 	PK:Fire("PK_SETTINGS_CHANGED")
-end, "list | add <spell> | remove <spell> | group <spell> | reset - edit this spec's cooldown bar")
+end, "list | add <spell> | remove <spell> | move <spell> <pos> | group <spell> | reset - edit this spec's cooldown bar")
