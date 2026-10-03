@@ -221,4 +221,74 @@ slash("scale reset")
 assert(F:GetScale("BuffSentinel") == F:DefaultScale("BuffSentinel"), "sizes reset")
 P.Settings:Refresh()
 
+-- Reordering the cooldown bar: /ptk cd move, and click-to-reorder while unlocked.
+local CD = P.modules.CooldownHUD
+local spec = P.SpecProfile:GetSpec()
+local function list()
+	return P.profile.cooldownLists[spec]
+end
+local function iconIds()
+	local out = {}
+	for _, icon in ipairs(CD:GetIcons()) do
+		out[#out + 1] = icon.spellID
+	end
+	return out
+end
+local cdSettings = P.Config:GetModuleSettings("CooldownHUD")
+cdSettings.showUnknown = true -- show every list entry as an icon
+P:Fire("PK_SETTINGS_CHANGED")
+local original = P.Config.DeepCopy(list())
+local n = #list()
+assert(n >= 3 and CD:IconCount() >= 2, "need icons to reorder")
+slash("cd move Lay on Hands first")
+assert(list()[1] == "LAY_ON_HANDS", "Lay on Hands first: " .. tostring(list()[1]))
+assert(#list() == n, "nothing lost")
+slash("cd move lay on hands last")
+assert(list()[n] == "LAY_ON_HANDS", "Lay on Hands last")
+slash("cd move Lay on Hands 2")
+assert(list()[2] == "LAY_ON_HANDS", "Lay on Hands second")
+slash("cd move Nonexistent Spell 1")
+slash("cd move Lay on Hands somewhere")
+assert(list()[2] == "LAY_ON_HANDS", "bad input changes nothing")
+slash("cd")
+
+-- Click mode: locked does nothing; unlocked pick + drop moves it.
+local icons = CD:GetIcons()
+local first, second = icons[1], icons[2]
+local before = iconIds()
+first:GetScript("OnMouseDown")(first)
+first:GetScript("OnMouseUp")(first, "LeftButton")
+assert(iconIds()[1] == before[1], "locked: clicks don't reorder")
+F:SetLocked(false)
+icons = CD:GetIcons()
+first, second = icons[1], icons[2]
+local moved = first.spellID
+first:GetScript("OnMouseDown")(first)
+first:GetScript("OnMouseUp")(first, "LeftButton") -- pick up
+second:GetScript("OnMouseDown")(second)
+second:GetScript("OnMouseUp")(second, "LeftButton") -- drop on the second
+assert(iconIds()[2] == moved and iconIds()[1] ~= moved, "first icon moved to second place")
+-- Right-click cancels a pick-up.
+icons = CD:GetIcons()
+icons[1]:GetScript("OnMouseUp")(icons[1], "LeftButton")
+icons[2]:GetScript("OnMouseUp")(icons[2], "RightButton")
+local after = iconIds()
+icons = CD:GetIcons()
+icons[2]:GetScript("OnMouseUp")(icons[2], "LeftButton")
+icons[2]:GetScript("OnMouseUp")(icons[2], "LeftButton") -- same icon again: cancel
+assert(table.concat(iconIds(), ",") == table.concat(after, ","), "cancel leaves the order alone")
+-- A drag is not a click.
+icons = CD:GetIcons()
+icons[1]:GetScript("OnMouseDown")(icons[1])
+icons[1]:GetScript("OnDragStart")(icons[1])
+icons[1]:GetScript("OnMouseUp")(icons[1], "LeftButton")
+icons[1]:GetScript("OnDragStop")(icons[1])
+icons[2]:GetScript("OnMouseDown")(icons[2])
+icons[2]:GetScript("OnMouseUp")(icons[2], "LeftButton")
+assert(table.concat(iconIds(), ",") ~= "" and CD:IconCount() == #after, "drag didn't pick anything up")
+F:SetLocked(true)
+P.profile.cooldownLists[spec] = original
+cdSettings.showUnknown = false
+P:Fire("PK_SETTINGS_CHANGED")
+
 M6_OK = true

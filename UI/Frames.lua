@@ -178,7 +178,8 @@ function Frames:SetLocked(locked)
 	self:Refresh()
 	PK:Fire("PK_LOCK_CHANGED", PK.profile.locked)
 	PK:Print(locked and "frames locked."
-		or "frames unlocked: drag the gold boxes, scroll the mouse wheel over one to resize it, then /ptk lock.")
+		or "frames unlocked: drag the gold boxes, scroll the mouse wheel over one to resize it, click two "
+			.. "cooldown icons to reorder them, then /ptk lock.")
 end
 
 function Frames:ToggleLock()
@@ -372,6 +373,14 @@ function Frames:ReleaseIcon(f)
 	f.cooldown:Clear()
 	f.spellID = nil
 	f:SetText("")
+	-- Undo anything a module added (e.g. the cooldown bar's click-to-reorder).
+	f:EnableMouse(false)
+	for _, script in ipairs({ "OnMouseDown", "OnMouseUp", "OnDragStart", "OnDragStop", "OnEnter", "OnLeave" }) do
+		f:SetScript(script, nil)
+	end
+	if f.pickGlow then
+		f.pickGlow:Hide()
+	end
 	pool[#pool + 1] = f
 end
 

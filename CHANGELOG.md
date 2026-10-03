@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0
+
+- Rearrange the cooldown bar to match your action bars (saved per spec):
+  - `/ptk unlock`, click an icon to pick it up (it glows), then click the
+    spot it should go. Right-click cancels. Dragging still moves the bar.
+  - Or `/ptk cd move Judgement first` (also `last` or a number, e.g.
+    `/ptk cd move Exorcism 3`). `/ptk cd` now lists the bar with numbers.
+
 ## 0.8.0
 
 - Resizable frames: every bar and the Blessing buff button can be sized
