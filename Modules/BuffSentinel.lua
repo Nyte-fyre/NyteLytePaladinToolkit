@@ -151,6 +151,41 @@ function M:Evaluate()
 			add("blessing", "Blessing", AS:GetBlessing(), registryIcon("BLESSING_MIGHT"), true, false)
 		end
 	end
+	-- Oath of Light (Holy talent), in a group: red when none is active,
+	-- yellow when it's on someone other than the tank (if roles are set).
+	local Oath = PK.Oath
+	if s.checkOath and Oath:IsKnown() and Oath:InGroup() then
+		local st = Oath:Get()
+		local icon = registryIcon("OATH_OF_LIGHT")
+		local tanks = Oath:Tanks()
+		if not st then
+			results[#results + 1] = { id = "oath", label = "Oath of Light", status = "missing", icon = icon }
+		else
+			local remaining = Oath:Remaining()
+			local shown = { name = "Oath of Light on " .. st.name .. (st.source == "cast" and "*" or ""), icon = icon }
+			if #tanks > 0 and not Oath:IsOnTank() then
+				results[#results + 1] = {
+					id = "oath",
+					label = "Oath of Light",
+					status = "wrong",
+					aura = shown,
+					icon = icon,
+					remaining = remaining,
+					detail = "Oath of Light is on " .. st.name .. ", tank: " .. tanks[1].name,
+				}
+			else
+				results[#results + 1] = {
+					id = "oath",
+					label = "Oath of Light",
+					-- A 5-minute buff: warn in the last minute, not the Blessing threshold.
+					status = remaining < math.min(threshold, 60) and "expiring" or "ok",
+					aura = shown,
+					icon = icon,
+					remaining = remaining,
+				}
+			end
+		end
+	end
 	return results
 end
 
@@ -281,6 +316,7 @@ function M:OnEnable()
 	PK:On("PK_SPELLS_UPDATED", self, render)
 	PK:On("PK_PROFILE_CHANGED", self, render)
 	PK:On("PK_SETTINGS_CHANGED", self, render)
+	PK:On("PK_OATH_UPDATED", self, render)
 	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, render)
 	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, render)
 	PK:RegisterEvent("READY_CHECK", self, function()
@@ -300,6 +336,7 @@ function M:OnDisable()
 	PK:Off("PK_SPELLS_UPDATED", self)
 	PK:Off("PK_PROFILE_CHANGED", self)
 	PK:Off("PK_SETTINGS_CHANGED", self)
+	PK:Off("PK_OATH_UPDATED", self)
 	PK:UnregisterEvent("READY_CHECK", self)
 	PK:UnregisterEvent("PLAYER_REGEN_DISABLED", self)
 	PK:UnregisterEvent("PLAYER_REGEN_ENABLED", self)

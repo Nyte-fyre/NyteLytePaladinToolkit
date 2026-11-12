@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.0
+
+- Oath of Light tracking (Holy talent), in Buff Sentinel while you're in a group:
+  - red when none of your Oaths is active,
+  - yellow when it's on someone other than the tank (when the game
+    reports group roles),
+  - a timer in its last minute.
+- Follows your casts in combat (marked `*`), and checks the real buff on
+  your group out of combat.
+- New `/ptk oath`: who has your Oath, how long is left, and who the tank is.
+- Option: Settings > "Buff Sentinel: Oath of Light on the tank (Holy)".
+
 ## 0.9.0
 
 - Rearrange the cooldown bar to match your action bars (saved per spec):

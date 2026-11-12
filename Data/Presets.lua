@@ -108,6 +108,7 @@ Presets.moduleSettings = {
 		checkAura = true,
 		checkDuplicateAura = true, -- warn when another paladin runs the same Aura
 		checkBlessing = true, -- warn if you have no Blessing at all
+		checkOath = true, -- Holy: Oath of Light missing, or not on the tank
 		rfSpecs = { holy = false, prot = true, ret = false }, -- warn about Righteous Fury in these specs
 		iconSize = 32,
 	},

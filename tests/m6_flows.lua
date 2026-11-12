@@ -291,4 +291,81 @@ P.profile.cooldownLists[spec] = original
 cdSettings.showUnknown = false
 P:Fire("PK_SETTINGS_CHANGED")
 
+-- Oath of Light: tracked from your casts and confirmed by group scans.
+local OATH_ID = 900200
+table.insert(MOCK.book, { name = "Oath of Light", spellID = OATH_ID, itemType = 1 })
+P.SpellRegistry:Refresh()
+local Oath = P.Oath
+assert(Oath:IsKnown(), "Oath of Light learned")
+local function oathStatus()
+	for _, r in ipairs(BS:Evaluate()) do
+		if r.id == "oath" then
+			return r.status, r
+		end
+	end
+end
+assert(oathStatus() == nil, "solo: no Oath check")
+MOCK.inGroup = true
+MOCK.party = {
+	{ unit = "party1", name = "Beefy", class = "WARRIOR", guid = TANK, role = "TANK" },
+	{ unit = "party2", name = "Stabby", class = "ROGUE", guid = ROGUE2 },
+}
+MOCK.unitAuras = { party1 = {}, party2 = {} }
+MOCK.fire("GROUP_ROSTER_UPDATE")
+settle()
+assert(oathStatus() == "missing", "in a group with no Oath: red")
+local function cast(target, castId)
+	MOCK.fire("UNIT_SPELLCAST_SENT", "player", target, castId, OATH_ID)
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", castId, OATH_ID)
+end
+cast("Stabby", "c1")
+local st, r = oathStatus()
+assert(st == "wrong" and r.detail:find("Stabby", 1, true) and r.detail:find("Beefy", 1, true),
+	"Oath on the rogue while Beefy tanks: yellow")
+-- Recast on the tank in combat: followed from the cast events alone.
+MOCK.combat = true
+cast("Beefy", "c2")
+st, r = oathStatus()
+assert(st == "ok" and Oath:Get().name == "Beefy" and Oath:Get().source == "cast", "in-combat recast on the tank")
+assert(math.abs(Oath:Remaining() - 300) < 1, "default 5 minute timer")
+MOCK.combat = false
+if not MOCK_NO_AURAS then
+	-- Out of combat the scan confirms it with the real timer and duration.
+	MOCK.unitAuras.party1 = { { name = "Oath of Light", spellId = OATH_ID, duration = 240,
+		expirationTime = GetTime() + 200, mine = true } }
+	P.Roster:Scan()
+	assert(Oath:Get().source == "aura" and math.abs(Oath:Remaining() - 200) < 1, "aura timer wins")
+	assert(P.db.oathDuration == 240, "duration learned")
+	-- Last minute: expiring.
+	MOCK.unitAuras.party1[1].expirationTime = GetTime() + 30
+	P.Roster:Scan()
+	assert(oathStatus() == "expiring", "last minute: expiring")
+	-- Another paladin's Oath on the tank isn't yours.
+	MOCK.unitAuras.party1 = { { name = "Oath of Light", spellId = OATH_ID, duration = 240,
+		expirationTime = GetTime() + 200 } }
+	P.Roster:Scan()
+	assert(Oath:Get() == nil and oathStatus() == "missing", "someone else's Oath doesn't count; yours is gone")
+end
+-- No roles assigned: any target is fine.
+MOCK.party[1].role = nil
+MOCK.fire("GROUP_ROSTER_UPDATE")
+settle()
+cast("Stabby", "c3")
+assert(oathStatus() == "ok", "no tank role known: Oath on anyone is fine")
+slash("oath")
+slash("check")
+P.db.oathDuration = nil
+Oath.state = nil
+for i = #MOCK.book, 1, -1 do
+	if MOCK.book[i].spellID == OATH_ID then
+		table.remove(MOCK.book, i)
+	end
+end
+P.SpellRegistry:Refresh()
+MOCK.unitAuras = {}
+MOCK.inGroup = false
+MOCK.party = {}
+MOCK.fire("GROUP_ROSTER_UPDATE")
+settle()
+
 M6_OK = true

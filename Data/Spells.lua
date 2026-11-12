@@ -84,6 +84,8 @@ S.list = {
 	{ key = "CRUSADE", names = { "Crusade" }, category = "talent", spec = "ret" },
 	{ key = "CHAMPION_OF_THE_LIGHT", names = { "Champion of the Light" }, category = "talent", spec = "ret" },
 	{ key = "HOLY_SHIELD", names = { "Holy Shield" }, category = "talent", spec = "prot" },
+	-- Holy talent (Forever launch): one ally at a time, 5 min, boosts your Holy Light on them.
+	{ key = "OATH_OF_LIGHT", names = { "Oath of Light" }, category = "talent", spec = "holy", verify = true },
 }
 
 S.byKey = {}

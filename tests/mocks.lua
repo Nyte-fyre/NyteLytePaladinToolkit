@@ -509,7 +509,9 @@ if not MOCK_NO_AURAS then
 				if not a or MOCK.combat then
 					return nil
 				end
-				return { name = a.name, spellId = a.spellId, duration = a.duration, expirationTime = a.expirationTime }
+				-- sourceUnit is "player" only for your own casts (a.mine).
+				return { name = a.name, spellId = a.spellId, duration = a.duration, expirationTime = a.expirationTime,
+					sourceUnit = a.mine and "player" or nil }
 			end
 			local a = MOCK.auras[i]
 			if not a or MOCK.combat then

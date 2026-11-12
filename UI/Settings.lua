@@ -37,6 +37,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("BuffSentinel").checkDuplicateAura = v
 	end },
+	{ "Buff Sentinel: Oath of Light on the tank (Holy)", function()
+		return ms("BuffSentinel").checkOath
+	end, function(v)
+		ms("BuffSentinel").checkOath = v
+	end },
 	{ "Righteous Fury warning as Protection", function()
 		return ms("BuffSentinel").rfSpecs.prot
 	end, function(v)
@@ -170,7 +175,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 900)
+	content:SetSize(600, 930)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)

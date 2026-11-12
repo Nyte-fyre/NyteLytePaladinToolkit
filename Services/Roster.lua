@@ -60,18 +60,40 @@ local function safeCall(fn, ...)
 	return v
 end
 
+-- Names your Oath of Light can show up as (registry + localized name).
+local function oathNames()
+	local names = {}
+	for _, n in ipairs(PK.Spells.byKey.OATH_OF_LIGHT and PK.Spells.byKey.OATH_OF_LIGHT.names or {}) do
+		names[n] = true
+	end
+	local r = PK.SpellRegistry:Get("OATH_OF_LIGHT")
+	if r and r.name then
+		names[r.name] = true
+	end
+	return names
+end
+
 -- Blessings on a unit as { key = expirationTime } (0 = no expiry), or nil
--- if the unit's buffs can't be read.
-local function readBlessings(unit, nameMap)
+-- if the unit's buffs can't be read. Second return: your own Oath of Light
+-- on them as { expirationTime, duration, spellID }, if any.
+local function readBlessings(unit, nameMap, oaths)
 	local list, _, err = Compat.GetAuras(unit, "HELPFUL")
 	if err then
 		return nil
 	end
-	local set = {}
+	local set, oath = {}, nil
 	for _, a in ipairs(list) do
 		local name = Secrets.SafeString(select(2, Secrets.Field(a, "name")))
 		if not name then
 			return nil
+		end
+		-- Only "player" when you cast it (Forever hides other casters).
+		if oaths[name] and Secrets.SafeString(select(2, Secrets.Field(a, "sourceUnit"))) == "player" then
+			oath = {
+				expirationTime = Secrets.SafeNumber(select(2, Secrets.Field(a, "expirationTime"))) or 0,
+				duration = Secrets.SafeNumber(select(2, Secrets.Field(a, "duration"))),
+				spellID = Secrets.SafeNumber(select(2, Secrets.Field(a, "spellId"))),
+			}
 		end
 		local key = nameMap[name]
 		if key then
@@ -82,14 +104,14 @@ local function readBlessings(unit, nameMap)
 			end
 		end
 	end
-	return set
+	return set, oath
 end
 
 function Roster:Scan()
 	if Compat.InCombat() then
 		return false
 	end
-	local nameMap = blessingNameMap()
+	local nameMap, oaths = blessingNameMap(), oathNames()
 	local members, paladins = {}, {}
 	for _, unit in ipairs(units()) do
 		if safeCall(UnitExists, unit) then
@@ -112,8 +134,8 @@ function Roster:Scan()
 					dead = dead,
 					visible = visible,
 					usable = online and not dead and visible,
-					buffs = readBlessings(unit, nameMap),
 				}
+				m.buffs, m.myOath = readBlessings(unit, nameMap, oaths)
 				members[#members + 1] = m
 				if class == "PALADIN" then
 					paladins[#paladins + 1] = m
