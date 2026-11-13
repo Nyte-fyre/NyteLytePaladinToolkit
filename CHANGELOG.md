@@ -13,7 +13,9 @@
 - Option: Settings > "Buff Sentinel: Oath of Light on the tank (Holy)".
 - Holy Seal reminders, next to the Seal Tracker bar (replace the "No
   Seal" warning for Holy):
-  - **Light**: you're targeting a boss in a dungeon or raid, your
+  - **Light**: you're targeting an enemy during a boss fight in a dungeon
+    or raid (Forever's dungeon bosses look like normal elites, so the
+    boss encounter is what counts), your
     Judgement of Light isn't on it, and Seal of Light isn't up. Followed
     from your own Judgements (other paladins' can't be seen in combat).
   - **Mana**: your mana is at or under 35% and Seal of Wisdom isn't up.

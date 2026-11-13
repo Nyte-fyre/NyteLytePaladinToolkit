@@ -421,6 +421,11 @@ if not MOCK_NO_AURAS then
 	-- A trash target: no boss.
 	MOCK.targetLevel = nil
 	assert(HS:Reminder() == nil, "not a boss, Wisdom up: no reminder")
+	-- Forever's dungeon bosses are plain elites: the encounter marks them.
+	MOCK.fire("ENCOUNTER_START", 444, "Interrogator Vishas", 1, 5)
+	assert(HS:TargetIsBoss() and HS:Reminder() == "light", "elite during an encounter: boss")
+	MOCK.fire("ENCOUNTER_END", 444, "Interrogator Vishas", 1, 5, 1)
+	assert(not HS:TargetIsBoss(), "encounter over: not a boss")
 	ST:Render()
 	MOCK.combat = false
 	MOCK.fire("PLAYER_REGEN_ENABLED")

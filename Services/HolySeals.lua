@@ -64,8 +64,10 @@ end
 
 -- Boss context ----------------------------------------------------------------------------
 
--- In a dungeon or raid, targeting a boss? Bosses: level -1 / "worldboss",
--- or the target is one of the encounter's boss units (boss1..boss5).
+-- In a dungeon or raid, targeting a boss? Bosses: anything attackable
+-- during a boss encounter (ENCOUNTER_START..END; Forever's dungeon bosses
+-- are plain "elite" with a normal level and no boss1 unit, seen in Scarlet
+-- Monastery), level -1 / "worldboss", or one of the boss1..boss5 units.
 function HS:TargetIsBoss()
 	local okI, inInstance, instanceType = pcall(IsInInstance)
 	if not okI or Compat.IsSecret(inInstance) or not inInstance or Compat.IsSecret(instanceType)
@@ -77,7 +79,7 @@ function HS:TargetIsBoss()
 	end
 	local classification = safe(UnitClassification, "target")
 	local level = safe(UnitLevel, "target")
-	local isBoss = classification == "worldboss" or level == -1
+	local isBoss = HS.encounter ~= nil or classification == "worldboss" or level == -1
 	if not isBoss then
 		for i = 1, 5 do
 			if safe(UnitExists, "boss" .. i) and safe(UnitIsUnit, "target", "boss" .. i) then
@@ -93,8 +95,10 @@ function HS:TargetIsBoss()
 		level = describe(UnitLevel and select(2, pcall(UnitLevel, "target"))),
 		boss1 = safe(UnitExists, "boss1") and true or false,
 		instanceType = instanceType,
+		encounter = HS.encounter,
 		isBoss = isBoss,
-	}, "boss:" .. tostring(name) .. ":" .. tostring(Compat.InCombat()))
+	}, "boss:" .. tostring(name) .. ":" .. tostring(classification) .. ":" .. tostring(level) .. ":"
+		.. tostring(HS.encounter) .. ":" .. tostring(Compat.InCombat()))
 	return isBoss
 end
 
@@ -154,9 +158,11 @@ PK:RegisterEvent("PLAYER_TARGET_CHANGED", HS, function()
 end)
 PK:RegisterEvent("ENCOUNTER_START", HS, function(_, _, encounterID, encounterName)
 	log("encounterStart", { id = describe(encounterID), name = describe(encounterName) })
+	HS.encounter = Secrets.SafeString(encounterName) or "boss"
 	PK:Fire("PK_HOLY_SEALS_UPDATED")
 end)
 PK:RegisterEvent("ENCOUNTER_END", HS, function()
+	HS.encounter = nil
 	HS.jol = nil
 	PK:Fire("PK_HOLY_SEALS_UPDATED")
 end)
