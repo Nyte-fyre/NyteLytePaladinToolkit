@@ -28,6 +28,11 @@
     last 5.
   - In combat, red when none is up.
   - Followed from your own casts (marked `*`); it lasts 30 seconds.
+- Blessing grid: in a party, any paladin can now change anyone's
+  Blessings (and Auto-suggest covers everyone). In a raid it's still only
+  your own row, unless you're the raid leader or an assistant.
+- Fixed the small class icons next to the buff button and in the Blessing
+  grid header, which showed the wrong slice of an old texture.
 - Buff Sentinel's default spot is a little higher so its icons no longer
   touch the Seal Tracker (frames you've moved stay where they are).
 

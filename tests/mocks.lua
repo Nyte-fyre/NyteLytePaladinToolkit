@@ -241,7 +241,7 @@ function IsInGroup()
 	return MOCK.inGroup == true
 end
 function IsInRaid()
-	return false
+	return MOCK.inRaid == true
 end
 function InCombatLockdown()
 	return MOCK.combat

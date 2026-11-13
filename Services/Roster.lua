@@ -170,6 +170,18 @@ function Roster:IsLeaderOrAssist(id)
 	return false
 end
 
+-- May this player (GUID or name) change other paladins' Blessing rows?
+-- In a party, anyone in it can; in a raid, only the leader and assistants.
+function Roster:CanEditAnyRow(id)
+	if IsInRaid and IsInRaid() then
+		return self:IsLeaderOrAssist(id)
+	end
+	if not (IsInGroup and IsInGroup()) then
+		return self:IsLeaderOrAssist(id)
+	end
+	return self:Find(id) ~= nil or id == Compat.UnitGUID("player") or id == Compat.UnitDisplayName("player")
+end
+
 -- Range check for casting `spellName` on unit: true, false, or nil if unknown.
 function Roster:InRange(spellName, unit)
 	if unit == "player" then

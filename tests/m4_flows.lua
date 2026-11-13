@@ -107,11 +107,21 @@ assert(BM.legacy.Oldie == "0.5.7", "old version noticed")
 local A = P.profile.blessing.assignments
 receive("ROW|1|100|" .. TANK .. "|RE|WA=KI,RO=KI,MA=WI", TANK_SENDER)
 assert(A[TANK] and A[TANK].classes.WARRIOR == "BLESSING_KINGS" and A[TANK].aura == "AURA_RETRIBUTION", "own row accepted")
+-- In a raid, only the leader/assistants can set someone else's row.
+MOCK.inRaid = true
 receive("ROW|1|100|" .. ME .. "|DE|WA=MI", TANK_SENDER)
-assert(A[ME] == nil, "non-leader can't set our row")
+assert(A[ME] == nil, "raid: non-leader can't set our row")
+assert(not BM:CanEdit(TANK), "raid: we can't edit their row either")
 MOCK.leader = "party1"
 receive("ROW|1|100|" .. ME .. "|DE|WA=MI,RO=MI", TANK_SENDER)
-assert(A[ME] and A[ME].classes.ROGUE == "BLESSING_MIGHT", "leader can set our row")
+assert(A[ME] and A[ME].classes.ROGUE == "BLESSING_MIGHT", "raid leader can set our row")
+MOCK.leader = nil
+MOCK.inRaid = false
+-- In a party, anyone can.
+assert(BM:CanEdit(TANK), "party: we can edit their row")
+receive("ROW|2|100|" .. ME .. "|DE|WA=MI,RO=MI", TANK_SENDER)
+assert(A[ME].classes.ROGUE == "BLESSING_MIGHT", "party: non-leader can set our row")
+MOCK.leader = "party1"
 receive("ROW|1|50|" .. ME .. "|DE|WA=WI", TANK_SENDER)
 assert(A[ME].classes.WARRIOR == "BLESSING_MIGHT", "older update ignored")
 MOCK.leader = nil
@@ -128,10 +138,13 @@ receive(string.rep("A", 300), TANK_SENDER)
 receive("ROW|9|999|" .. ME .. "|DE|WA=WI", TANK_SENDER, "WHISPER")
 assert(A[ME].classes.WARRIOR == "BLESSING_MIGHT", "garbage/whispers ignored")
 
--- Local edits: our row yes, theirs no (we aren't leader).
+-- Local edits: our row yes; theirs only in a party, or as raid leader/assist.
 MOCK.sent = {}
 assert(BM:SetAssignment(ME, "MAGE", "BLESSING_WISDOM") == true)
-assert(BM:SetAssignment(TANK, "MAGE", "BLESSING_MIGHT") == false, "can't edit another paladin's row")
+MOCK.inRaid = true
+assert(BM:SetAssignment(TANK, "MAGE", "BLESSING_MIGHT") == false, "raid: can't edit another paladin's row")
+MOCK.inRaid = false
+assert(BM:CanEdit(TANK), "party: can edit another paladin's row")
 flush()
 local row = lastSentStarting("ROW|")
 assert(row and row.text:find("|" .. ME .. "|", 1, true) and row.text:find("MA=WI", 1, true), "edit synced: " .. tostring(row and row.text))
@@ -179,14 +192,19 @@ MOCK.fire("ENCOUNTER_END", 1, "Boss", 1, 10, 1)
 flush()
 assert(lastSentStarting("ROW|"), "sent after the encounter")
 
--- Auto-suggest as a non-leader only changes our row.
+-- Auto-suggest in a raid as a non-leader only changes our row.
 local theirs = A[TANK].seq
+MOCK.inRaid = true
 BM:ApplySuggestion()
-assert(A[TANK].seq == theirs, "other rows untouched when not leader")
+assert(A[TANK].seq == theirs, "raid: other rows untouched when not leader")
 MOCK.leader = "player"
 BM:ApplySuggestion()
-assert(A[TANK].seq == theirs + 1, "leader's suggestion covers everyone")
+assert(A[TANK].seq == theirs + 1, "raid leader's suggestion covers everyone")
 MOCK.leader = nil
+MOCK.inRaid = false
+-- In a party anyone's suggestion covers everyone.
+BM:ApplySuggestion()
+assert(A[TANK].seq == theirs + 2, "party: suggestion covers everyone")
 
 -- Grid and announce.
 slash("bless")

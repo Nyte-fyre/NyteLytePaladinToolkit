@@ -32,6 +32,27 @@ Theme.hex = {
 	ok = "ff9be070",
 }
 
+-- Shows a class icon on a texture. The old character-create sheet
+-- (UI-CharacterCreate-Classes + CLASS_ICON_TCOORDS) doesn't line up on
+-- Forever's modern client, so use the class atlas, else the ClassIcon_ file.
+function Theme.SetClassIcon(tex, class)
+	if type(class) ~= "string" then
+		return false
+	end
+	local atlas = "classicon-" .. class:lower()
+	if tex.SetAtlas and C_Texture and C_Texture.GetAtlasInfo then
+		local ok, info = pcall(C_Texture.GetAtlasInfo, atlas)
+		if ok and info then
+			tex:SetTexCoord(0, 1, 0, 1)
+			tex:SetAtlas(atlas)
+			return true
+		end
+	end
+	tex:SetTexture("Interface\\Icons\\ClassIcon_" .. class:sub(1, 1) .. class:sub(2):lower())
+	tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+	return true
+end
+
 function Theme.Color(name, text)
 	return "|c" .. (Theme.hex[name] or Theme.hex.light) .. text .. "|r"
 end

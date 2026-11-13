@@ -3,7 +3,8 @@ local _, PK = ...
 -- Blessing Manager: PallyPower-style Blessing and Aura coordination.
 --  * Assignments: which Blessing each paladin gives each class, and each
 --    paladin's Aura (edited in the grid, UI/BlessingGrid.lua, /ptk bless).
---    You edit your own row; the group leader/assistants can edit any row.
+--    In a party anyone can edit any row; in a raid, your own row only,
+--    unless you're the raid leader or an assistant.
 --  * Sync with other paladins running the addon through addon messages
 --    (Services/Comm.lua: out of combat, outside encounters, party/raid only).
 --  * The buff button: a secure action button that casts your assigned
@@ -142,13 +143,13 @@ function M:Effective()
 end
 
 function M:CanEdit(paladin)
-	return paladin == me() or Roster:IsLeaderOrAssist(me())
+	return paladin == me() or Roster:CanEditAnyRow(me())
 end
 
 -- Local edit of one cell (class = nil and aura given edits the Aura).
 function M:SetAssignment(paladin, class, blessingKey, auraKey)
 	if not self:CanEdit(paladin) then
-		PK:Print("only the group leader or an assistant can change another paladin's Blessings.")
+		PK:Print("in a raid, only the raid leader or an assistant can change another paladin's Blessings.")
 		return false
 	end
 	local cur = assignments()[paladin] or self:Effective()[paladin] or { classes = {} }
@@ -164,7 +165,7 @@ function M:SetAssignment(paladin, class, blessingKey, auraKey)
 	else
 		row.aura = auraKey
 	end
-	B.ApplyRow(assignments(), paladin, row, { sender = me(), senderIsLeader = Roster:IsLeaderOrAssist(me()) })
+	B.ApplyRow(assignments(), paladin, row, { sender = me(), senderIsLeader = Roster:CanEditAnyRow(me()) })
 	Comm:Send(B.EncodeRow(paladin, assignments()[paladin]), "ROW:" .. paladin)
 	PK:Fire("PK_BLESSINGS_CHANGED")
 	return true
@@ -174,7 +175,7 @@ end
 -- key: a blessing key, or B.NONE for "don't buff this player".
 function M:SetOverride(paladin, target, key)
 	if not self:CanEdit(paladin) then
-		PK:Print("only the group leader or an assistant can change another paladin's Blessings.")
+		PK:Print("in a raid, only the raid leader or an assistant can change another paladin's Blessings.")
 		return false
 	end
 	local cur = assignments()[paladin] or self:Effective()[paladin] or { classes = {} }
@@ -192,7 +193,7 @@ function M:SetOverride(paladin, target, key)
 		return false
 	end
 	row.overrides[target] = key
-	B.ApplyRow(assignments(), paladin, row, { sender = me(), senderIsLeader = Roster:IsLeaderOrAssist(me()) })
+	B.ApplyRow(assignments(), paladin, row, { sender = me(), senderIsLeader = Roster:CanEditAnyRow(me()) })
 	Comm:Send(B.EncodeRow(paladin, assignments()[paladin]), "ROW:" .. paladin)
 	PK:Fire("PK_BLESSINGS_CHANGED")
 	return true
@@ -235,7 +236,7 @@ function M:ApplySuggestion()
 		list[#list + 1] = { name = name, blessings = blessings, auras = auras }
 	end
 	local suggestion = B.Suggest(list, { tanks = self:Tanks() })
-	local leader = Roster:IsLeaderOrAssist(me())
+	local leader = Roster:CanEditAnyRow(me())
 	local changed = 0
 	for name, sug in pairs(suggestion) do
 		if name == me() or leader then
@@ -347,7 +348,7 @@ function M:OnMessage(text, sender, raw)
 			return
 		end
 		local ok, why = B.ApplyRow(assignments(), msg.paladin, msg,
-			{ sender = from, senderIsLeader = Roster:IsLeaderOrAssist(from) })
+			{ sender = from, senderIsLeader = Roster:CanEditAnyRow(from) })
 		if ok then
 			rs.accepted = rs.accepted + 1
 			PK:Fire("PK_BLESSINGS_CHANGED")
@@ -502,9 +503,7 @@ function M:UpdateButtonText()
 		targetText:SetText(Theme.Color("dim", "All blessed"))
 		return
 	end
-	local coords = _G.CLASS_ICON_TCOORDS and _G.CLASS_ICON_TCOORDS[n.class]
-	if coords then
-		classIcon:SetTexCoord(unpack(coords))
+	if Theme.SetClassIcon(classIcon, n.class) then
 		classIcon:Show()
 	else
 		classIcon:Hide()
@@ -563,7 +562,6 @@ local function buildButton()
 	classIcon = anchor:CreateTexture(nil, "ARTWORK")
 	classIcon:SetSize(16, 16)
 	classIcon:SetPoint("TOPLEFT", button, "TOPRIGHT", 8, -1)
-	classIcon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
 	classIcon:Hide()
 	targetText = anchor:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	targetText:SetPoint("LEFT", classIcon, "RIGHT", 4, 0)

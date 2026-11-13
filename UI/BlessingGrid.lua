@@ -7,7 +7,7 @@ local _, PK = ...
 -- instead of Salvation on the tank, or None); cells with exceptions show a
 -- small gold mark. Below the rows: who in the group is missing a Blessing
 -- from any paladin. Two paladins on the same Aura are highlighted red.
--- Rows you can't edit (other paladins, unless you're leader or assistant)
+-- Rows you can't edit (in a raid: other paladins, unless you're leader or assistant)
 -- are dimmed. Opened with /ptk bless or the small icon next to the buff button.
 
 local B = PK.Blessings
@@ -154,7 +154,7 @@ local function makeCell(parent, row, class)
 			GameTooltip:AddLine("Click: next, Ctrl-click: previous, Shift-click: clear"
 				.. (self.class and ", right-click: player exceptions." or "."), 0.7, 0.7, 0.7, true)
 		else
-			GameTooltip:AddLine("Only this paladin or the group leader/assistants can change it.", 0.7, 0.7, 0.7, true)
+			GameTooltip:AddLine("In a raid, only this paladin or the raid leader/assistants can change it.", 0.7, 0.7, 0.7, true)
 		end
 		GameTooltip:Show()
 	end)
@@ -180,8 +180,7 @@ local function build()
 		if coords and coords[class] then
 			h = window:CreateTexture(nil, "ARTWORK")
 			h:SetSize(CELL - 6, CELL - 6)
-			h:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
-			h:SetTexCoord(unpack(coords[class]))
+			Theme.SetClassIcon(h, class)
 			h:SetPoint("TOPLEFT", x + 3, TOP + CELL)
 		else
 			h = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
