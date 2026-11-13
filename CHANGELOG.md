@@ -11,6 +11,10 @@
   your group out of combat.
 - New `/ptk oath`: who has your Oath, how long is left, and who the tank is.
 - Option: Settings > "Buff Sentinel: Oath of Light on the tank (Holy)".
+- Holy only counts the healer Seals: Seal of Wisdom (mana) and Seal of
+  Light. Before you learn either, Holy shows no Seal at all (no "No Seal"
+  nagging). A damage Seal as Holy shows yellow in combat, naming the ones
+  to use. Option: "Holy: only Seal of Wisdom / Seal of Light count".
 - Buff Sentinel's default spot is a little higher so its icons no longer
   touch the Seal Tracker (frames you've moved stay where they are).
 

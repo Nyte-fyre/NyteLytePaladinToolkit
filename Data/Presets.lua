@@ -118,6 +118,7 @@ Presets.moduleSettings = {
 		showEcho = true, -- Twist of Light Echo (Ret talent) next to the Seal
 		warnSeconds = 5, -- in combat, warn this long before the Seal runs out (0 = off)
 		warnSound = false,
+		healerSealsOnly = true, -- Holy: only Seal of Wisdom / Seal of Light count
 	},
 	BlessingManager = {
 		showWhenSolo = true, -- show the buff button when not in a group

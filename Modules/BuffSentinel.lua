@@ -76,9 +76,25 @@ function M:Evaluate()
 		}
 	end
 
-	if s.checkSeal and knowsAny("seal") then
+	local allowedSeals = AS:AllowedSeals()
+	if s.checkSeal and (allowedSeals and next(allowedSeals) or (not allowedSeals and knowsAny("seal"))) then
 		local seal = AS:GetSeal()
-		add("seal", "Seal", seal, registryIcon("SEAL_RIGHTEOUSNESS"), false, true)
+		local fallback = registryIcon(allowedSeals and (allowedSeals.SEAL_WISDOM and "SEAL_WISDOM" or "SEAL_LIGHT")
+			or "SEAL_RIGHTEOUSNESS")
+		if seal and allowedSeals and not allowedSeals[AS.SealKey(seal) or ""] and inCombat then
+			-- Holy with a damage Seal up (checked in combat, like a missing Seal).
+			results[#results + 1] = {
+				id = "seal",
+				label = "Seal",
+				status = "wrong",
+				aura = seal,
+				icon = fallback or seal.icon,
+				detail = seal.name .. " active, healers use " .. AS:AllowedSealText(),
+			}
+		else
+			add("seal", "Seal", (not allowedSeals or allowedSeals[AS.SealKey(seal) or ""]) and seal or nil,
+				fallback, false, true)
+		end
 	end
 	-- Your own row in the Blessing grid, only if one really exists (set by
 	-- you, Auto-suggest or your leader). No row: nothing to compare against.

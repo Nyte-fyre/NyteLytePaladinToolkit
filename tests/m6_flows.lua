@@ -368,6 +368,53 @@ MOCK.party = {}
 MOCK.fire("GROUP_ROSTER_UPDATE")
 settle()
 
+-- Holy only counts Seal of Wisdom / Seal of Light.
+if not MOCK_NO_AURAS then
+	local ST = P.modules.SealTracker
+	local stSettings = P.Config:GetModuleSettings("SealTracker")
+	stSettings.healerSealsOnly = true
+	assert(P.SpecProfile:GetSpec() == "holy", "holy for this test")
+	local function sealStatus()
+		for _, r in ipairs(BS:Evaluate()) do
+			if r.id == "seal" then
+				return r.status, r
+			end
+		end
+	end
+	-- Neither learned: Holy has no Seal to track.
+	P.SpellRegistry:Refresh()
+	assert(sealStatus() == nil, "Holy without Wisdom/Light: no Seal check")
+	-- Learn Seal of Wisdom.
+	table.insert(MOCK.book, { name = "Seal of Wisdom", spellID = 900300, itemType = 1 })
+	P.SpellRegistry:Refresh()
+	assert(next(P.AuraService:AllowedSeals()) and P.AuraService:AllowedSeals().SEAL_WISDOM, "Wisdom counts")
+	-- Righteousness active (the mock's default Seal), in combat: yellow.
+	MOCK.combat = true
+	MOCK.fire("PLAYER_REGEN_DISABLED")
+	settle()
+	local st, r = sealStatus()
+	assert(st == "wrong" and r.detail:find("Seal of Wisdom", 1, true), "damage Seal as Holy in combat: yellow, " .. tostring(st))
+	ST:Render()
+	-- Cast Seal of Wisdom in combat: fine.
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "s1", 900300)
+	settle()
+	assert(sealStatus() == "ok", "Seal of Wisdom: fine")
+	ST:Render()
+	MOCK.combat = false
+	MOCK.fire("PLAYER_REGEN_ENABLED")
+	settle()
+	-- Option off: any Seal counts again.
+	stSettings.healerSealsOnly = false
+	assert(P.AuraService:AllowedSeals() == nil, "option off: any Seal")
+	stSettings.healerSealsOnly = true
+	for i = #MOCK.book, 1, -1 do
+		if MOCK.book[i].spellID == 900300 then
+			table.remove(MOCK.book, i)
+		end
+	end
+	P.SpellRegistry:Refresh()
+end
+
 -- DB v5: Buff Sentinel moves up only where it was never moved.
 local oldDb = { version = 4, profiles = { P1 = { layout = {
 	holy = { BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 } },

@@ -21,7 +21,12 @@ local function settings()
 	return PK.Config:GetModuleSettings("SealTracker")
 end
 
+-- Any Seal worth tracking for this spec? (Holy: only Wisdom / Light.)
 local function knowsSeal()
+	local allowed = AS:AllowedSeals()
+	if allowed then
+		return next(allowed) ~= nil
+	end
 	for _, r in pairs(PK.SpellRegistry.byKey) do
 		if r.category == "seal" and r.known then
 			return true
@@ -187,13 +192,22 @@ function M:Render()
 
 	local seal, source = AS:GetSeal()
 	current = seal
+	local allowed = AS:AllowedSeals()
 	if seal then
 		icon.icon:SetTexture(seal.icon or 134400)
-		icon:SetState("ready")
-		nameText:SetText(seal.name .. (source == "predicted" and " |cff909090*|r" or ""))
+		local star = source == "predicted" and " |cff909090*|r" or ""
+		if allowed and not allowed[AS.SealKey(seal) or ""] then
+			-- Holy running a damage Seal: yellow, naming the ones that count.
+			icon:SetState("wrong")
+			nameText:SetText("|cffffd940" .. seal.name .. "|r" .. star .. " |cff909090(use " .. AS:AllowedSealText() .. ")|r")
+		else
+			icon:SetState("ready")
+			nameText:SetText(seal.name .. star)
+		end
 		self:UpdateTimer()
 	else
-		local r = PK.SpellRegistry:Get("SEAL_RIGHTEOUSNESS")
+		local r = PK.SpellRegistry:Get(allowed and (allowed.SEAL_WISDOM and "SEAL_WISDOM" or "SEAL_LIGHT")
+			or "SEAL_RIGHTEOUSNESS")
 		icon.icon:SetTexture(r and r.icon or 134400)
 		-- A missing Seal only matters in combat (your casts are readable there).
 		if PK.Compat.InCombat() then

@@ -93,6 +93,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("SealTracker").warnSeconds = v and 5 or 0
 	end },
+	{ "Holy: only Seal of Wisdom / Seal of Light count", function()
+		return ms("SealTracker").healerSealsOnly
+	end, function(v)
+		ms("SealTracker").healerSealsOnly = v
+	end },
 	{ "Seal Tracker: warning sound", function()
 		return ms("SealTracker").warnSound
 	end, function(v)
@@ -175,7 +180,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 930)
+	content:SetSize(600, 960)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)

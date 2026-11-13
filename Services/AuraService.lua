@@ -161,6 +161,58 @@ function AS:GetSeal()
 	return nil
 end
 
+-- Registry key of a Seal aura ("SEAL_WISDOM"), by any rank's ID or by name.
+function AS.SealKey(aura)
+	if not aura then
+		return nil
+	end
+	for key, r in pairs(PK.SpellRegistry.byKey) do
+		if r.category == "seal" and aura.spellID and (r.spellID == aura.spellID or (r.ids and r.ids[aura.spellID])) then
+			return key
+		end
+	end
+	for _, entry in ipairs(PK.Spells.list) do
+		if entry.category == "seal" then
+			for _, n in ipairs(entry.names) do
+				if n == aura.name then
+					return entry.key
+				end
+			end
+		end
+	end
+	return nil
+end
+
+-- Seals that count for the current spec, as { [key] = true }, or nil when
+-- any Seal does. Holy (healer) only uses the mana Seal and Seal of Light;
+-- if neither is learned yet, Holy has no Seal to track (empty set).
+local HEALER_SEALS = { "SEAL_WISDOM", "SEAL_LIGHT" }
+function AS:AllowedSeals()
+	local s = PK.Config:GetModuleSettings("SealTracker")
+	if PK.SpecProfile:GetSpec() ~= "holy" or not (s and s.healerSealsOnly) then
+		return nil
+	end
+	local set = {}
+	for _, key in ipairs(HEALER_SEALS) do
+		if PK.SpellRegistry:IsKnown(key) then
+			set[key] = true
+		end
+	end
+	return set
+end
+
+-- Names of the allowed Seals, for messages ("Seal of Wisdom or Seal of Light").
+function AS:AllowedSealText()
+	local names = {}
+	for _, key in ipairs(HEALER_SEALS) do
+		if (self:AllowedSeals() or {})[key] then
+			local r = PK.SpellRegistry:Get(key)
+			names[#names + 1] = (r and r.name) or PK.Spells.byKey[key].names[1]
+		end
+	end
+	return table.concat(names, " or ")
+end
+
 -- The active Paladin aura: stance bar first (readable in combat), then buffs.
 function AS:GetPaladinAura()
 	local stance = self.stanceSpellID
