@@ -69,7 +69,7 @@ Presets.cooldownLists = {
 
 -- Default anchor positions (offsets from the screen center, UIParent units).
 Presets.layout = {
-	BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 },
+	BuffSentinel = { point = "CENTER", x = 0, y = -110, scale = 1 }, -- was -120: touched the Seal Tracker
 	SealTracker = { point = "CENTER", x = 0, y = -150, scale = 1 },
 	CooldownHUD = { point = "CENTER", x = 0, y = -190, scale = 1 },
 	BlessingManager = { point = "CENTER", x = 300, y = 0, scale = 1 },

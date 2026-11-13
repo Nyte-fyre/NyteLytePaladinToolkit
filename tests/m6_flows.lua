@@ -368,4 +368,14 @@ MOCK.party = {}
 MOCK.fire("GROUP_ROSTER_UPDATE")
 settle()
 
+-- DB v5: Buff Sentinel moves up only where it was never moved.
+local oldDb = { version = 4, profiles = { P1 = { layout = {
+	holy = { BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 } },
+	ret = { BuffSentinel = { point = "CENTER", x = 40, y = -120, scale = 1 } },
+} } } }
+P.Config.Migrate(oldDb)
+assert(oldDb.version == 5, "migrated to v5")
+assert(oldDb.profiles.P1.layout.holy.BuffSentinel.y == -110, "default spot raised")
+assert(oldDb.profiles.P1.layout.ret.BuffSentinel.y == -120, "moved frames left alone")
+
 M6_OK = true

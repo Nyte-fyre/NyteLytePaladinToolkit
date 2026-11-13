@@ -4,7 +4,7 @@ local _, PK = ...
 -- profile export/import.
 --
 -- NyteLytePaladinToolkitDB = {
---   version = 4,
+--   version = 5,
 --   profileKeys = { ["Char-Realm"] = "Default" },
 --   profiles = { Default = { specMode, locked, modules, layout, cooldownLists, alerts, blessing } },
 --   meta, probe, probeCombat, errors, debugLog, debug  -- diagnostics, not part of profiles
@@ -17,7 +17,7 @@ local Presets = PK.Presets
 local Config = {}
 PK.Config = Config
 
-local DB_VERSION = 4
+local DB_VERSION = 5
 Config.DB_VERSION = DB_VERSION
 
 -- Table helpers ----------------------------------------------------------------------
@@ -139,6 +139,20 @@ function Config.Migrate(db)
 			end
 		end
 		v = 4
+	end
+	if v < 5 then
+		-- Buff Sentinel's default spot overlapped the Seal Tracker: raise it,
+		-- but only where the player never moved it.
+		for _, profile in pairs(db.profiles) do
+			local layout = type(profile) == "table" and profile.layout
+			for _, spec in pairs(type(layout) == "table" and layout or {}) do
+				local l = type(spec) == "table" and spec.BuffSentinel
+				if type(l) == "table" and (l.point or "CENTER") == "CENTER" and l.x == 0 and l.y == -120 then
+					l.y = -110
+				end
+			end
+		end
+		v = 5
 	end
 	db.version = v
 	return db

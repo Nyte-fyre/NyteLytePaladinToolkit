@@ -11,6 +11,8 @@
   your group out of combat.
 - New `/ptk oath`: who has your Oath, how long is left, and who the tank is.
 - Option: Settings > "Buff Sentinel: Oath of Light on the tank (Holy)".
+- Buff Sentinel's default spot is a little higher so its icons no longer
+  touch the Seal Tracker (frames you've moved stay where they are).
 
 ## 0.9.0
 
