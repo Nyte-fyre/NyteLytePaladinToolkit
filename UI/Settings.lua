@@ -42,6 +42,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("BuffSentinel").checkOath = v
 	end },
+	{ "Buff Sentinel: Light's Vigil timer (Holy)", function()
+		return ms("BuffSentinel").checkVigil
+	end, function(v)
+		ms("BuffSentinel").checkVigil = v
+	end },
 	{ "Righteous Fury warning as Protection", function()
 		return ms("BuffSentinel").rfSpecs.prot
 	end, function(v)
@@ -180,7 +185,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 960)
+	content:SetSize(600, 990)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)

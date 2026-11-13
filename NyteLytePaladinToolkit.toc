@@ -29,6 +29,7 @@ Services\AuraService.lua
 Services\Comm.lua
 Services\Roster.lua
 Services\Oath.lua
+Services\Vigil.lua
 Services\HolySeals.lua
 Core\SpecProfile.lua
 UI\Theme.lua

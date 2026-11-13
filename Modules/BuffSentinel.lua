@@ -187,6 +187,28 @@ function M:Evaluate()
 			end
 		end
 	end
+	-- Light's Vigil (Holy capstone, opt-in): while yours is up, an icon with
+	-- the target and seconds left (pulsing in the last 5); in combat, red
+	-- when none is up. Out of combat a missing one is idle.
+	local Vigil = PK.Vigil
+	if s.checkVigil and Vigil:IsKnown() then
+		local st = Vigil:Get()
+		local icon = registryIcon("LIGHTS_VIGIL")
+		if st then
+			local remaining = Vigil:Remaining()
+			results[#results + 1] = {
+				id = "vigil",
+				label = "Light's Vigil",
+				status = remaining <= 5 and "expiring" or "active",
+				aura = { name = "Light's Vigil on " .. st.name .. "*", icon = icon },
+				icon = icon,
+				remaining = remaining,
+			}
+		else
+			results[#results + 1] = { id = "vigil", label = "Light's Vigil",
+				status = inCombat and "missing" or "idle", icon = icon }
+		end
+	end
 	return results
 end
 
@@ -224,7 +246,7 @@ function M:Render()
 	local shown = {}
 	for _, r in ipairs(results) do
 		if (s.showAll and r.status ~= "idle") or r.status == "missing" or r.status == "expiring"
-			or r.status == "duplicate" or r.status == "wrong" then
+			or r.status == "duplicate" or r.status == "wrong" or r.status == "active" then
 			shown[#shown + 1] = r
 		end
 	end
@@ -249,7 +271,7 @@ function M:Render()
 		if r.status == "duplicate" then
 			icon:SetText("2x")
 		else
-			icon:SetText(r.status == "expiring" and formatTime(r.remaining) or "")
+			icon:SetText((r.status == "expiring" or r.status == "active") and formatTime(r.remaining) or "")
 		end
 		pulse(icon, r.status == "expiring")
 		icon:Show()
@@ -283,6 +305,8 @@ function M:PrintCheck(reason)
 		local text
 		if r.status == "ok" then
 			text = "|cff40ff40" .. (r.aura and r.aura.name or "ok") .. "|r"
+		elseif r.status == "active" then
+			text = "|cff40ff40" .. (r.aura and r.aura.name or "ok") .. " (" .. formatTime(r.remaining) .. " left)|r"
 		elseif r.status == "expiring" then
 			problems = problems + 1
 			text = "|cffffd040" .. (r.aura and r.aura.name or "?") .. " (" .. formatTime(r.remaining) .. " left)|r"
@@ -318,6 +342,7 @@ function M:OnEnable()
 	PK:On("PK_PROFILE_CHANGED", self, render)
 	PK:On("PK_SETTINGS_CHANGED", self, render)
 	PK:On("PK_OATH_UPDATED", self, render)
+	PK:On("PK_VIGIL_UPDATED", self, render)
 	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, render)
 	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, render)
 	PK:RegisterEvent("READY_CHECK", self, function()
@@ -338,6 +363,7 @@ function M:OnDisable()
 	PK:Off("PK_PROFILE_CHANGED", self)
 	PK:Off("PK_SETTINGS_CHANGED", self)
 	PK:Off("PK_OATH_UPDATED", self)
+	PK:Off("PK_VIGIL_UPDATED", self)
 	PK:UnregisterEvent("READY_CHECK", self)
 	PK:UnregisterEvent("PLAYER_REGEN_DISABLED", self)
 	PK:UnregisterEvent("PLAYER_REGEN_ENABLED", self)

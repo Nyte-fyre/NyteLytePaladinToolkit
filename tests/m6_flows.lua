@@ -439,6 +439,49 @@ if not MOCK_NO_AURAS then
 	P.SpellRegistry:Refresh()
 end
 
+-- Light's Vigil (opt-in): a timer from your own casts, red in combat when none is up.
+do
+	local VIGIL_ID = 900400
+	table.insert(MOCK.book, { name = "Light's Vigil", spellID = VIGIL_ID, itemType = 1 })
+	P.SpellRegistry:Refresh()
+	local Vigil = P.Vigil
+	local bsSettings = P.Config:GetModuleSettings("BuffSentinel")
+	local function vigilStatus()
+		for _, r in ipairs(BS:Evaluate()) do
+			if r.id == "vigil" then
+				return r.status, r
+			end
+		end
+	end
+	assert(Vigil:IsKnown(), "Light's Vigil learned")
+	assert(vigilStatus() == nil, "off by default")
+	bsSettings.checkVigil = true
+	assert(vigilStatus() == "idle", "none up out of combat: idle")
+	MOCK.combat = true
+	assert(vigilStatus() == "missing", "none up in combat: red")
+	MOCK.fire("UNIT_SPELLCAST_SENT", "player", "Ragnaros", "v1", VIGIL_ID)
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "v1", VIGIL_ID)
+	local st, r = vigilStatus()
+	assert(st == "active" and r.aura.name:find("Ragnaros", 1, true), "cast on the boss: timer")
+	assert(math.abs(Vigil:Remaining() - 30) < 1, "30 second default")
+	BS:Render()
+	MOCK.advance(26)
+	assert(vigilStatus() == "expiring", "last 5 seconds: pulse")
+	MOCK.advance(5)
+	assert(vigilStatus() == "missing", "ran out in combat: red")
+	MOCK.combat = false
+	assert(P.db.vigilLog and #P.db.vigilLog == 1, "cast logged")
+	slash("check")
+	bsSettings.checkVigil = false
+	Vigil.state = nil
+	for i = #MOCK.book, 1, -1 do
+		if MOCK.book[i].spellID == VIGIL_ID then
+			table.remove(MOCK.book, i)
+		end
+	end
+	P.SpellRegistry:Refresh()
+end
+
 -- DB v5: Buff Sentinel moves up only where it was never moved.
 local oldDb = { version = 4, profiles = { P1 = { layout = {
 	holy = { BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 } },

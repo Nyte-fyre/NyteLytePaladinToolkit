@@ -109,6 +109,7 @@ Presets.moduleSettings = {
 		checkDuplicateAura = true, -- warn when another paladin runs the same Aura
 		checkBlessing = true, -- warn if you have no Blessing at all
 		checkOath = true, -- Holy: Oath of Light missing, or not on the tank
+		checkVigil = false, -- Holy (opt-in): Light's Vigil timer, red in combat when none is up
 		rfSpecs = { holy = false, prot = true, ret = false }, -- warn about Righteous Fury in these specs
 		iconSize = 32,
 	},
@@ -118,7 +119,7 @@ Presets.moduleSettings = {
 		showEcho = true, -- Twist of Light Echo (Ret talent) next to the Seal
 		warnSeconds = 5, -- in combat, warn this long before the Seal runs out (0 = off)
 		warnSound = false,
-		holySealReminders = true, -- Holy: Seal of Light on bosses, Seal of Wisdom at low mana
+		holySealReminders = false, -- Holy (opt-in): Seal of Light on bosses, Seal of Wisdom at low mana
 		holyManaPercent = 35, -- the low-mana line for the Seal of Wisdom reminder
 	},
 	BlessingManager = {

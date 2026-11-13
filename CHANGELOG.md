@@ -19,7 +19,15 @@
   - **Mana**: your mana is at or under 35% and Seal of Wisdom isn't up.
     Forever hides your mana from addons, so the game itself decides when
     this shows; the addon never reads the number.
-  - Option: "Holy: Seal reminders (Light on bosses, Wisdom at low mana)".
+  - **Off by default.** Turn it on in Settings: "Holy: Seal reminders (Light
+    on bosses, Wisdom at low mana)".
+- Light's Vigil timer (Holy capstone talent), in Buff Sentinel. **Off by
+  default.** Turn it on in Settings: "Buff Sentinel: Light's Vigil timer
+  (Holy)".
+  - While yours is up: who it's on and the seconds left, pulsing in the
+    last 5.
+  - In combat, red when none is up.
+  - Followed from your own casts (marked `*`); it lasts 30 seconds.
 - Buff Sentinel's default spot is a little higher so its icons no longer
   touch the Seal Tracker (frames you've moved stay where they are).
 
