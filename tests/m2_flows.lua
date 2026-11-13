@@ -3,8 +3,8 @@ local P = NyteLytePaladinToolkit
 local AS = P.AuraService
 local BS, ST, CD = P.modules.BuffSentinel, P.modules.SealTracker, P.modules.CooldownHUD
 -- These flows test Seal mechanics with Seal of Righteousness as Holy; the
--- healer-Seal rule (Holy: only Wisdom / Light) is tested in m6_flows.lua.
-P.Config:GetModuleSettings("SealTracker").healerSealsOnly = false
+-- Holy Seal reminders are tested in m6_flows.lua.
+P.Config:GetModuleSettings("SealTracker").holySealReminders = false
 local function slash(msg)
 	SlashCmdList.NYTELYTEPALADINTOOLKIT(msg)
 end

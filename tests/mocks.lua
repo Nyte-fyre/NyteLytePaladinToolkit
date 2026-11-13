@@ -149,7 +149,10 @@ end })
 function UnitRace()
 	return "Human", "Human"
 end
-function UnitLevel()
+function UnitLevel(unit)
+	if unit == "target" and MOCK.targetLevel then
+		return MOCK.targetLevel
+	end
 	return MOCK.level
 end
 function UnitName(unit)
@@ -157,7 +160,54 @@ function UnitName(unit)
 	if m then
 		return m.name
 	end
+	if unit == "target" and MOCK.targetName then
+		return MOCK.targetName
+	end
 	return "Tester"
+end
+-- Instances, bosses (MOCK.instance = "party"/"raid", MOCK.targetLevel = -1).
+function IsInInstance()
+	return MOCK.instance ~= nil, MOCK.instance or "none"
+end
+function UnitClassification(unit)
+	return unit == "target" and MOCK.targetLevel == -1 and "worldboss" or "normal"
+end
+function UnitCanAttack()
+	return true
+end
+function UnitIsUnit(a, b)
+	return a == b
+end
+-- Secret-safe curves: the addon never reads the mana value itself.
+MOCK.manaPercent = 1
+C_CurveUtil = {
+	CreateCurve = function()
+		local c = { points = {} }
+		function c:AddPoint(x, y)
+			self.points[#self.points + 1] = { x, y }
+		end
+		function c:Evaluate(x)
+			local prev = self.points[1]
+			for _, p in ipairs(self.points) do
+				if x < p[1] then
+					if p[1] == prev[1] then
+						return p[2]
+					end
+					return prev[2] + (p[2] - prev[2]) * (x - prev[1]) / (p[1] - prev[1])
+				end
+				prev = p
+			end
+			return prev[2]
+		end
+		return c
+	end,
+}
+function UnitPowerPercent(_, _, _, curve)
+	local v = MOCK.manaPercent
+	if curve then
+		v = curve:Evaluate(v)
+	end
+	return MOCK.secretPower and MOCK.secret() or v
 end
 -- Party members may have a second name part (Forever): UnitName gives the
 -- first part only, UnitNameUnmodified the full name.
@@ -327,6 +377,12 @@ function frameMethods:SetShown(v)
 end
 function frameMethods:SetChecked(v)
 	self._checked = v and true or false
+end
+function frameMethods:SetAlpha(v)
+	self._alpha = v
+end
+function frameMethods:GetAlpha()
+	return self._alpha or 1
 end
 function frameMethods:GetChecked()
 	return self._checked

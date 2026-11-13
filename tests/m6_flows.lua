@@ -368,47 +368,71 @@ MOCK.party = {}
 MOCK.fire("GROUP_ROSTER_UPDATE")
 settle()
 
--- Holy only counts Seal of Wisdom / Seal of Light.
+-- Holy Seal reminders: Light on bosses (without your Judgement of Light),
+-- Mana at low mana (display only: the game's curve sets the alpha).
 if not MOCK_NO_AURAS then
 	local ST = P.modules.SealTracker
+	local HS = P.HolySeals
 	local stSettings = P.Config:GetModuleSettings("SealTracker")
-	stSettings.healerSealsOnly = true
+	stSettings.holySealReminders = true
 	assert(P.SpecProfile:GetSpec() == "holy", "holy for this test")
-	local function sealStatus()
-		for _, r in ipairs(BS:Evaluate()) do
-			if r.id == "seal" then
-				return r.status, r
-			end
-		end
+	for _, r in ipairs(BS:Evaluate()) do
+		assert(r.id ~= "seal", "Holy: no generic Seal check")
 	end
-	-- Neither learned: Holy has no Seal to track.
-	P.SpellRegistry:Refresh()
-	assert(sealStatus() == nil, "Holy without Wisdom/Light: no Seal check")
-	-- Learn Seal of Wisdom.
+	assert(HS:Reminder() == nil, "neither Seal learned: no reminder")
 	table.insert(MOCK.book, { name = "Seal of Wisdom", spellID = 900300, itemType = 1 })
+	table.insert(MOCK.book, { name = "Seal of Light", spellID = 900301, itemType = 1 })
 	P.SpellRegistry:Refresh()
-	assert(next(P.AuraService:AllowedSeals()) and P.AuraService:AllowedSeals().SEAL_WISDOM, "Wisdom counts")
-	-- Righteousness active (the mock's default Seal), in combat: yellow.
+	-- Outside an instance: only the low-mana reminder (Righteousness is up).
+	assert(HS:Reminder() == "mana", "low-mana reminder outside instances: " .. tostring(HS:Reminder()))
+	local f = CreateFrame("Frame")
+	for _, case in ipairs({ { 0.8, 0 }, { 0.36, 0 }, { 0.35, 1 }, { 0.2, 1 } }) do
+		MOCK.manaPercent = case[1]
+		assert(HS:ApplyLowManaAlpha(f), "curve applied")
+		assert(f:GetAlpha() == case[2], "mana " .. case[1] .. " -> alpha " .. case[2] .. ", got " .. tostring(f:GetAlpha()))
+	end
+	MOCK.secretPower = true
+	assert(HS:ApplyLowManaAlpha(f), "a secret result still goes straight to the alpha")
+	MOCK.secretPower = nil
+	ST:Render()
+	-- A boss in a dungeon: Light.
+	MOCK.instance, MOCK.targetLevel, MOCK.targetName = "party", -1, "Big Boss"
+	assert(HS:TargetIsBoss(), "boss detected")
+	assert(HS:Reminder() == "light", "boss without Judgement of Light: Light")
+	ST:Render()
+	-- In combat: cast Seal of Light, then judge: Judgement of Light tracked.
 	MOCK.combat = true
 	MOCK.fire("PLAYER_REGEN_DISABLED")
 	settle()
-	local st, r = sealStatus()
-	assert(st == "wrong" and r.detail:find("Seal of Wisdom", 1, true), "damage Seal as Holy in combat: yellow, " .. tostring(st))
-	ST:Render()
-	-- Cast Seal of Wisdom in combat: fine.
-	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "s1", 900300)
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "s1", 900301)
 	settle()
-	assert(sealStatus() == "ok", "Seal of Wisdom: fine")
+	assert(HS:Reminder() == "mana", "Seal of Light up: no Light reminder")
+	MOCK.fire("UNIT_SPELLCAST_SENT", "player", "Big Boss", "j1", 20271)
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "j1", 20271)
+	assert(HS:GetJudgementOfLight(), "Judgement of Light tracked from your cast")
+	-- Back to Seal of Wisdom while Judgement of Light is up: nothing to remind.
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "s2", 900300)
+	settle()
+	assert(HS:Reminder() == nil, "Wisdom up, Judgement of Light up: no reminder")
+	-- Judgement of Light runs out: Light again.
+	MOCK.advance(11)
+	assert(HS:GetJudgementOfLight() == nil, "Judgement of Light expired")
+	assert(HS:Reminder() == "light", "Judgement of Light gone: Light again")
+	-- A trash target: no boss.
+	MOCK.targetLevel = nil
+	assert(HS:Reminder() == nil, "not a boss, Wisdom up: no reminder")
 	ST:Render()
 	MOCK.combat = false
 	MOCK.fire("PLAYER_REGEN_ENABLED")
 	settle()
-	-- Option off: any Seal counts again.
-	stSettings.healerSealsOnly = false
-	assert(P.AuraService:AllowedSeals() == nil, "option off: any Seal")
-	stSettings.healerSealsOnly = true
+	assert(P.db.holySealLog and #P.db.holySealLog > 0, "reminder events logged")
+	-- Option off: Holy gets the normal Seal check back.
+	stSettings.holySealReminders = false
+	assert(HS:Reminder() == nil, "option off: no reminders")
+	stSettings.holySealReminders = true
+	MOCK.instance, MOCK.targetName, MOCK.manaPercent = nil, nil, 1
 	for i = #MOCK.book, 1, -1 do
-		if MOCK.book[i].spellID == 900300 then
+		if MOCK.book[i].spellID == 900300 or MOCK.book[i].spellID == 900301 then
 			table.remove(MOCK.book, i)
 		end
 	end

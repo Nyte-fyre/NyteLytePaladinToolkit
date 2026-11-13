@@ -14,18 +14,17 @@ local Frames = PK.Frames
 local M = PK:RegisterModule("SealTracker", {})
 
 local BAR_WIDTH = 130
-local container, icon, bar, nameText, timeText, echoIcon, echoLabel
+local container, icon, bar, nameText, timeText, echoIcon, echoLabel, adviceIcon, adviceLabel
 local current
 
 local function settings()
 	return PK.Config:GetModuleSettings("SealTracker")
 end
 
--- Any Seal worth tracking for this spec? (Holy: only Wisdom / Light.)
+-- Any Seal worth tracking for this spec? (Holy reminders: Wisdom / Light.)
 local function knowsSeal()
-	local allowed = AS:AllowedSeals()
-	if allowed then
-		return next(allowed) ~= nil
+	if AS:HolySealMode() then
+		return PK.SpellRegistry:IsKnown("SEAL_WISDOM") or PK.SpellRegistry:IsKnown("SEAL_LIGHT")
 	end
 	for _, r in pairs(PK.SpellRegistry.byKey) do
 		if r.category == "seal" and r.known then
@@ -73,6 +72,25 @@ local function build()
 	echoLabel:SetText("Echo")
 	echoIcon:Hide()
 
+	-- Holy reminder: "Light" (boss without your Judgement of Light) or
+	-- "Mana" (low mana; its alpha comes straight from the game, see HolySeals).
+	adviceIcon = Frames:AcquireIcon(container, 24)
+	adviceIcon:SetPoint("LEFT", bar, "RIGHT", 6, 0)
+	adviceLabel = adviceIcon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	adviceLabel:SetPoint("BOTTOM", adviceIcon, "TOP", 0, 1)
+	adviceIcon:Hide()
+	if adviceIcon.CreateAnimationGroup then
+		local ag = adviceIcon:CreateAnimationGroup()
+		if ag then
+			ag:SetLooping("BOUNCE")
+			local a = ag:CreateAnimation("Alpha")
+			a:SetFromAlpha(1)
+			a:SetToAlpha(0.35)
+			a:SetDuration(0.5)
+			adviceIcon.pulse = ag
+		end
+	end
+
 	if icon.CreateAnimationGroup then
 		local ag = icon:CreateAnimationGroup()
 		if ag then
@@ -113,8 +131,49 @@ function M:UpdateEcho()
 	end
 end
 
+-- Holy Seal reminder icon (Light / Mana), refreshed with the timer.
+function M:UpdateAdvice()
+	if not adviceIcon then
+		return
+	end
+	local which = PK.HolySeals:Reminder()
+	if which ~= self.advice then
+		self.advice = which
+		PK.HolySeals.Log("reminder", { show = which or "none" })
+	end
+	local pulse = adviceIcon.pulse
+	if pulse and which ~= "light" and pulse:IsPlaying() then
+		pulse:Stop()
+	end
+	if which == "light" then
+		local r = PK.SpellRegistry:Get("SEAL_LIGHT")
+		adviceIcon.icon:SetTexture(r and r.icon or 134400)
+		adviceLabel:SetText("Light")
+		adviceIcon:Show()
+		if pulse then
+			if not pulse:IsPlaying() then
+				adviceIcon:SetAlpha(1) -- may still hold the low-mana alpha
+				pulse:Play()
+			end
+		else
+			adviceIcon:SetAlpha(1)
+		end
+	elseif which == "mana" then
+		local r = PK.SpellRegistry:Get("SEAL_WISDOM")
+		adviceIcon.icon:SetTexture(r and r.icon or 134400)
+		adviceLabel:SetText("Mana")
+		adviceIcon:Show()
+		if not PK.HolySeals:ApplyLowManaAlpha(adviceIcon) then
+			adviceIcon:Hide()
+		end
+	else
+		adviceIcon:Hide()
+	end
+end
+
 function M:UpdateTimer()
 	self:UpdateEcho()
+	self:UpdateAdvice()
 	if not current then
 		return
 	end
@@ -192,25 +251,24 @@ function M:Render()
 
 	local seal, source = AS:GetSeal()
 	current = seal
-	local allowed = AS:AllowedSeals()
+	local holy = AS:HolySealMode()
+	if holy then
+		-- The reminder icon sits where Ret's Echo would.
+		adviceIcon:ClearAllPoints()
+		adviceIcon:SetPoint("LEFT", s.showBar and bar or icon, "RIGHT", 6, 0)
+	end
 	if seal then
 		icon.icon:SetTexture(seal.icon or 134400)
-		local star = source == "predicted" and " |cff909090*|r" or ""
-		if allowed and not allowed[AS.SealKey(seal) or ""] then
-			-- Holy running a damage Seal: yellow, naming the ones that count.
-			icon:SetState("wrong")
-			nameText:SetText("|cffffd940" .. seal.name .. "|r" .. star .. " |cff909090(use " .. AS:AllowedSealText() .. ")|r")
-		else
-			icon:SetState("ready")
-			nameText:SetText(seal.name .. star)
-		end
+		icon:SetState("ready")
+		nameText:SetText(seal.name .. (source == "predicted" and " |cff909090*|r" or ""))
 		self:UpdateTimer()
 	else
-		local r = PK.SpellRegistry:Get(allowed and (allowed.SEAL_WISDOM and "SEAL_WISDOM" or "SEAL_LIGHT")
-			or "SEAL_RIGHTEOUSNESS")
+		local r = PK.SpellRegistry:Get(holy and (PK.SpellRegistry:IsKnown("SEAL_WISDOM") and "SEAL_WISDOM"
+			or "SEAL_LIGHT") or "SEAL_RIGHTEOUSNESS")
 		icon.icon:SetTexture(r and r.icon or 134400)
-		-- A missing Seal only matters in combat (your casts are readable there).
-		if PK.Compat.InCombat() then
+		-- A missing Seal only matters in combat (your casts are readable
+		-- there). Holy relies on the Light / Mana reminders instead.
+		if PK.Compat.InCombat() and not holy then
 			icon:SetState("missing")
 			nameText:SetText("|cffff4040No Seal|r")
 		else
@@ -220,6 +278,7 @@ function M:Render()
 		bar:SetValue(0)
 		timeText:SetText("")
 		self:UpdateWarning(nil)
+		self:UpdateAdvice()
 	end
 end
 
@@ -231,6 +290,7 @@ function M:OnEnable()
 	PK:On("PK_SPELLS_UPDATED", self, render)
 	PK:On("PK_PROFILE_CHANGED", self, render)
 	PK:On("PK_SETTINGS_CHANGED", self, render)
+	PK:On("PK_HOLY_SEALS_UPDATED", self, render)
 	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, render)
 	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, render)
 	self:Render()
@@ -241,6 +301,7 @@ function M:OnDisable()
 	PK:Off("PK_SPELLS_UPDATED", self)
 	PK:Off("PK_PROFILE_CHANGED", self)
 	PK:Off("PK_SETTINGS_CHANGED", self)
+	PK:Off("PK_HOLY_SEALS_UPDATED", self)
 	PK:UnregisterEvent("PLAYER_REGEN_DISABLED", self)
 	PK:UnregisterEvent("PLAYER_REGEN_ENABLED", self)
 	current = nil

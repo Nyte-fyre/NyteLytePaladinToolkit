@@ -93,10 +93,10 @@ local OPTIONS = {
 	end, function(v)
 		ms("SealTracker").warnSeconds = v and 5 or 0
 	end },
-	{ "Holy: only Seal of Wisdom / Seal of Light count", function()
-		return ms("SealTracker").healerSealsOnly
+	{ "Holy: Seal reminders (Light on bosses, Wisdom at low mana)", function()
+		return ms("SealTracker").holySealReminders
 	end, function(v)
-		ms("SealTracker").healerSealsOnly = v
+		ms("SealTracker").holySealReminders = v
 	end },
 	{ "Seal Tracker: warning sound", function()
 		return ms("SealTracker").warnSound

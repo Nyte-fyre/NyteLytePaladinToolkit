@@ -183,34 +183,12 @@ function AS.SealKey(aura)
 	return nil
 end
 
--- Seals that count for the current spec, as { [key] = true }, or nil when
--- any Seal does. Holy (healer) only uses the mana Seal and Seal of Light;
--- if neither is learned yet, Holy has no Seal to track (empty set).
-local HEALER_SEALS = { "SEAL_WISDOM", "SEAL_LIGHT" }
-function AS:AllowedSeals()
+-- Holy Seal reminders (option on by default): Holy doesn't get the generic
+-- "No Seal" warning; the Seal Tracker shows Seal of Light / Seal of Wisdom
+-- reminders instead (see Modules/SealTracker.lua).
+function AS:HolySealMode()
 	local s = PK.Config:GetModuleSettings("SealTracker")
-	if PK.SpecProfile:GetSpec() ~= "holy" or not (s and s.healerSealsOnly) then
-		return nil
-	end
-	local set = {}
-	for _, key in ipairs(HEALER_SEALS) do
-		if PK.SpellRegistry:IsKnown(key) then
-			set[key] = true
-		end
-	end
-	return set
-end
-
--- Names of the allowed Seals, for messages ("Seal of Wisdom or Seal of Light").
-function AS:AllowedSealText()
-	local names = {}
-	for _, key in ipairs(HEALER_SEALS) do
-		if (self:AllowedSeals() or {})[key] then
-			local r = PK.SpellRegistry:Get(key)
-			names[#names + 1] = (r and r.name) or PK.Spells.byKey[key].names[1]
-		end
-	end
-	return table.concat(names, " or ")
+	return PK.SpecProfile:GetSpec() == "holy" and s ~= nil and s.holySealReminders == true
 end
 
 -- The active Paladin aura: stance bar first (readable in combat), then buffs.
