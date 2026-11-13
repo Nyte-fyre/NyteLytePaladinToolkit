@@ -184,17 +184,48 @@ function Theme.Edge(frame, r, g, b, a, size, layer)
 		{ "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
 		{ "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false },
 	}
+	-- A 1-unit line can be thinner than one screen pixel at small UI scales,
+	-- and the game then drops some sides of the border. Keep each line at
+	-- least one real pixel thick and don't let it snap away.
+	local function thickness()
+		if PixelUtil and PixelUtil.GetNearestPixelSize and frame.GetEffectiveScale then
+			local ok, v = pcall(PixelUtil.GetNearestPixelSize, size, frame:GetEffectiveScale(), 1)
+			if ok and type(v) == "number" and v > 0 then
+				return v
+			end
+		end
+		return size
+	end
 	for _, s in ipairs(spec) do
 		local t = frame:CreateTexture(nil, layer or "OVERLAY")
 		t:SetTexture(Theme.WHITE)
+		if t.SetSnapToPixelGrid then
+			t:SetSnapToPixelGrid(false)
+			t:SetTexelSnappingBias(0)
+		end
 		t:SetPoint(s[1])
 		t:SetPoint(s[2])
-		if s[3] then
-			t:SetHeight(size)
-		else
-			t:SetWidth(size)
-		end
+		t.horizontal = s[3]
 		edge.lines[#edge.lines + 1] = t
+	end
+	-- Re-measured whenever the frame is resized or rescaled.
+	function edge:UpdateThickness()
+		local px = thickness()
+		for _, t in ipairs(self.lines) do
+			if t.horizontal then
+				t:SetHeight(px)
+			else
+				t:SetWidth(px)
+			end
+		end
+	end
+	edge:UpdateThickness()
+	if frame.HookScript then
+		local function update()
+			edge:UpdateThickness()
+		end
+		pcall(frame.HookScript, frame, "OnSizeChanged", update)
+		pcall(frame.HookScript, frame, "OnShow", update)
 	end
 	function edge:SetVertexColor(cr, cg, cb, ca)
 		for _, t in ipairs(self.lines) do

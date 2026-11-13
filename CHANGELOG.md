@@ -33,6 +33,8 @@
   your own row, unless you're the raid leader or an assistant.
 - Fixed the small class icons next to the buff button and in the Blessing
   grid header, which showed the wrong slice of an old texture.
+- Fixed thin gold borders (like the one around the Blessing grid
+  button) losing some of their sides at smaller UI scales.
 - Buff Sentinel's default spot is a little higher so its icons no longer
   touch the Seal Tracker (frames you've moved stay where they are).
 
