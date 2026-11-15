@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.1
+
+- Cooldown HUD: with 8 or more spells it now splits into two even rows
+  (4+4, 5+4, 5+5, 6+5...) instead of one long bar. Option: Settings >
+  "Cooldown HUD: two rows at 8+ spells".
+
 ## 0.10.0
 
 - Oath of Light tracking (Holy talent), in Buff Sentinel while you're in a group:

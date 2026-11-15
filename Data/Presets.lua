@@ -141,6 +141,7 @@ Presets.moduleSettings = {
 		spacing = 4,
 		direction = "RIGHT", -- RIGHT | LEFT | DOWN | UP
 		perRow = 12,
+		twoRows = true, -- 8 or more icons: two even rows (5+4, 5+5, ...)
 		showUnknown = false, -- show spells you haven't learned (greyed out)
 		dimUnusable = true,
 	},

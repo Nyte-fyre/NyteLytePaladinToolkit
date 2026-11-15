@@ -63,8 +63,20 @@ local function resolveEntry(entry)
 	return PK.SpellRegistry:Get(entry)
 end
 
-local function layoutIcon(i, icon, s)
-	local size, spacing, perRow = s.iconSize or 36, s.spacing or 4, math.max(1, s.perRow or 12)
+-- Icons per row. With "two rows" on, 8 or more icons split into two even
+-- rows (8 = 4+4, 9 = 5+4, 10 = 5+5, 11 = 6+5).
+local function iconsPerRow(s, count)
+	local perRow = math.max(1, s.perRow or 12)
+	if s.twoRows and count >= (s.twoRowsFrom or 8) then
+		perRow = math.min(perRow, math.ceil(count / 2))
+	end
+	return perRow
+end
+
+M.IconsPerRow = iconsPerRow
+
+local function layoutIcon(i, icon, s, perRow)
+	local size, spacing = s.iconSize or 36, s.spacing or 4
 	local col, row = (i - 1) % perRow, math.floor((i - 1) / perRow)
 	local step = size + spacing
 	local dir = s.direction or "RIGHT"
@@ -200,13 +212,15 @@ function M:Rebuild()
 			icon.listIndex = index
 			icon.cooldown:SetHideCountdownNumbers(false)
 			icons[#icons + 1] = icon
-			layoutIcon(#icons, icon, s)
 			makeArrangeable(icon)
 		end
 	end
 	local size, spacing = s.iconSize or 36, s.spacing or 4
 	local count = math.max(1, #icons)
-	local perRow = math.max(1, s.perRow or 12)
+	local perRow = iconsPerRow(s, #icons)
+	for i, icon in ipairs(icons) do
+		layoutIcon(i, icon, s, perRow)
+	end
 	local cols, rows = math.min(count, perRow), math.ceil(count / perRow)
 	local long, short = cols * (size + spacing), rows * (size + spacing)
 	if s.direction == "DOWN" or s.direction == "UP" then

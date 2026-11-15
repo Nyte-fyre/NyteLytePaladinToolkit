@@ -118,6 +118,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("CooldownHUD").direction = v and "DOWN" or "RIGHT"
 	end },
+	{ "Cooldown HUD: two rows at 8+ spells", function()
+		return ms("CooldownHUD").twoRows
+	end, function(v)
+		ms("CooldownHUD").twoRows = v
+	end },
 }
 local statusText, lockButton, profileText, scaleHeader
 local scaleRows = {}
@@ -185,7 +190,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 990)
+	content:SetSize(600, 1020)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)

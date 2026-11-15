@@ -235,6 +235,14 @@ local function iconIds()
 	return out
 end
 local cdSettings = P.Config:GetModuleSettings("CooldownHUD")
+-- Two rows from 8 icons: 4+4, 5+4, 5+5, 6+5; one row below that or when off.
+assert(cdSettings.twoRows == true, "two rows on by default")
+for count, want in pairs({ [7] = 12, [8] = 4, [9] = 5, [10] = 5, [11] = 6 }) do
+	assert(CD.IconsPerRow(cdSettings, count) == want, count .. " icons: " .. want .. " per row")
+end
+cdSettings.twoRows = false
+assert(CD.IconsPerRow(cdSettings, 11) == 12, "off: one row")
+cdSettings.twoRows = true
 cdSettings.showUnknown = true -- show every list entry as an icon
 P:Fire("PK_SETTINGS_CHANGED")
 local original = P.Config.DeepCopy(list())
