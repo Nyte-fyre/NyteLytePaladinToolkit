@@ -164,6 +164,79 @@ if not MOCK_NO_AURAS then
 	table.remove(MOCK.auras)
 end
 
+-- In combat: the button works through the pre-pull queue (secure script),
+-- and your casts are assumed to last the full hour until the scan after combat.
+if not MOCK_NO_AURAS then
+	local oldPaladin = A[ME].classes.PALADIN
+	A[ME].classes.PALADIN = "BLESSING_MIGHT" -- Might on paladins too, so the queue has several people
+	MOCK.auras[#MOCK.auras + 1] = { name = "Blessing of Might", spellId = 19740, duration = 3600, expirationTime = GetTime() + 3000 }
+	P.Roster:Scan()
+	local q = BM.queue
+	assert(#q >= 2, "queue has several people: " .. #q)
+	assert(q[1].member.unit == button:GetAttribute("unit"), "queue starts where the button points")
+	assert(button:GetAttribute("nlpt-count") == #q and button:GetAttribute("nlpt-index") == 1, "queue handed to the button")
+	assert(BM.cycling, "secure script installed")
+	local snippet = assert(loadstring("local self, button, down = ... " .. string.char(10) .. BM.CYCLE_SNIPPET))
+	local inCombat = false
+	setfenv(snippet, { PlayerInCombat = function() return inCombat end, UnitExists = UnitExists })
+	assert(snippet(button, "LeftButton", false) == nil and button:GetAttribute("nlpt-index") == 1,
+		"out of combat the script does nothing")
+	MOCK.combat = true
+	inCombat = true
+	MOCK.fire("PLAYER_REGEN_DISABLED")
+	local first = q[1].member
+	assert(snippet(button, "LeftButton", false) == nil and button:GetAttribute("unit") == first.unit, "press 1: first in queue")
+	local needBefore = BM.needingCount
+	MOCK.fire("UNIT_SPELLCAST_SENT", "player", first.name, "b1", 19740)
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "b1", 19740)
+	assert(#BM.assumed == 1 and BM.assumed[1].name == first.name, "cast assumed")
+	assert(P.Roster:Find(first.name).assumed.BLESSING_MIGHT, "marked as assumed")
+	assert(BM.needingCount < needBefore or q[1].reason ~= "missing", "count drops after an assumed Blessing")
+	assert(BM:CombatNext() == q[2], "display moves to the next one")
+	snippet(button, "LeftButton", false)
+	assert(button:GetAttribute("unit") == q[2].member.unit, "press 2: second in queue")
+	for _ = 3, #q do
+		snippet(button, "LeftButton", false)
+	end
+	assert(snippet(button, "LeftButton", false) == false, "queue used up: the press does nothing")
+	BM:UpdateButtonText()
+	-- Option off: the script leaves the button alone (set before the pull).
+	-- After combat the scan checks the assumption: Stabby's buff is real now.
+	MOCK.unitAuras[first.unit] = { { name = "Blessing of Might", spellId = 19740, duration = 3600,
+		expirationTime = GetTime() + 3590 } }
+	if first.unit == "player" then
+		MOCK.unitAuras.player = nil
+	end
+	MOCK.combat = false
+	inCombat = false
+	MOCK.fire("PLAYER_REGEN_ENABLED")
+	settle()
+	P.Roster:Scan()
+	local summary
+	for _, r in ipairs(P.db.buffLog) do
+		if r.event == "assumeSummary" then
+			summary = r
+		end
+	end
+	assert(summary and summary.assumed == 1, "assumption checked after combat")
+	assert(#BM.assumed == 0, "assumptions cleared")
+	assert(button:GetAttribute("nlpt-index") == 1, "queue reset after combat")
+	BM:Members(BM:Effective())
+	P.Config:GetModuleSettings("BlessingManager").combatCycle = false
+	BM:UpdateButton()
+	assert(button:GetAttribute("nlpt-cycle") == false, "option off reaches the button")
+	inCombat = true
+	local before = button:GetAttribute("unit")
+	snippet(button, "LeftButton", false)
+	assert(button:GetAttribute("unit") == before, "option off: no cycling")
+	inCombat = false
+	P.Config:GetModuleSettings("BlessingManager").combatCycle = true
+	MOCK.unitAuras[first.unit] = nil
+	table.remove(MOCK.auras)
+	A[ME].classes.PALADIN = oldPaladin
+	P.Roster:Scan()
+end
+
 -- Combat: no attribute changes, no sends; both happen after combat.
 MOCK.combat = true
 local unitBefore = button:GetAttribute("unit")

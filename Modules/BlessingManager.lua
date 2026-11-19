@@ -9,8 +9,13 @@ local _, PK = ...
 --    (Services/Comm.lua: out of combat, outside encounters, party/raid only).
 --  * The buff button: a secure action button that casts your assigned
 --    Blessing on the next group member missing it. One press = one cast;
---    the addon only picks the target and spell, and only out of combat
---    (secure attributes can't change in combat).
+--    the addon only picks the target and spell. Out of combat it re-picks
+--    after every scan. In combat normal addon code can't retarget it, so
+--    before the pull it hands the button a queue (missing first, then the
+--    lowest timers) and a small secure script inside the button moves to
+--    the next person on each press (M.CYCLE_SNIPPET).
+--  * Blessings you cast in combat are assumed to last 60 minutes on that
+--    person (shown with *) until the first scan after combat checks them.
 -- It never sends chat on its own; "Announce" in the grid is a manual button.
 
 local B = PK.Blessings
@@ -29,6 +34,13 @@ M.rowStats = { accepted = 0, rejected = 0 }
 local BUTTON_NAME = "NyteLytePaladinToolkitBuffButton"
 local button, gridButton, countText, targetText, classIcon
 local preCombatNeeding, awaitingPostCombat = 0, false
+local BLESSING_DURATION = 3600 -- Forever: every Blessing lasts 60 minutes
+local QUEUE_MAX = 40
+local LOG_MAX = 60
+M.queue = {} -- what the button works through in combat (B.BuildQueue)
+M.assumed = {} -- { guid, name, key, at } cast in combat, checked after combat
+M.cycling = false -- the secure in-combat script is installed
+local pendingCast -- { target, at } from UNIT_SPELLCAST_SENT
 local wasInGroup = false
 
 local function settings()
@@ -57,6 +69,24 @@ function M:NameOf(id)
 	local peer = self.peers[id]
 	return peer and peer.name or tostring(id)
 end
+
+-- Saved to NyteLytePaladinToolkitDB.buffLog so in-game runs can be checked.
+local function log(event, fields)
+	local db = PK.db
+	if not db then
+		return
+	end
+	db.buffLog = db.buffLog or {}
+	local row = { t = time(), event = event, inCombat = PK.Compat.InCombat() or nil }
+	for k, v in pairs(fields or {}) do
+		row[k] = v
+	end
+	table.insert(db.buffLog, row)
+	while #db.buffLog > LOG_MAX do
+		table.remove(db.buffLog, 1)
+	end
+end
+M.Log = log
 
 local function inGroup()
 	return (IsInGroup and IsInGroup()) or false
@@ -416,6 +446,7 @@ function M:UpdateButton()
 			M:SetPulse(false)
 		end
 		M.next = target and { name = target.name, class = target.class, key = key, left = left, reason = reason }
+		M:SetQueue(B.BuildQueue(eff, me(), members, now, refreshSec, settings().refreshLowest, QUEUE_MAX))
 		if target then
 			local spell, icon = blessingSpell(key)
 			button:SetAttribute("type", "spell")
@@ -433,6 +464,37 @@ function M:UpdateButton()
 		M:UpdateButtonText()
 		countText:SetText(needing > 0 and Theme.Color("gold", needing .. " need" .. (needing == 1 and "s" or "") .. " it") or "")
 	end)
+end
+
+-- Hands the button its combat queue (out of combat only: these are secure
+-- attributes). The secure script reads nlpt-unitN / nlpt-spellN.
+function M:SetQueue(queue)
+	self.queue = queue
+	if not button or PK.Compat.InCombat() then
+		return
+	end
+	local count = 0
+	for i, e in ipairs(queue) do
+		local spell = blessingSpell(e.key)
+		if spell then
+			count = i
+			button:SetAttribute("nlpt-unit" .. i, e.member.unit)
+			button:SetAttribute("nlpt-spell" .. i, spell)
+		end
+	end
+	button:SetAttribute("nlpt-count", count)
+	button:SetAttribute("nlpt-index", 1)
+	button:SetAttribute("nlpt-cycle", settings().combatCycle ~= false)
+end
+
+-- The queue entry the next press will cast on in combat (nil once the queue
+-- is used up), or false when the button isn't cycling.
+function M:CombatNext()
+	if not (self.cycling and button and settings().combatCycle ~= false) then
+		return false
+	end
+	local i = tonumber(button:GetAttribute("nlpt-index")) or 1
+	return self.queue[i]
 end
 
 -- Group members you could Bless, with range/usability for the buff button.
@@ -498,9 +560,15 @@ function M:UpdateButtonText()
 		return
 	end
 	local n = self.next
+	if PK.Compat.InCombat() then
+		local q = self:CombatNext()
+		if q ~= false then
+			n = q and { name = q.member.name, class = q.member.class, key = q.key, left = q.left, reason = q.reason }
+		end
+	end
 	if not n then
 		classIcon:Hide()
-		targetText:SetText(Theme.Color("dim", "All blessed"))
+		targetText:SetText(Theme.Color("dim", PK.Compat.InCombat() and self.cycling and "Queue done" or "All blessed"))
 		return
 	end
 	if Theme.SetClassIcon(classIcon, n.class) then
@@ -519,6 +587,43 @@ function M:UpdateButtonText()
 	targetText:SetText(classColor(n.class, n.name) .. " " .. status)
 end
 
+-- Runs inside the button (restricted secure code) before each click. In
+-- combat it points the click at the next queue entry whose unit still
+-- exists and advances; when the queue is used up the click does nothing.
+-- It can't tell whether a cast went off, so a failed press still moves on.
+M.CYCLE_SNIPPET = [[
+	if not PlayerInCombat() or not self:GetAttribute("nlpt-cycle") then
+		return
+	end
+	local count = self:GetAttribute("nlpt-count") or 0
+	local i = self:GetAttribute("nlpt-index") or 1
+	while i <= count do
+		local unit = self:GetAttribute("nlpt-unit" .. i)
+		if unit and UnitExists(unit) then
+			self:SetAttribute("unit", unit)
+			self:SetAttribute("spell", self:GetAttribute("nlpt-spell" .. i))
+			self:SetAttribute("type", "spell")
+			self:SetAttribute("nlpt-index", i + 1)
+			return
+		end
+		i = i + 1
+	end
+	self:SetAttribute("nlpt-index", i)
+	return false
+]]
+
+local function installCycling(anchor)
+	local ok, err = pcall(function()
+		local header = CreateFrame("Frame", nil, anchor, "SecureHandlerBaseTemplate")
+		if not (header and header.WrapScript) then
+			error("SecureHandlerBaseTemplate has no WrapScript")
+		end
+		header:WrapScript(button, "OnClick", M.CYCLE_SNIPPET)
+	end)
+	M.cycling = ok
+	log("cycleSetup", { ok = ok, err = not ok and tostring(err) or nil })
+end
+
 local function buildButton()
 	PK.Frames:SetProtected("BlessingManager")
 	local anchor = PK.Frames:GetAnchor("BlessingManager")
@@ -535,6 +640,7 @@ local function buildButton()
 		down = ok and v == true
 	end
 	button:RegisterForClicks(down and "AnyDown" or "AnyUp")
+	installCycling(anchor)
 	button.icon = button:CreateTexture(nil, "ARTWORK")
 	button.icon:SetAllPoints()
 	button.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
@@ -638,6 +744,94 @@ local function buildButton()
 	countText:SetPoint("LEFT", gridButton, "RIGHT", 4, 0)
 end
 
+-- Casts in combat ---------------------------------------------------------------------------------
+
+-- Registry Blessing key for one of your spell IDs, or nil.
+function M.BlessingKeyFor(spellID)
+	for key, r in pairs(PK.SpellRegistry.byKey) do
+		if (r.category == "blessing" or r.category == "greaterBlessing")
+			and (r.spellID == spellID or (r.ids and r.ids[spellID])) then
+			return B.GREATER[key] or key
+		end
+	end
+	return nil
+end
+
+-- The roster member a cast target name refers to (Forever cast targets can
+-- be just the first part of a two-part name).
+local function memberByName(name)
+	if not name then
+		return nil
+	end
+	for _, m in ipairs(Roster.members) do
+		if m.name == name or (m.name and m.name:sub(1, #name + 1) == name .. " ") then
+			return m
+		end
+	end
+	return nil
+end
+
+-- One of your Blessings landed. In combat the group's buffs can't be read,
+-- so assume it's on them for the full hour until the next scan says.
+function M:OnBlessingCast(key, target)
+	if not PK.Compat.InCombat() then
+		return -- out of combat the next scan reads the real buff
+	end
+	local m = memberByName(target)
+	local q = button and tonumber(button:GetAttribute("nlpt-index"))
+	log("cast", { key = key, target = target, matched = m and m.name or nil,
+		queueIndex = q, queueSize = #self.queue, cycling = self.cycling,
+		buttonUnit = button and button:GetAttribute("unit") or nil })
+	if not m then
+		return
+	end
+	m.buffs = m.buffs or {}
+	m.buffs[key] = GetTime() + BLESSING_DURATION
+	m.assumed = m.assumed or {}
+	m.assumed[key] = true
+	self.assumed[#self.assumed + 1] = { guid = m.guid, name = m.name, key = key, at = GetTime() }
+	self:RefreshCombatText()
+end
+
+-- Count and next-target text in combat (no secure changes).
+function M:RefreshCombatText()
+	if not countText then
+		return
+	end
+	local eff = self:Effective()
+	local refreshSec = (PK.profile.blessing.refreshMinutes or 5) * 60
+	local needing, names = B.CountNeeding(eff, me(), self:Members(eff), GetTime(), refreshSec)
+	self.missingNames = names
+	self.needingCount = needing
+	self:UpdateButtonText()
+	countText:SetText(needing > 0 and Theme.Color("gold", needing .. " need" .. (needing == 1 and "s" or "") .. " it") or "")
+end
+
+-- After combat, the first scan checks every assumed Blessing against the
+-- real buffs (logged), then forgets them.
+function M:CheckAssumed()
+	if #self.assumed == 0 then
+		return
+	end
+	local confirmed, wrong = 0, 0
+	for _, a in ipairs(self.assumed) do
+		local m = (a.guid and Roster:Find(a.guid)) or Roster:Find(a.name)
+		local seen
+		if m and m.buffs then
+			seen = m.buffs[a.key] ~= nil
+		end
+		if seen then
+			confirmed = confirmed + 1
+		elseif seen == false then
+			wrong = wrong + 1
+		end
+		log("assumeCheck", { target = a.name, key = a.key, seen = seen,
+			unreadable = (m == nil or m.buffs == nil) or nil })
+	end
+	log("assumeSummary", { assumed = #self.assumed, confirmed = confirmed, missing = wrong })
+	self.assumed = {}
+end
+
 -- Lifecycle ----------------------------------------------------------------------------------------
 
 function M:OnEnable()
@@ -656,6 +850,9 @@ function M:OnEnable()
 			M:SendHello(true)
 		end
 		wasInGroup = grouped
+		if not PK.Compat.InCombat() then
+			M:CheckAssumed()
+		end
 		update()
 		-- First rescan after a fight: flag anyone who newly needs a Blessing
 		-- (died, was dispelled, or it ran out mid-fight).
@@ -675,12 +872,36 @@ function M:OnEnable()
 	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, function()
 		preCombatNeeding = M.needingCount or 0
 		awaitingPostCombat = false
+		M.assumed = {}
+		M:RefreshCombatText()
 	end)
 	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, function()
 		awaitingPostCombat = true
 	end)
 	PK:RegisterEvent("READY_CHECK", self, function()
 		M:PrintReport("Ready check")
+	end)
+	PK:RegisterEvent("UNIT_SPELLCAST_SENT", self, function(_, _, unit, target, _, spellID)
+		if PK.Compat.IsSecret(unit) or unit ~= "player" then
+			return
+		end
+		local id = PK.Secrets.SafeNumber(spellID)
+		if id and M.BlessingKeyFor(id) then
+			pendingCast = { target = PK.Secrets.SafeString(target), at = GetTime() }
+		end
+	end)
+	PK:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", self, function(_, _, unit, _, spellID)
+		if PK.Compat.IsSecret(unit) or unit ~= "player" then
+			return
+		end
+		local id = PK.Secrets.SafeNumber(spellID)
+		local key = id and M.BlessingKeyFor(id)
+		if not key then
+			return
+		end
+		local target = pendingCast and GetTime() - pendingCast.at < 10 and pendingCast.target or nil
+		pendingCast = nil
+		M:OnBlessingCast(key, target)
 	end)
 	PK:On("PK_BLESSINGS_CHANGED", self, update)
 	PK:On("PK_SPELLS_UPDATED", self, update)
@@ -702,7 +923,8 @@ function M:OnDisable()
 		"PK_SETTINGS_CHANGED", "PK_PROFILE_CHANGED", "PK_COMM_MESSAGE" }) do
 		PK:Off(msg, self)
 	end
-	for _, ev in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "READY_CHECK" }) do
+	for _, ev in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "READY_CHECK",
+		"UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_SUCCEEDED" }) do
 		PK:UnregisterEvent(ev, self)
 	end
 	awaitingPostCombat = false

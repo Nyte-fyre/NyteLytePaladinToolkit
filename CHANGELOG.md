@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.11.0
+
+- Buff button in combat: before the pull it lines up everyone who needs
+  your Blessing (missing first, then the lowest timers), and each press in
+  combat casts on the next person in that line. It can't tell whether a
+  cast went off, so a press that fails (out of range, moving, cooldown)
+  still moves on; that person shows up again after combat. Option:
+  Settings > "Buff button: move on to the next person in combat".
+- Blessings you cast in combat count as 60 minutes on that person (the
+  "need it" count drops right away). The first check after combat reads
+  everyone's real buffs and corrects anything that didn't land.
+
 ## 0.10.1
 
 - Cooldown HUD: with 8 or more spells it now splits into two even rows

@@ -418,6 +418,44 @@ function B.PickTarget(assignments, me, members, now, refreshSec, refreshLowest)
 	return nil
 end
 
+-- The order the buff button works through in combat, built before the pull:
+-- everyone missing your Blessing (group order), then anyone under refreshSec
+-- (lowest first), then, with refreshLowest, everyone else by lowest timer.
+-- Its first entry is the same one PickTarget returns. Each entry:
+-- { member, key, left, reason }. At most `limit` entries (default 40).
+function B.BuildQueue(assignments, me, members, now, refreshSec, refreshLowest, limit)
+	local missing, timed = {}, {}
+	for _, m in ipairs(members) do
+		local key = B.AssignedFor(assignments, me, m.class, m.guid)
+		if key and m.usable and m.buffs then
+			local left = B.Remaining(m, key, now)
+			if left == nil then
+				missing[#missing + 1] = { member = m, key = key, reason = "missing" }
+			elseif left ~= math.huge then
+				timed[#timed + 1] = { member = m, key = key, left = left }
+			end
+		end
+	end
+	table.sort(timed, function(a, b)
+		return a.left < b.left
+	end)
+	local queue = {}
+	limit = limit or 40
+	for _, e in ipairs(missing) do
+		if #queue < limit then
+			queue[#queue + 1] = e
+		end
+	end
+	for _, e in ipairs(timed) do
+		local expiring = e.left < refreshSec
+		if #queue < limit and (expiring or refreshLowest) then
+			e.reason = expiring and "expiring" or "lowest"
+			queue[#queue + 1] = e
+		end
+	end
+	return queue
+end
+
 -- Pre-pull report: who is missing your assigned Blessing, and whose copy
 -- runs out within `withinSec`. Returns missing (names, group order) and
 -- expiring ({ name, left }, soonest first). Unreadable members are skipped.

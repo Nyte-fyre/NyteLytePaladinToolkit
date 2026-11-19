@@ -88,6 +88,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("BlessingManager").refreshLowest = v
 	end },
+	{ "Buff button: move on to the next person in combat", function()
+		return ms("BlessingManager").combatCycle
+	end, function(v)
+		ms("BlessingManager").combatCycle = v
+	end },
 	{ "Buff button: alert after combat when someone needs a rebuff", function()
 		return ms("BlessingManager").postCombatAlert
 	end, function(v)
@@ -190,7 +195,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 1020)
+	content:SetSize(600, 1050)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)
