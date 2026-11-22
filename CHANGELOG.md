@@ -8,10 +8,10 @@
   cast went off, so a press that fails (out of range, moving, cooldown)
   still moves on; that person shows up again after combat. Option:
   Settings > "Buff button: move on to the next person in combat".
-- Ready for translations: every message, label and tooltip can now be
-  translated (Locales/_template.lua lists all of them; English is used for
-  anything not translated). Class names and spell names already show in
-  your game's language.
+- Translations: German, French, Spanish (Spain and Latin America),
+  Brazilian Portuguese and Russian. Every message, label and tooltip is
+  translated; spell and class names come from your game. Corrections are
+  welcome (tools/translations.tsv on GitHub).
 - Non-English clients: spells are now also found by spell ID, so the addon
   recognises them on German, French, Spanish, ... clients (IDs confirmed so
   far; the rest still need the English name until they're added).

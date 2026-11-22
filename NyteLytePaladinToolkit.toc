@@ -14,7 +14,12 @@
 # confirmed on beta build 1.60.1.69977.
 
 Core\Init.lua
-# Translations: Locales\<code>.lua files go here (see Locales\_template.lua).
+# Translations (tools/translations.tsv -> tools/build_locales.py). Each file only fills in on its own client.
+Locales\deDE.lua
+Locales\esES.lua
+Locales\frFR.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
 Core\Compat.lua
 Core\Secrets.lua
 Core\CombatQueue.lua

@@ -235,6 +235,46 @@ def main():
     print(("[PASS] " if check.returncode == 0 else "[FAIL] ") + check.stdout.strip())
     if check.returncode != 0:
         failed += 1
+    # translations.tsv is complete and matches the generated Locales files.
+    check = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_locales.py"), "--check"],
+                           capture_output=True, text=True)
+    print(("[PASS] " if check.returncode == 0 else "[FAIL] ") + check.stdout.strip().replace("\n", " | "))
+    if check.returncode != 0:
+        failed += 1
+    # Each locale file loads, fills the table only on its own client, and
+    # every format string still formats.
+    for code in ("deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "enUS"):
+        lua = LuaRuntime(unpack_returned_tuples=True)
+        lua.execute('''
+            PK = {}
+            PK.L = setmetatable({}, { __index = function(_, k) return k end })
+            function PK.NewLocale(c)
+                if c ~= LOCALE or c == "enUS" then return nil end
+                return PK.L
+            end
+        ''')
+        lua.globals().LOCALE = code
+        filled = 0
+        for f in ("deDE", "esES", "frFR", "ptBR", "ruRU"):
+            chunk = lua.eval("function(src, pk) return assert(loadstring(src))('NyteLytePaladinToolkit', pk) end")
+            chunk(read(os.path.join(ROOT, "Locales", f + ".lua")), lua.globals().PK)
+        filled = lua.eval("(function() local n = 0 for _ in pairs(PK.L) do n = n + 1 end return n end)()")
+        bad = lua.eval('''(function()
+            for k, v in pairs(PK.L) do
+                local n = select(2, k:gsub("%%[sd]", ""))
+                if n > 0 then
+                    local args = {}
+                    for i = 1, n do args[i] = 1 end
+                    local ok = pcall(string.format, v, unpack(args))
+                    if not ok then return k end
+                end
+            end
+        end)()''')
+        expect_filled = code != "enUS"
+        ok = (filled > 200) == expect_filled and bad is None
+        print(("[PASS] " if ok else "[FAIL] ") + "locale %s: %d strings%s" % (code, filled, (", bad format: " + bad) if bad else ""))
+        if not ok:
+            failed += 1
     if failed:
         sys.exit(1)
 
