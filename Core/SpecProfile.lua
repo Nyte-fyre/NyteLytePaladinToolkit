@@ -7,10 +7,11 @@ local _, PK = ...
 -- PK_SPEC_EVALUATED(decision) after every evaluation (for the settings UI).
 
 local Decision = PK.SpecDecision
+local L = PK.L
 local SP = {}
 PK.SpecProfile = SP
 
-SP.LABELS = { auto = "Auto", holy = "Holy", prot = "Protection", ret = "Retribution" }
+SP.LABELS = { auto = L["Auto"], holy = L["Holy"], prot = L["Protection"], ret = L["Retribution"] }
 
 function SP:GetSpec()
 	return self.decision and self.decision.spec or Decision.FALLBACK
@@ -70,9 +71,9 @@ function SP:SetMode(mode)
 	self:Evaluate()
 	local d = self.decision
 	if mode == "auto" then
-		PK:Print(string.format("spec mode Auto: using %s (%s).", SP.LABELS[d.spec], SP:DescribeDetection(d.detected)))
+		PK:Print(L["spec mode Auto: using %s (%s)."]:format(SP.LABELS[d.spec], SP:DescribeDetection(d.detected)))
 	else
-		PK:Print("spec set to " .. SP.LABELS[mode] .. ".")
+		PK:Print(L["spec set to %s."]:format(SP.LABELS[mode]))
 	end
 end
 
@@ -83,13 +84,13 @@ end
 -- "detected Holy, low confidence, from known spells" style text.
 function SP:DescribeDetection(detected)
 	if not detected then
-		return "not detected yet"
+		return L["not detected yet"]
 	end
 	if detected.confidence == "none" then
-		return "could not detect; defaulting to " .. SP.LABELS[detected.spec]
+		return L["could not detect; defaulting to %s"]:format(SP.LABELS[detected.spec])
 	end
-	return string.format("detected %s, %s confidence, from %s", SP.LABELS[detected.spec], detected.confidence,
-		detected.method)
+	return L["detected %s, %s confidence, from %s"]:format(SP.LABELS[detected.spec], L[detected.confidence],
+		L[detected.method])
 end
 
 local function queueEvaluate()
@@ -120,20 +121,20 @@ end
 for _, mode in ipairs(Decision.MODES) do
 	PK:RegisterCommand(mode, function()
 		SP:SetMode(mode)
-	end, mode == "auto" and "detect spec automatically" or ("use " .. SP.LABELS[mode] .. " settings"))
+	end, mode == "auto" and L["detect spec automatically"] or L["use %s settings"]:format(SP.LABELS[mode]))
 end
 
 PK:RegisterCommand("spec", function()
 	local d = SP.decision
 	if not d then
-		PK:Print("spec not evaluated yet.")
+		PK:Print(L["spec not evaluated yet."])
 		return
 	end
-	PK:Print(string.format("mode %s, active spec %s; %s.", SP.LABELS[d.mode], SP.LABELS[d.spec],
+	PK:Print(L["mode %s, active spec %s; %s."]:format(SP.LABELS[d.mode], SP.LABELS[d.spec],
 		SP:DescribeDetection(d.detected)))
-end, "show the active spec and what Auto detected")
+end, L["show the active spec and what Auto detected"])
 
 -- Keybinding (Bindings.xml)
 BINDING_HEADER_NYTELYTEPALADINTOOLKIT = PK.displayName
-BINDING_NAME_NLPT_CYCLE_SPEC = "Cycle spec mode (Auto / Holy / Prot / Ret)"
-BINDING_NAME_NLPT_TOGGLE_LOCK = "Lock / unlock frame positions"
+BINDING_NAME_NLPT_CYCLE_SPEC = L["Cycle spec mode (Auto / Holy / Prot / Ret)"]
+BINDING_NAME_NLPT_TOGGLE_LOCK = L["Lock / unlock frame positions"]

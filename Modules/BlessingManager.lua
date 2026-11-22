@@ -22,7 +22,38 @@ local B = PK.Blessings
 local Comm = PK.Comm
 local Roster = PK.Roster
 local Theme = PK.Theme
+local L = PK.L
 local M = PK:RegisterModule("BlessingManager", {})
+
+-- Short Blessing names ("Kings") for chat lines and lists.
+local SHORT_BLESSING = {
+	BLESSING_KINGS = L["Kings"], BLESSING_MIGHT = L["Might"], BLESSING_WISDOM = L["Wisdom"],
+	BLESSING_SALVATION = L["Salvation"], BLESSING_LIGHT = L["Light"], BLESSING_FREEDOM = L["Freedom"],
+	BLESSING_PROTECTION = L["Protection"], BLESSING_SACRIFICE = L["Sacrifice"],
+}
+local function shortBlessing(key)
+	return SHORT_BLESSING[key] or key
+end
+
+-- A class token in the client's language ("WARRIOR" -> "Warrior"/"Krieger").
+local function className(token)
+	local localized = _G.LOCALIZED_CLASS_NAMES_MALE
+	local name = type(localized) == "table" and localized[token]
+	if type(name) == "string" and name ~= "" then
+		return name
+	end
+	return L[token:sub(1, 1) .. token:sub(2):lower()]
+end
+
+-- A spell's name in the client's language, else the English registry name.
+local function localName(key)
+	local r = PK.SpellRegistry:Get(key)
+	if r and r.name then
+		return r.name
+	end
+	local e = PK.Spells.byKey[key]
+	return e and e.names[1] or key
+end
 -- Paladins are identified by GUID everywhere (assignments, peers, rows);
 -- names are only for display (see M:NameOf).
 M.peers = {} -- [guid] = { name, version, blessings = set, auras = set, seen }
@@ -179,7 +210,7 @@ end
 -- Local edit of one cell (class = nil and aura given edits the Aura).
 function M:SetAssignment(paladin, class, blessingKey, auraKey)
 	if not self:CanEdit(paladin) then
-		PK:Print("in a raid, only the raid leader or an assistant can change another paladin's Blessings.")
+		PK:Print(L["in a raid, only the raid leader or an assistant can change another paladin's Blessings."])
 		return false
 	end
 	local cur = assignments()[paladin] or self:Effective()[paladin] or { classes = {} }
@@ -205,7 +236,7 @@ end
 -- key: a blessing key, or B.NONE for "don't buff this player".
 function M:SetOverride(paladin, target, key)
 	if not self:CanEdit(paladin) then
-		PK:Print("in a raid, only the raid leader or an assistant can change another paladin's Blessings.")
+		PK:Print(L["in a raid, only the raid leader or an assistant can change another paladin's Blessings."])
 		return false
 	end
 	local cur = assignments()[paladin] or self:Effective()[paladin] or { classes = {} }
@@ -219,7 +250,7 @@ function M:SetOverride(paladin, target, key)
 		count = count + 1
 	end
 	if key and not row.overrides[target] and count >= B.MAX_OVERRIDES then
-		PK:Print("a paladin can have at most " .. B.MAX_OVERRIDES .. " player exceptions.")
+		PK:Print(L["a paladin can have at most %d player exceptions."]:format(B.MAX_OVERRIDES))
 		return false
 	end
 	row.overrides[target] = key
@@ -245,14 +276,13 @@ function M:CoverageText()
 	for _, g in ipairs(gaps) do
 		local names = {}
 		for _, key in ipairs(g.missing) do
-			local e = PK.Spells.byKey[key]
-			names[#names + 1] = e and e.names[1]:gsub("Blessing of ", "") or key
+			names[#names + 1] = shortBlessing(key)
 		end
 		parts[#parts + 1] = g.name .. " (" .. table.concat(names, ", ") .. ")"
 	end
 	local classes = {}
 	for class in pairs(uncovered) do
-		classes[#classes + 1] = class:sub(1, 1) .. class:sub(2):lower()
+		classes[#classes + 1] = className(class)
 	end
 	table.sort(classes)
 	return table.concat(parts, ", "), table.concat(classes, ", ")
@@ -287,7 +317,7 @@ end
 function M:Announce()
 	local channel = Comm:Channel()
 	if not channel then
-		PK:Print("you're not in a group.")
+		PK:Print(L["you're not in a group."])
 		return
 	end
 	local send = PK.Compat.Resolve("C_ChatInfo.SendChatMessage") or _G.SendChatMessage
@@ -303,19 +333,17 @@ function M:Announce()
 				local key = row.classes and row.classes[class]
 				if key then
 					byBlessing[key] = byBlessing[key] or {}
-					table.insert(byBlessing[key], class:sub(1, 1) .. class:sub(2):lower())
+					table.insert(byBlessing[key], className(class))
 				end
 			end
 			local parts = {}
 			for _, key in ipairs(B.ASSIGNABLE) do
 				if byBlessing[key] then
-					local entry = PK.Spells.byKey[key]
-					parts[#parts + 1] = entry.names[1]:gsub("Blessing of ", "") .. ": " .. table.concat(byBlessing[key], ", ")
+					parts[#parts + 1] = shortBlessing(key) .. ": " .. table.concat(byBlessing[key], ", ")
 				end
 			end
-			local auraEntry = row.aura and PK.Spells.byKey[row.aura]
 			local line = self:NameOf(id) .. " - " .. table.concat(parts, "; ")
-				.. (auraEntry and (" | Aura: " .. auraEntry.names[1]) or "")
+				.. (row.aura and (" | " .. L["Aura"] .. ": " .. localName(row.aura)) or "")
 			pcall(send, line:sub(1, 250), channel)
 		end
 	end
@@ -462,7 +490,7 @@ function M:UpdateButton()
 			button.icon:SetDesaturated(true)
 		end
 		M:UpdateButtonText()
-		countText:SetText(needing > 0 and Theme.Color("gold", needing .. " need" .. (needing == 1 and "s" or "") .. " it") or "")
+		countText:SetText(needing > 0 and Theme.Color("gold", (needing == 1 and L["%d needs it"] or L["%d need it"]):format(needing)) or "")
 	end)
 end
 
@@ -568,7 +596,7 @@ function M:UpdateButtonText()
 	end
 	if not n then
 		classIcon:Hide()
-		targetText:SetText(Theme.Color("dim", PK.Compat.InCombat() and self.cycling and "Queue done" or "All blessed"))
+		targetText:SetText(Theme.Color("dim", PK.Compat.InCombat() and self.cycling and L["Queue done"] or L["All blessed"]))
 		return
 	end
 	if Theme.SetClassIcon(classIcon, n.class) then
@@ -578,11 +606,11 @@ function M:UpdateButtonText()
 	end
 	local status
 	if n.reason == "missing" then
-		status = Theme.Color("alarm", "missing")
+		status = Theme.Color("alarm", L["missing"])
 	elseif n.reason == "expiring" then
-		status = Theme.Color("gold", formatLeft(n.left) .. " left")
+		status = Theme.Color("gold", L["%s left"]:format(formatLeft(n.left)))
 	else
-		status = Theme.Color("dim", "refresh (" .. formatLeft(n.left) .. ")")
+		status = Theme.Color("dim", L["refresh (%s)"]:format(formatLeft(n.left)))
 	end
 	targetText:SetText(classColor(n.class, n.name) .. " " .. status)
 end
@@ -679,27 +707,28 @@ local function buildButton()
 			return
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:AddLine(Theme.Color("gold", "Buff next missing Blessing"))
+		GameTooltip:AddLine(Theme.Color("gold", L["Buff next missing Blessing"]))
 		local n = M.next
 		if n then
-			local entry = PK.Spells.byKey[n.key]
-			GameTooltip:AddLine("Next press: " .. (entry and entry.names[1] or "Blessing") .. " on " .. n.name
-				.. (n.reason == "missing" and " (missing)" or (" (" .. formatLeft(n.left) .. " left)")), 1, 1, 1, true)
+			GameTooltip:AddLine(L["Next press: %s on %s"]:format(n.key and localName(n.key) or L["Blessing"], n.name)
+				.. " (" .. (n.reason == "missing" and L["missing"] or L["%s left"]:format(formatLeft(n.left))) .. ")",
+				1, 1, 1, true)
 		else
-			GameTooltip:AddLine("Nobody needs your Blessing right now.", 1, 1, 1, true)
+			GameTooltip:AddLine(L["Nobody needs your Blessing right now."], 1, 1, 1, true)
 		end
-		GameTooltip:AddLine("One press = one cast. Missing Blessings come first, then ones about to run out"
-			.. (settings().refreshLowest and ", then the lowest timer." or "."), 0.7, 0.7, 0.7, true)
+		GameTooltip:AddLine(settings().refreshLowest
+			and L["One press = one cast. Missing Blessings come first, then ones about to run out, then the lowest timer."]
+			or L["One press = one cast. Missing Blessings come first, then ones about to run out."], 0.7, 0.7, 0.7, true)
 		if M.missingNames and #M.missingNames > 0 then
-			GameTooltip:AddLine("Need it: " .. table.concat(M.missingNames, ", "), 1, 0.82, 0.25, true)
+			GameTooltip:AddLine(L["Need it: %s"]:format(table.concat(M.missingNames, ", ")), 1, 0.82, 0.25, true)
 		end
 		if inGroup() and not PK.Compat.InCombat() then
 			local gaps, uncovered = M:CoverageText()
 			if gaps ~= "" then
-				GameTooltip:AddLine("Group missing (any paladin): " .. gaps, 0.9, 0.7, 0.5, true)
+				GameTooltip:AddLine(L["Group missing (any paladin): %s"]:format(gaps), 0.9, 0.7, 0.5, true)
 			end
 			if uncovered ~= "" then
-				GameTooltip:AddLine("No Blessings assigned for: " .. uncovered, 0.9, 0.5, 0.4, true)
+				GameTooltip:AddLine(L["No Blessings assigned for: %s"]:format(uncovered), 0.9, 0.5, 0.4, true)
 			end
 		end
 		GameTooltip:Show()
@@ -730,8 +759,8 @@ local function buildButton()
 	gridButton:SetScript("OnEnter", function(self)
 		if GameTooltip then
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:AddLine(Theme.Color("gold", "Blessing assignments"))
-			GameTooltip:AddLine("Open the assignment grid (/ptk bless).", 1, 1, 1)
+			GameTooltip:AddLine(Theme.Color("gold", L["Blessing assignments"]))
+			GameTooltip:AddLine(L["Open the assignment grid (/ptk bless)."], 1, 1, 1)
 			GameTooltip:Show()
 		end
 	end)
@@ -804,7 +833,7 @@ function M:RefreshCombatText()
 	self.missingNames = names
 	self.needingCount = needing
 	self:UpdateButtonText()
-	countText:SetText(needing > 0 and Theme.Color("gold", needing .. " need" .. (needing == 1 and "s" or "") .. " it") or "")
+	countText:SetText(needing > 0 and Theme.Color("gold", (needing == 1 and L["%d needs it"] or L["%d need it"]):format(needing)) or "")
 end
 
 -- After combat, the first scan checks every assumed Blessing against the
@@ -861,8 +890,8 @@ function M:OnEnable()
 			local now = M.needingCount or 0
 			if settings().postCombatAlert and now > preCombatNeeding then
 				M:SetPulse(true)
-				PK:Print(PK.Theme.Color("gold", "After combat: ") .. now .. " need your Blessing: "
-					.. table.concat(M.missingNames or {}, ", "))
+				PK:Print(PK.Theme.Color("gold", L["After combat:"] .. " ")
+					.. L["%d need your Blessing: %s"]:format(now, table.concat(M.missingNames or {}, ", ")))
 				if PK.profile.alerts.sound then
 					PK.Compat.PlaySound("RAID_WARNING", 8959)
 				end
@@ -879,7 +908,7 @@ function M:OnEnable()
 		awaitingPostCombat = true
 	end)
 	PK:RegisterEvent("READY_CHECK", self, function()
-		M:PrintReport("Ready check")
+		M:PrintReport(L["Ready check"])
 	end)
 	PK:RegisterEvent("UNIT_SPELLCAST_SENT", self, function(_, _, unit, target, _, spellID)
 		if PK.Compat.IsSecret(unit) or unit ~= "player" then
@@ -946,35 +975,35 @@ end
 -- Prints who is missing your Blessing and whose runs out soon.
 function M:PrintReport(reason)
 	if PK.Compat.InCombat() then
-		PK:Print("group buffs can't be read in combat; try again after the fight.")
+		PK:Print(L["group buffs can't be read in combat; try again after the fight."])
 		return
 	end
 	Roster:Scan()
 	local minutes = settings().prepullMinutes or 10
 	local missing, expiring = B.Report(self:Effective(), me(), self:Members(self:Effective()), GetTime(), minutes * 60)
-	local label = Theme.Color("gold", (reason or "Blessings") .. ": ")
+	local label = Theme.Color("gold", (reason or L["Blessings"]) .. ": ")
 	if inGroup() then
 		local gaps, uncovered = self:CoverageText()
 		if gaps ~= "" then
-			PK:Print(label .. "group missing (any paladin): " .. gaps)
+			PK:Print(label .. L["group missing (any paladin): %s"]:format(gaps))
 		end
 		if uncovered ~= "" then
-			PK:Print(label .. "no Blessings assigned for " .. uncovered)
+			PK:Print(label .. L["no Blessings assigned for %s"]:format(uncovered))
 		end
 	end
 	if #missing == 0 and #expiring == 0 then
-		PK:Print(label .. "all your Blessings last more than " .. minutes .. " minutes.")
+		PK:Print(label .. L["all your Blessings last more than %d minutes."]:format(minutes))
 		return
 	end
 	if #missing > 0 then
-		PK:Print(label .. Theme.Color("alarm", "missing") .. " on " .. table.concat(missing, ", "))
+		PK:Print(label .. Theme.Color("alarm", L["missing"]) .. " " .. L["on %s"]:format(table.concat(missing, ", ")))
 	end
 	if #expiring > 0 then
 		local parts = {}
 		for _, e in ipairs(expiring) do
 			parts[#parts + 1] = e.name .. " (" .. formatLeft(e.left) .. ")"
 		end
-		PK:Print(label .. "running out within " .. minutes .. "m on " .. table.concat(parts, ", "))
+		PK:Print(label .. L["running out within %dm on %s"]:format(minutes, table.concat(parts, ", ")))
 	end
 end
 
@@ -983,8 +1012,8 @@ function M:PrintSyncStatus()
 	local s = Comm.stats
 	local channel = Comm:Channel()
 	local can, why = Comm:CanSend()
-	PK:Print(Theme.Color("gold", "Sync: ") .. "you are " .. self:NameOf(me()) .. ", channel "
-		.. tostring(channel or "none (not in a group)") .. ", sending " .. (can and "allowed" or ("blocked: " .. tostring(why))))
+	PK:Print(Theme.Color("gold", L["Sync:"] .. " ") .. L["you are %s, channel %s, sending %s"]:format(self:NameOf(me()),
+		tostring(channel or L["none (not in a group)"]), can and L["allowed"] or L["blocked: %s"]:format(L[tostring(why)])))
 	PK:Print(string.format("sent %d (last %s, result %s), received %d (last from %s), own echoes %d, ignored %d%s",
 		s.sent, tostring(s.lastSent or "-"), tostring(s.lastResult or "-"), s.received, tostring(s.lastFromRaw or "-"),
 		s.echoes, s.ignored, s.lastIgnored and (" (" .. s.lastIgnored .. ")") or ""))
@@ -996,14 +1025,14 @@ function M:PrintSyncStatus()
 		heard[#heard + 1] = self:NameOf(id) .. " (v" .. tostring(peer.version) .. ")"
 	end
 	table.sort(heard)
-	PK:Print("paladins heard from: " .. (#heard > 0 and table.concat(heard, ", ") or "none yet"))
+	PK:Print(L["paladins heard from: %s"]:format(#heard > 0 and table.concat(heard, ", ") or L["none yet"]))
 	local old = {}
 	for sender, version in pairs(self.legacy) do
 		old[#old + 1] = sender .. " (v" .. tostring(version) .. ")"
 	end
 	if #old > 0 then
 		table.sort(old)
-		PK:Print(Theme.Color("alarm", "need to update the addon to sync: ") .. table.concat(old, ", "))
+		PK:Print(Theme.Color("alarm", L["need to update the addon to sync:"] .. " ") .. table.concat(old, ", "))
 	end
 	local group = {}
 	for _, p in ipairs(Roster.paladins) do
@@ -1012,28 +1041,28 @@ function M:PrintSyncStatus()
 		end
 	end
 	if #group > 0 then
-		PK:Print("paladins in your group: " .. table.concat(group, ", "))
+		PK:Print(L["paladins in your group: %s"]:format(table.concat(group, ", ")))
 	end
 	if channel then
 		self:SendHello(true)
-		PK:Print("re-announced you to the group; run /ptk sync again in a few seconds.")
+		PK:Print(L["re-announced you to the group; run /ptk sync again in a few seconds."])
 	end
 end
 
 PK:RegisterCommand("sync", function()
 	M:PrintSyncStatus()
-end, "show Blessing sync status and re-announce yourself to the group")
+end, L["show Blessing sync status and re-announce yourself to the group"])
 
 PK:RegisterCommand("buffs", function()
-	M:PrintReport("Blessings")
-end, "who is missing your Blessing, and whose runs out soon")
+	M:PrintReport(L["Blessings"])
+end, L["who is missing your Blessing, and whose runs out soon"])
 
 PK:RegisterCommand("bless", function()
 	if PK.BlessingGrid then
 		PK.BlessingGrid:Toggle()
 	end
-end, "open the Blessing assignment grid")
+end, L["open the Blessing assignment grid"])
 
 -- Keybinding (Bindings.xml)
-_G["BINDING_NAME_CLICK " .. BUTTON_NAME .. ":LeftButton"] = "Buff next missing Blessing"
-BINDING_NAME_NLPT_TOGGLE_GRID = "Open Blessing assignment grid"
+_G["BINDING_NAME_CLICK " .. BUTTON_NAME .. ":LeftButton"] = L["Buff next missing Blessing"]
+BINDING_NAME_NLPT_TOGGLE_GRID = L["Open Blessing assignment grid"]

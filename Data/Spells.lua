@@ -1,9 +1,12 @@
 local _, PK = ...
 
--- Spell and aura registry, by name only. Spell IDs are resolved at runtime
--- from the player's spellbook (never hardcoded). verify = true marks names
--- reported for WoW Forever but not yet confirmed on the real client.
--- names: first entry is the preferred name, the rest are alternates to try.
+-- Spell and aura registry. Spells are resolved at runtime from the player's
+-- spellbook. verify = true marks names reported for WoW Forever but not yet
+-- confirmed on the real client.
+-- names: English names; the first is preferred, the rest are alternates.
+-- ids: spell IDs confirmed on Forever (any rank). On a non-English client the
+--   English names match nothing, so the game's own name for these IDs
+--   (C_Spell.GetSpellName, in the client's language) is tried first.
 -- spec: which talent tree knowing this spell hints at (for Auto detection).
 
 local S = {}
@@ -11,8 +14,8 @@ PK.Spells = S
 
 S.list = {
 	-- Seals
-	{ key = "SEAL_RIGHTEOUSNESS", names = { "Seal of Righteousness" }, category = "seal" },
-	{ key = "SEAL_COMMAND", names = { "Seal of Command" }, category = "seal", spec = "ret" },
+	{ key = "SEAL_RIGHTEOUSNESS", names = { "Seal of Righteousness" }, category = "seal", ids = { 21084, 20287 } },
+	{ key = "SEAL_COMMAND", names = { "Seal of Command" }, category = "seal", spec = "ret", ids = { 20375 } },
 	{ key = "SEAL_JUSTICE", names = { "Seal of Justice" }, category = "seal" },
 	{ key = "SEAL_LIGHT", names = { "Seal of Light" }, category = "seal" },
 	{ key = "SEAL_WISDOM", names = { "Seal of Wisdom" }, category = "seal" },
@@ -20,7 +23,7 @@ S.list = {
 	{ key = "SEAL_FURY", names = { "Seal of Fury" }, category = "seal", spec = "prot" },
 
 	-- Blessings (Sanctuary is removed in Forever; kept only to confirm that)
-	{ key = "BLESSING_MIGHT", names = { "Blessing of Might" }, category = "blessing" },
+	{ key = "BLESSING_MIGHT", names = { "Blessing of Might" }, category = "blessing", ids = { 19740 } },
 	{ key = "BLESSING_WISDOM", names = { "Blessing of Wisdom" }, category = "blessing" },
 	{ key = "BLESSING_KINGS", names = { "Blessing of Kings" }, category = "blessing", verify = true },
 	{ key = "BLESSING_LIGHT", names = { "Blessing of Light" }, category = "blessing" },
@@ -55,10 +58,10 @@ S.list = {
 
 	-- Abilities
 	{ key = "HOLY_STRIKE", names = { "Holy Strike" }, category = "ability", verify = true },
-	{ key = "JUDGEMENT", names = { "Judgement" }, category = "ability" },
+	{ key = "JUDGEMENT", names = { "Judgement" }, category = "ability", ids = { 20271 } },
 	{ key = "CONSECRATION", names = { "Consecration" }, category = "ability" },
-	{ key = "HOLY_SHOCK", names = { "Holy Shock" }, category = "ability", spec = "holy" },
-	{ key = "DIVINE_FAVOR", names = { "Divine Favor" }, category = "ability", spec = "holy" },
+	{ key = "HOLY_SHOCK", names = { "Holy Shock" }, category = "ability", spec = "holy", ids = { 1311606 } },
+	{ key = "DIVINE_FAVOR", names = { "Divine Favor" }, category = "ability", spec = "holy", ids = { 20216 } },
 	{ key = "LAY_ON_HANDS", names = { "Lay on Hands" }, category = "ability" },
 	{ key = "DIVINE_SHIELD", names = { "Divine Shield" }, category = "ability" },
 	{ key = "DIVINE_PROTECTION", names = { "Divine Protection" }, category = "ability" },
@@ -75,17 +78,17 @@ S.list = {
 
 	-- Talent-gated, presence unverified
 	-- Talents confirmed in Forever's talent tree (level 10 probe, 2026-09-24).
-	{ key = "TEMPLARS_BULWARK", names = { "Templar's Bulwark" }, category = "talent", spec = "prot" },
-	{ key = "LIGHTS_VIGIL", names = { "Light's Vigil" }, category = "talent", spec = "holy" },
-	{ key = "INFUSION_OF_LIGHT", names = { "Infusion of Light" }, category = "talent", spec = "holy" },
-	{ key = "SACRED_ARBITER", names = { "Sacred Arbiter" }, category = "talent", spec = "ret" },
-	{ key = "SANCTIFIED_JUDGEMENT", names = { "Sanctified Judgement" }, category = "talent", spec = "ret" },
-	{ key = "TWIST_OF_LIGHT", names = { "Twist of Light" }, category = "talent", spec = "ret" },
-	{ key = "CRUSADE", names = { "Crusade" }, category = "talent", spec = "ret" },
-	{ key = "CHAMPION_OF_THE_LIGHT", names = { "Champion of the Light" }, category = "talent", spec = "ret" },
-	{ key = "HOLY_SHIELD", names = { "Holy Shield" }, category = "talent", spec = "prot" },
+	{ key = "TEMPLARS_BULWARK", names = { "Templar's Bulwark" }, category = "talent", spec = "prot", ids = { 1311015 } },
+	{ key = "LIGHTS_VIGIL", names = { "Light's Vigil" }, category = "talent", spec = "holy", ids = { 1310911 } },
+	{ key = "INFUSION_OF_LIGHT", names = { "Infusion of Light" }, category = "talent", spec = "holy", ids = { 426065 } },
+	{ key = "SACRED_ARBITER", names = { "Sacred Arbiter" }, category = "talent", spec = "ret", ids = { 1311087 } },
+	{ key = "SANCTIFIED_JUDGEMENT", names = { "Sanctified Judgement" }, category = "talent", spec = "ret", ids = { 1311074 } },
+	{ key = "TWIST_OF_LIGHT", names = { "Twist of Light" }, category = "talent", spec = "ret", ids = { 1310735 } },
+	{ key = "CRUSADE", names = { "Crusade" }, category = "talent", spec = "ret", ids = { 1311083 } },
+	{ key = "CHAMPION_OF_THE_LIGHT", names = { "Champion of the Light" }, category = "talent", spec = "ret", ids = { 1311084 } },
+	{ key = "HOLY_SHIELD", names = { "Holy Shield" }, category = "talent", spec = "prot", ids = { 20925 } },
 	-- Holy talent (Forever launch): one ally at a time, 5 min, boosts your Holy Light on them.
-	{ key = "OATH_OF_LIGHT", names = { "Oath of Light" }, category = "talent", spec = "holy", verify = true },
+	{ key = "OATH_OF_LIGHT", names = { "Oath of Light" }, category = "talent", spec = "holy", ids = { 1328548 } },
 }
 
 S.byKey = {}
@@ -118,10 +121,30 @@ function S.IndexSpellbook(book)
 	return index
 end
 
+-- Names to look the entry up by: the client's own name for each known ID
+-- (so German, French, ... clients match), then the English names.
+function S.LookupNames(entry)
+	local names, seen = {}, {}
+	local function add(n)
+		if type(n) == "string" and n ~= "" and not PK.Compat.IsSecret(n) and not seen[n:lower()] then
+			seen[n:lower()] = true
+			names[#names + 1] = n
+		end
+	end
+	for _, id in ipairs(entry.ids or {}) do
+		add(PK.Compat.GetSpellName(id))
+	end
+	for _, n in ipairs(entry.names) do
+		add(n)
+	end
+	return names
+end
+
 -- Resolves a registry entry. Returns a result table:
 -- { spellID, name, method = "spellbook" | "futureSpell" | "C_Spell" | nil, known }
 function S.Resolve(entry, bookIndex)
-	for _, name in ipairs(entry.names) do
+	local lookup = S.LookupNames(entry)
+	for _, name in ipairs(lookup) do
 		local item = bookIndex and bookIndex[name:lower()]
 		if item then
 			local future = item.itemType == "FutureSpell"
@@ -134,7 +157,7 @@ function S.Resolve(entry, bookIndex)
 			}
 		end
 	end
-	for _, name in ipairs(entry.names) do
+	for _, name in ipairs(lookup) do
 		local info = PK.Compat.GetSpellInfo(name)
 		if info and info.spellID then
 			return {

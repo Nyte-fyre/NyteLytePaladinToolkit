@@ -14,7 +14,7 @@
 # confirmed on beta build 1.60.1.69977.
 
 Core\Init.lua
-Locales\enUS.lua
+# Translations: Locales\<code>.lua files go here (see Locales\_template.lua).
 Core\Compat.lua
 Core\Secrets.lua
 Core\CombatQueue.lua

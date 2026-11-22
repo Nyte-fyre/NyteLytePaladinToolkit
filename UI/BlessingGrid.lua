@@ -12,6 +12,7 @@ local _, PK = ...
 
 local B = PK.Blessings
 local Theme = PK.Theme
+local L = PK.L
 local Grid = {}
 PK.BlessingGrid = Grid
 
@@ -30,10 +31,18 @@ local function manager()
 	return PK.modules.BlessingManager
 end
 
+-- Class names in the client's language (the game's own table), else English.
 local CLASS_NAMES = {
 	WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter", ROGUE = "Rogue", PRIEST = "Priest",
 	SHAMAN = "Shaman", MAGE = "Mage", WARLOCK = "Warlock", DRUID = "Druid",
 }
+do
+	local localized = _G.LOCALIZED_CLASS_NAMES_MALE
+	for token, english in pairs(CLASS_NAMES) do
+		local name = type(localized) == "table" and localized[token]
+		CLASS_NAMES[token] = (type(name) == "string" and name ~= "") and name or L[english]
+	end
+end
 
 local function spellIcon(key)
 	local r = PK.SpellRegistry:Get(key)
@@ -44,9 +53,14 @@ local function spellIcon(key)
 	return info and info.iconID or nil
 end
 
+-- The spell's name in the client's language, else the English registry name.
 local function spellName(key)
+	local r = key and PK.SpellRegistry:Get(key)
+	if r and r.name then
+		return r.name
+	end
 	local e = key and PK.Spells.byKey[key]
-	return e and e.names[1] or "none"
+	return e and e.names[1] or L["none"]
 end
 
 -- Ordered options for a paladin's cell: the Blessings (or Auras) they know,
@@ -142,19 +156,19 @@ local function makeCell(parent, row, class)
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:AddLine(Theme.Color("gold", (self.row.paladin and manager():NameOf(self.row.paladin) or "?") .. " → "
-			.. (self.class and CLASS_NAMES[self.class] or "Aura")))
+			.. (self.class and CLASS_NAMES[self.class] or L["Aura"])))
 		GameTooltip:AddLine(spellName(self.key), 1, 1, 1)
 		for _, line in ipairs(self.exceptions or {}) do
 			GameTooltip:AddLine(line, 1, 0.82, 0.25)
 		end
 		if self.isConflict then
-			GameTooltip:AddLine("Another paladin is assigned this Aura too.", 1, 0.3, 0.2, true)
+			GameTooltip:AddLine(L["Another paladin is assigned this Aura too."], 1, 0.3, 0.2, true)
 		end
 		if self.row.editable then
-			GameTooltip:AddLine("Click: next, Ctrl-click: previous, Shift-click: clear"
-				.. (self.class and ", right-click: player exceptions." or "."), 0.7, 0.7, 0.7, true)
+			GameTooltip:AddLine(self.class and L["Click: next, Ctrl-click: previous, Shift-click: clear, right-click: player exceptions."]
+				or L["Click: next, Ctrl-click: previous, Shift-click: clear."], 0.7, 0.7, 0.7, true)
 		else
-			GameTooltip:AddLine("In a raid, only this paladin or the raid leader/assistants can change it.", 0.7, 0.7, 0.7, true)
+			GameTooltip:AddLine(L["In a raid, only this paladin or the raid leader/assistants can change it."], 0.7, 0.7, 0.7, true)
 		end
 		GameTooltip:Show()
 	end)
@@ -169,7 +183,7 @@ end
 local function build()
 	local width = LEFT * 2 + NAME_WIDTH + (#B.CLASSES + 1) * (CELL + GAP) + 10
 	local height = -TOP + MAX_ROWS * (CELL + GAP) + 70
-	window = Theme.CreateWindow("NyteLytePaladinToolkitBlessingGrid", "Blessing Assignments", width, height,
+	window = Theme.CreateWindow("NyteLytePaladinToolkitBlessingGrid", L["Blessing Assignments"], width, height,
 		Theme.ICON_BLESSING)
 
 	-- Column headers: class icons (text fallback) and the Aura column.
@@ -191,7 +205,7 @@ local function build()
 	end
 	local auraHeader = window:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	auraHeader:SetPoint("TOPLEFT", LEFT + NAME_WIDTH + #B.CLASSES * (CELL + GAP) + 4, TOP + CELL - 8)
-	auraHeader:SetText("Aura")
+	auraHeader:SetText(L["Aura"])
 
 	for r = 1, MAX_ROWS do
 		local y = TOP - (r - 1) * (CELL + GAP)
@@ -219,12 +233,12 @@ local function build()
 	coverageText:SetJustifyV("BOTTOM")
 	coverageText:SetHeight(COVERAGE_HEIGHT - 4)
 
-	local suggest = Theme.Button(window, "Auto-suggest", 120, function()
+	local suggest = Theme.Button(window, L["Auto-suggest"], 120, function()
 		local n = manager():ApplySuggestion()
-		PK:Print("suggested layout applied to " .. n .. " row(s). Change any cell by clicking it.")
+		PK:Print(L["suggested layout applied to %d row(s). Change any cell by clicking it."]:format(n))
 	end)
 	suggest:SetPoint("BOTTOMLEFT", 16, 16)
-	local announce = Theme.Button(window, "Announce", 100, function()
+	local announce = Theme.Button(window, L["Announce"], 100, function()
 		manager():Announce()
 	end)
 	announce:SetPoint("LEFT", suggest, "RIGHT", 8, 0)
@@ -260,7 +274,7 @@ function Grid:Refresh()
 			end
 			local name = m:NameOf(paladin)
 			row.name:SetText((row.editable and Theme.Color("light", name) or Theme.Color("dim", name))
-				.. (hasAddon and "" or Theme.Color("dim", " (no addon)")))
+				.. (hasAddon and "" or Theme.Color("dim", " " .. L["(no addon)"])))
 		else
 			row.name:SetText("")
 		end
@@ -282,7 +296,7 @@ function Grid:Refresh()
 					local o = member.guid and data.overrides[member.guid]
 					if member.class == cell.class and o then
 						cell.exceptions[#cell.exceptions + 1] = member.name .. ": "
-							.. (o == B.NONE and "none" or spellName(o))
+							.. (o == B.NONE and L["none"] or spellName(o))
 					end
 				end
 			end
@@ -310,17 +324,17 @@ function Grid:Refresh()
 	end
 	local lines = {}
 	if gaps ~= "" then
-		lines[#lines + 1] = Theme.Color("gold", "Missing: ") .. gaps
+		lines[#lines + 1] = Theme.Color("gold", L["Missing:"] .. " ") .. gaps
 	end
 	if uncovered ~= "" then
-		lines[#lines + 1] = Theme.Color("alarm", "Nobody assigned for: ") .. uncovered
+		lines[#lines + 1] = Theme.Color("alarm", L["Nobody assigned for:"] .. " ") .. uncovered
 	end
 	coverageText:SetText(table.concat(lines, "\n"))
 	local shownRows = math.max(1, math.min(#paladins, MAX_ROWS))
 	window:SetHeight(-TOP + shownRows * (CELL + GAP) + 64 + (#lines > 0 and COVERAGE_HEIGHT or 0))
-	local extra = #paladins > MAX_ROWS and (" (showing " .. MAX_ROWS .. " of " .. #paladins .. ")") or ""
-	statusText:SetText(withAddon .. " other paladin(s) syncing" .. extra
-		.. (PK.Comm:Pending() > 0 and " - sending after combat" or ""))
+	local extra = #paladins > MAX_ROWS and (" " .. L["(showing %d of %d)"]:format(MAX_ROWS, #paladins)) or ""
+	statusText:SetText(L["%d other paladin(s) syncing"]:format(withAddon) .. extra
+		.. (PK.Comm:Pending() > 0 and (" - " .. L["sending after combat"]) or ""))
 end
 
 -- Per-player exceptions popup ----------------------------------------------------------
@@ -358,13 +372,13 @@ local function refreshPopup()
 			r.cell.key = o
 			if o == B.NONE then
 				r.cell.icon:SetTexture(nil)
-				r.label:SetText(Theme.Color("dim", "none"))
+				r.label:SetText(Theme.Color("dim", L["none"]))
 			elseif o then
 				r.cell.icon:SetTexture(spellIcon(o))
 				r.label:SetText(Theme.Color("gold", spellName(o)))
 			else
 				r.cell.icon:SetTexture(classKey and spellIcon(classKey) or nil)
-				r.label:SetText(Theme.Color("dim", "class default" .. (classKey and (" (" .. spellName(classKey) .. ")") or "")))
+				r.label:SetText(Theme.Color("dim", L["class default"] .. (classKey and (" (" .. spellName(classKey) .. ")") or "")))
 			end
 			r.cell:SetAlpha(editable and 1 or 0.6)
 			r.frame:Show()
@@ -377,11 +391,11 @@ local function refreshPopup()
 end
 
 local function buildPopup()
-	popup = Theme.CreateWindow("NyteLytePaladinToolkitExceptions", "Exceptions", 320, 200, Theme.ICON_GRID)
+	popup = Theme.CreateWindow("NyteLytePaladinToolkitExceptions", L["Exceptions"], 320, 200, Theme.ICON_GRID)
 	popup:SetFrameStrata("FULLSCREEN_DIALOG")
 	popup.empty = popup:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	popup.empty:SetPoint("TOPLEFT", 16, -56)
-	popup.empty:SetText("Nobody of this class is in your group.")
+	popup.empty:SetText(L["Nobody of this class is in your group."])
 	for i = 1, POPUP_ROWS do
 		local f = CreateFrame("Frame", nil, popup)
 		f:SetSize(290, 26)
@@ -433,8 +447,8 @@ local function buildPopup()
 		r.cell:SetScript("OnEnter", function(self)
 			if GameTooltip then
 				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-				GameTooltip:AddLine(Theme.Color("gold", "Exception for " .. (r.member and r.member.name or "?")))
-				GameTooltip:AddLine("Click: next, Ctrl/right-click: previous, Shift-click: back to the class default.",
+				GameTooltip:AddLine(Theme.Color("gold", L["Exception for %s"]:format(r.member and r.member.name or "?")))
+				GameTooltip:AddLine(L["Click: next, Ctrl/right-click: previous, Shift-click: back to the class default."],
 					0.8, 0.8, 0.8, true)
 				GameTooltip:Show()
 			end

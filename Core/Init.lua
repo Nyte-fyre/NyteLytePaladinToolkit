@@ -14,6 +14,24 @@ PK.modules = {}
 PK.moduleOrder = {}
 PK.unknownEvents = {}
 
+-- Translations. Every user-facing string goes through L[<English text>]; a
+-- missing translation falls back to the English key, so the addon always
+-- works in English and a locale file (Locales/<code>.lua) can be partial.
+-- Strings with %s / %d are format strings: translations keep the
+-- placeholders in the same order. `python tools/locale_keys.py` rebuilds
+-- Locales/_template.lua with every key in the code.
+PK.L = setmetatable({}, { __index = function(_, key) return key end })
+PK.LOCALE = (GetLocale and GetLocale()) or "enUS"
+
+-- The table a locale file fills when the client runs `code`, else nil.
+function PK.NewLocale(code)
+	if code ~= PK.LOCALE or code == "enUS" or code == "enGB" then
+		return nil
+	end
+	return PK.L
+end
+local L = PK.L
+
 -- Holy gold with a Holy Bolt icon (see UI/Theme.lua).
 local PREFIX = "|TInterface\\Icons\\Spell_Holy_HolyBolt:14:14|t |cffffd140"
 local MAX_ERRORS = 30
@@ -228,11 +246,11 @@ function PK:RegisterCommand(word, fn, help)
 end
 
 local function printHelp()
-	PK:Print("commands (version " .. PK.version .. "):")
+	PK:Print(L["commands (version %s):"]:format(PK.version))
 	for _, word in ipairs(commandOrder) do
 		local c = commands[word]
 		if c.help then
-			print("  /ptk " .. word .. " - " .. c.help)
+			print("  /ptk " .. word .. " - " .. L[c.help])
 		end
 	end
 end
@@ -241,7 +259,7 @@ SLASH_NYTELYTEPALADINTOOLKIT1 = "/ptk"
 SLASH_NYTELYTEPALADINTOOLKIT2 = "/paladintoolkit"
 SlashCmdList.NYTELYTEPALADINTOOLKIT = function(msg)
 	if PK.dormant then
-		PK:Print("this addon only runs on Paladins.")
+		PK:Print(L["this addon only runs on Paladins."])
 		return
 	end
 	local words, raw = {}, {}
@@ -263,10 +281,10 @@ SlashCmdList.NYTELYTEPALADINTOOLKIT = function(msg)
 	PK.SafeCall(c.fn, words, raw)
 end
 
-PK:RegisterCommand("help", printHelp, "list commands")
+PK:RegisterCommand("help", printHelp, L["list commands"])
 PK:RegisterCommand("errors", function()
-	PK:Print("to see Lua errors as popups, type: /console scriptErrors 1")
-	PK:Print(#PK.errorList .. " error(s) captured this session and saved on /reload.")
+	PK:Print(L["to see Lua errors as popups, type: /console scriptErrors 1"])
+	PK:Print(L["%d error(s) captured this session and saved on /reload."]:format(#PK.errorList))
 	if #PK.errorList > 0 and PK.CopyWindow then
 		local lines = {}
 		for _, e in ipairs(PK.errorList) do
@@ -274,7 +292,7 @@ PK:RegisterCommand("errors", function()
 		end
 		PK.CopyWindow:Show(PK.displayName .. " - errors", table.concat(lines, "\n\n"))
 	end
-end, "show captured Lua errors")
+end, L["show captured Lua errors"])
 
 -- Lifecycle ------------------------------------------------------------------
 local lifecycle = {}
@@ -381,13 +399,11 @@ PK:RegisterEvent("PLAYER_LOGIN", lifecycle, function()
 	-- Say so, instead of letting a reset setup look like an addon bug.
 	if PK.svState and PK.svState.restoredFromCharacter then
 		C_Timer.After(6, function()
-			PK:Print("your settings didn't load (Forever beta bug), so they were restored from this character's backup.")
+			PK:Print(L["your settings didn't load (Forever beta bug), so they were restored from this character's backup."])
 		end)
 	elseif PK.svState and not PK.svState.existedAtLoad then
 		C_Timer.After(6, function()
-			PK:Print("no saved settings were found, so defaults are in use. First time? Welcome, type /ptk to set up. "
-				.. "If you had settings before, Forever's beta sometimes doesn't load them after a full restart: "
-				.. "restore yours with /ptk import (paste a string from /ptk export).")
+			PK:Print(L["no saved settings were found, so defaults are in use. First time? Welcome, type /ptk to set up. If you had settings before, Forever's beta sometimes doesn't load them after a full restart: restore yours with /ptk import (paste a string from /ptk export)."])
 		end)
 	end
 end)

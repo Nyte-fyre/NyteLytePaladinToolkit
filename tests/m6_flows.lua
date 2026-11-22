@@ -495,6 +495,28 @@ do
 	P.SpellRegistry:Refresh()
 end
 
+-- Localization: a locale file fills PK.L only on its own client; missing
+-- keys fall back to English.
+do
+	assert(P.L["Holy"] == "Holy", "English by default")
+	assert(P.NewLocale("enUS") == nil and P.NewLocale("deDE") == nil, "other locales skip their file")
+	local saved = P.LOCALE
+	P.LOCALE = "deDE"
+	local L = P.NewLocale("deDE")
+	assert(L == P.L, "the client's own locale fills the table")
+	L["Holy"] = "Heilig"
+	assert(P.L["Holy"] == "Heilig" and P.L["Protection"] == "Protection", "translated, untranslated falls back")
+	L["Holy"] = nil
+	P.LOCALE = saved
+	-- A German spellbook: the English name matches nothing, the spell ID does.
+	local savedBook = MOCK.book
+	MOCK.book = { { name = "Segen der Macht", spellID = 19740, itemType = 1 } }
+	local book = { { name = "Segen der Macht", spellID = 19740, itemType = "Spell" } }
+	local r = P.Spells.Resolve(P.Spells.byKey.BLESSING_MIGHT, P.Spells.IndexSpellbook(book))
+	assert(r.name == "Segen der Macht" and r.spellID == 19740 and r.known, "found by ID on a German client")
+	MOCK.book = savedBook
+end
+
 -- DB v5: Buff Sentinel moves up only where it was never moved.
 local oldDb = { version = 4, profiles = { P1 = { layout = {
 	holy = { BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 } },

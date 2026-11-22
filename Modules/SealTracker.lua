@@ -10,6 +10,7 @@ local _, PK = ...
 -- shows state; it never suggests when to twist.
 
 local AS = PK.AuraService
+local L = PK.L
 local Frames = PK.Frames
 local M = PK:RegisterModule("SealTracker", {})
 
@@ -69,7 +70,7 @@ local function build()
 	echoIcon:SetPoint("LEFT", bar, "RIGHT", 6, 0)
 	echoLabel = echoIcon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	echoLabel:SetPoint("BOTTOM", echoIcon, "TOP", 0, 1)
-	echoLabel:SetText("Echo")
+	echoLabel:SetText(L["Echo"])
 	echoIcon:Hide()
 
 	-- Holy reminder: "Light" (boss without your Judgement of Light) or
@@ -148,7 +149,7 @@ function M:UpdateAdvice()
 	if which == "light" then
 		local r = PK.SpellRegistry:Get("SEAL_LIGHT")
 		adviceIcon.icon:SetTexture(r and r.icon or 134400)
-		adviceLabel:SetText("Light")
+		adviceLabel:SetText(L["Light"])
 		adviceIcon:Show()
 		if pulse then
 			if not pulse:IsPlaying() then
@@ -161,7 +162,7 @@ function M:UpdateAdvice()
 	elseif which == "mana" then
 		local r = PK.SpellRegistry:Get("SEAL_WISDOM")
 		adviceIcon.icon:SetTexture(r and r.icon or 134400)
-		adviceLabel:SetText("Mana")
+		adviceLabel:SetText(L["Mana"])
 		adviceIcon:Show()
 		if not PK.HolySeals:ApplyLowManaAlpha(adviceIcon) then
 			adviceIcon:Hide()
@@ -270,10 +271,10 @@ function M:Render()
 		-- there). Holy relies on the Light / Mana reminders instead.
 		if PK.Compat.InCombat() and not holy then
 			icon:SetState("missing")
-			nameText:SetText("|cffff4040No Seal|r")
+			nameText:SetText("|cffff4040" .. L["No Seal"] .. "|r")
 		else
 			icon:SetState("unusable")
-			nameText:SetText("|cff909090No Seal|r")
+			nameText:SetText("|cff909090" .. L["No Seal"] .. "|r")
 		end
 		bar:SetValue(0)
 		timeText:SetText("")

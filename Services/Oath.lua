@@ -13,6 +13,7 @@ local _, PK = ...
 -- Fires PK_OATH_UPDATED.
 
 local Compat = PK.Compat
+local L = PK.L
 local Secrets = PK.Secrets
 local Oath = { state = nil }
 PK.Oath = Oath
@@ -202,7 +203,7 @@ end)
 
 PK:RegisterCommand("oath", function()
 	if not Oath:IsKnown() then
-		PK:Print("Oath of Light isn't learned on this character (it's a Holy talent).")
+		PK:Print(L["Oath of Light isn't learned on this character (it's a Holy talent)."])
 		return
 	end
 	local s = Oath:Get()
@@ -210,14 +211,14 @@ PK:RegisterCommand("oath", function()
 	for _, m in ipairs(Oath:Tanks()) do
 		tanks[#tanks + 1] = m.name
 	end
-	local tankText = #tanks > 0 and table.concat(tanks, ", ") or "none set (roles not assigned)"
+	local tankText = #tanks > 0 and table.concat(tanks, ", ") or L["none set (roles not assigned)"]
 	if s then
 		local left = Oath:Remaining()
-		PK:Print(string.format("Oath of Light is on %s%s, %s left. Tank: %s.", s.name,
-			s.source == "cast" and " (from your cast*)" or "",
-			left == math.huge and "no timer" or (math.floor(left / 60) .. "m " .. math.floor(left % 60) .. "s"),
+		PK:Print(L["Oath of Light is on %s%s, %s left. Tank: %s."]:format(s.name,
+			s.source == "cast" and L[" (from your cast*)"] or "",
+			left == math.huge and L["no timer"] or L["%dm %ds"]:format(math.floor(left / 60), math.floor(left % 60)),
 			tankText))
 	else
-		PK:Print("no Oath of Light active. Tank: " .. tankText .. ".")
+		PK:Print(L["no Oath of Light active. Tank: %s."]:format(tankText))
 	end
-end, "show who has your Oath of Light")
+end, L["show who has your Oath of Light"])

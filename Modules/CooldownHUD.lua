@@ -15,6 +15,7 @@ local _, PK = ...
 -- you're in a party or raid (e.g. Cleanse, useless when solo leveling).
 
 local Compat = PK.Compat
+local L = PK.L
 local Frames = PK.Frames
 local M = PK:RegisterModule("CooldownHUD", {})
 
@@ -177,9 +178,9 @@ local function makeArrangeable(icon)
 		if GameTooltip and not PK.profile.locked then
 			GameTooltip:SetOwner(self, "ANCHOR_TOP")
 			GameTooltip:SetText(PK.displayName)
-			GameTooltip:AddLine(picked and "Click to put the picked-up icon here. Right-click cancels."
-				or "Click to pick up this icon, then click where it should go.", 1, 1, 1, true)
-			GameTooltip:AddLine("Drag to move the whole bar.", 0.7, 0.7, 0.7, true)
+			GameTooltip:AddLine(picked and L["Click to put the picked-up icon here. Right-click cancels."]
+				or L["Click to pick up this icon, then click where it should go."], 1, 1, 1, true)
+			GameTooltip:AddLine(L["Drag to move the whole bar."], 0.7, 0.7, 0.7, true)
 			GameTooltip:Show()
 		end
 	end)
@@ -326,7 +327,7 @@ end
 
 local function entryLabel(entry)
 	local base, groupOnly = splitEntry(entry)
-	local suffix = groupOnly and " |cff80c0ff(group only)|r" or ""
+	local suffix = groupOnly and " |cff80c0ff" .. L["(group only)"] .. "|r" or ""
 	local custom = base:match("^name:(.+)$")
 	if custom then
 		return custom .. suffix
@@ -349,23 +350,23 @@ PK:RegisterCommand("cd", function(args, raw)
 		local key = findRegistryKey(name) or ("name:" .. name)
 		for _, e in ipairs(list) do
 			if splitEntry(e) == key then
-				PK:Print(entryLabel(e) .. " is already on the list.")
+				PK:Print(L["%s is already on the list."]:format(entryLabel(e)))
 				return
 			end
 		end
 		list[#list + 1] = key
-		PK:Print("added " .. entryLabel(key) .. " to the " .. PK.SpecProfile.LABELS[spec] .. " cooldowns.")
+		PK:Print(L["added %s to the %s cooldowns."]:format(entryLabel(key), PK.SpecProfile.LABELS[spec]))
 	elseif sub == "remove" and name ~= "" then
 		local key = findRegistryKey(name) or ("name:" .. name)
 		for i, e in ipairs(list) do
 			if splitEntry(e) == key or plainLabel(e):lower() == lname then
 				table.remove(list, i)
-				PK:Print("removed " .. plainLabel(e) .. ".")
+				PK:Print(L["removed %s."]:format(plainLabel(e)))
 				PK:Fire("PK_SETTINGS_CHANGED")
 				return
 			end
 		end
-		PK:Print("not on the list: " .. name)
+		PK:Print(L["not on the list: %s"]:format(name))
 		return
 	elseif sub == "group" and name ~= "" then
 		local key = findRegistryKey(name) or ("name:" .. name)
@@ -373,12 +374,12 @@ PK:RegisterCommand("cd", function(args, raw)
 			local base, groupOnly = splitEntry(e)
 			if base == key or plainLabel(e):lower() == lname then
 				list[i] = groupOnly and base or (base .. "@group")
-				PK:Print(plainLabel(e) .. (groupOnly and " now shows all the time." or " now shows only in a group."))
+				PK:Print((groupOnly and L["%s now shows all the time."] or L["%s now shows only in a group."]):format(plainLabel(e)))
 				PK:Fire("PK_SETTINGS_CHANGED")
 				return
 			end
 		end
-		PK:Print("not on the list: " .. name)
+		PK:Print(L["not on the list: %s"]:format(name))
 		return
 	elseif sub == "move" and #raw >= 3 then
 		-- /ptk cd move <spell name> <position | first | last>
@@ -394,32 +395,31 @@ PK:RegisterCommand("cd", function(args, raw)
 			end
 		end
 		if not from then
-			PK:Print("not on the list: " .. spellName)
+			PK:Print(L["not on the list: %s"]:format(spellName))
 			return
 		end
 		if not to then
-			PK:Print("usage: /ptk cd move <spell> <position, first or last>")
+			PK:Print(L["usage: /ptk cd move <spell> <position, first or last>"])
 			return
 		end
 		to = math.max(1, math.min(#list, math.floor(to)))
 		M:MoveEntry(from, to)
-		PK:Print(string.format("%s is now #%d of %d.", plainLabel(list[to]), to, #list))
+		PK:Print(L["%s is now #%d of %d."]:format(plainLabel(list[to]), to, #list))
 		return
 	elseif sub == "reset" then
 		PK.profile.cooldownLists[spec] = PK.Config.DeepCopy(PK.Presets.cooldownLists[spec])
-		PK:Print("cooldown list reset for " .. PK.SpecProfile.LABELS[spec] .. ".")
+		PK:Print(L["cooldown list reset for %s."]:format(PK.SpecProfile.LABELS[spec]))
 	else
 		local names = {}
 		for i, e in ipairs(list) do
 			local spell = resolveEntry(e)
 			names[#names + 1] = i .. ". " .. entryLabel(e)
-				.. ((spell and spell.known) and "" or " |cff808080(not learned)|r")
+				.. ((spell and spell.known) and "" or " |cff808080" .. L["(not learned)"] .. "|r")
 		end
-		PK:Print(PK.SpecProfile.LABELS[spec] .. " cooldowns: " .. (#names > 0 and table.concat(names, ", ") or "none"))
-		PK:Print("change with /ptk cd add <spell>, remove <spell>, move <spell> <position|first|last>, "
-			.. "group <spell> (toggle group-only), reset")
-		PK:Print("or /ptk unlock, click an icon on the bar, then click where it should go.")
+		PK:Print(L["%s cooldowns: %s"]:format(PK.SpecProfile.LABELS[spec], #names > 0 and table.concat(names, ", ") or L["none"]))
+		PK:Print(L["change with /ptk cd add <spell>, remove <spell>, move <spell> <position|first|last>, group <spell> (toggle group-only), reset"])
+		PK:Print(L["or /ptk unlock, click an icon on the bar, then click where it should go."])
 		return
 	end
 	PK:Fire("PK_SETTINGS_CHANGED")
-end, "list | add <spell> | remove <spell> | move <spell> <pos> | group <spell> | reset - edit this spec's cooldown bar")
+end, L["list | add <spell> | remove <spell> | move <spell> <pos> | group <spell> | reset - edit this spec's cooldown bar"])

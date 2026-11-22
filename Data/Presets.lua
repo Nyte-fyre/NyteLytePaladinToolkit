@@ -10,21 +10,22 @@ PK.Presets = Presets
 -- Module order as shown in settings.
 Presets.MODULES = { "BuffSentinel", "SealTracker", "CooldownHUD", "BlessingManager", "TankKit" }
 
+local L = PK.L
 Presets.MODULE_LABELS = {
-	BuffSentinel = "Buff Sentinel (missing buffs)",
-	SealTracker = "Seal Tracker",
-	CooldownHUD = "Cooldown HUD",
-	BlessingManager = "Blessing Manager",
-	TankKit = "Tank Kit",
+	BuffSentinel = L["Buff Sentinel (missing buffs)"],
+	SealTracker = L["Seal Tracker"],
+	CooldownHUD = L["Cooldown HUD"],
+	BlessingManager = L["Blessing Manager"],
+	TankKit = L["Tank Kit"],
 }
 
 -- Short names for the frame-size rows.
 Presets.SHORT_LABELS = {
-	BuffSentinel = "Buff Sentinel",
-	SealTracker = "Seal Tracker",
-	CooldownHUD = "Cooldown bar",
-	BlessingManager = "Blessing buff button",
-	TankKit = "Tank Kit",
+	BuffSentinel = L["Buff Sentinel"],
+	SealTracker = L["Seal Tracker"],
+	CooldownHUD = L["Cooldown bar"],
+	BlessingManager = L["Blessing buff button"],
+	TankKit = L["Tank Kit"],
 }
 
 Presets.modules = {

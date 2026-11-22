@@ -10,6 +10,7 @@ local _, PK = ...
 -- chat, and a ready check does it automatically.
 
 local AS = PK.AuraService
+local L = PK.L
 local Frames = PK.Frames
 local M = PK:RegisterModule("BuffSentinel", {})
 
@@ -21,6 +22,13 @@ local ticker
 
 local function settings()
 	return PK.Config:GetModuleSettings("BuffSentinel")
+end
+
+-- The spell's name in the client's language (from the spellbook), else the
+-- translated English name.
+local function spellName(key, english)
+	local r = PK.SpellRegistry:Get(key)
+	return (r and r.name) or L[english]
 end
 
 local function registryIcon(key)
@@ -79,7 +87,7 @@ function M:Evaluate()
 	-- Holy gets Seal reminders in the Seal Tracker instead of this check.
 	if s.checkSeal and knowsAny("seal") and not AS:HolySealMode() then
 		local seal = AS:GetSeal()
-		add("seal", "Seal", seal, registryIcon("SEAL_RIGHTEOUSNESS"), false, true)
+		add("seal", L["Seal"], seal, registryIcon("SEAL_RIGHTEOUSNESS"), false, true)
 	end
 	-- Your own row in the Blessing grid, only if one really exists (set by
 	-- you, Auto-suggest or your leader). No row: nothing to compare against.
@@ -98,24 +106,24 @@ function M:Evaluate()
 			-- Running an Aura, but not the assigned one: yellow, showing the one to switch to.
 			results[#results + 1] = {
 				id = "aura",
-				label = "Aura",
+				label = L["Aura"],
 				status = "wrong",
 				aura = current,
 				icon = registryIcon(assigned) or current.icon,
-				detail = current.name .. " active, assigned: " .. assignedName,
+				detail = L["%s active, assigned: %s"]:format(current.name, assignedName),
 			}
 		else
-			add("aura", "Aura", current, (assigned and registryIcon(assigned)) or registryIcon("AURA_DEVOTION"), false, false)
+			add("aura", L["Aura"], current, (assigned and registryIcon(assigned)) or registryIcon("AURA_DEVOTION"), false, false)
 		end
 	end
 	if s.checkDuplicateAura and not inCombat then
 		local dup = AS:GetDuplicateAura()
 		if dup then
 			-- Forever hides who cast other players' buffs, so usually unknown.
-			local who = (dup.source and PK.Compat.UnitDisplayName(dup.source)) or "another paladin"
+			local who = (dup.source and PK.Compat.UnitDisplayName(dup.source)) or L["another paladin"]
 			results[#results + 1] = {
 				id = "auraDup",
-				label = "Aura",
+				label = L["Aura"],
 				status = "duplicate",
 				aura = dup,
 				icon = dup.icon,
@@ -124,7 +132,7 @@ function M:Evaluate()
 		end
 	end
 	if s.rfSpecs[spec] and PK.SpellRegistry:IsKnown("RIGHTEOUS_FURY") then
-		add("rf", "Righteous Fury", AS:GetByKey("RIGHTEOUS_FURY"), registryIcon("RIGHTEOUS_FURY"), true, false)
+		add("rf", spellName("RIGHTEOUS_FURY", "Righteous Fury"), AS:GetByKey("RIGHTEOUS_FURY"), registryIcon("RIGHTEOUS_FURY"), true, false)
 	end
 	if s.checkBlessing and knowsAny("blessing") then
 		local _, myClass = UnitClass("player")
@@ -132,24 +140,23 @@ function M:Evaluate()
 		if expected then
 			-- Your row says which Blessing you give yourself.
 			local aura = AS:GetBlessingByKey(expected)
-			local entry = PK.Spells.byKey[expected]
 			local fallback = registryIcon(expected) or registryIcon("BLESSING_MIGHT")
 			if aura and not AS.IsMine(aura) and AS:Remaining(aura) then
 				-- It's there, but another paladin cast it: yellow.
 				results[#results + 1] = {
 					id = "blessing",
-					label = "Blessing",
+					label = L["Blessing"],
 					status = "wrong",
 					aura = aura,
 					icon = aura.icon or fallback,
 					remaining = AS:Remaining(aura),
-					detail = (entry and entry.names[1] or "Blessing") .. " is from another paladin, not you",
+					detail = L["%s is from another paladin, not you"]:format(aura.name or L["Blessing"]),
 				}
 			else
-				add("blessing", "Blessing", aura, fallback, true, false)
+				add("blessing", L["Blessing"], aura, fallback, true, false)
 			end
 		else
-			add("blessing", "Blessing", AS:GetBlessing(), registryIcon("BLESSING_MIGHT"), true, false)
+			add("blessing", L["Blessing"], AS:GetBlessing(), registryIcon("BLESSING_MIGHT"), true, false)
 		end
 	end
 	-- Oath of Light (Holy talent), in a group: red when none is active,
@@ -160,24 +167,25 @@ function M:Evaluate()
 		local icon = registryIcon("OATH_OF_LIGHT")
 		local tanks = Oath:Tanks()
 		if not st then
-			results[#results + 1] = { id = "oath", label = "Oath of Light", status = "missing", icon = icon }
+			results[#results + 1] = { id = "oath", label = spellName("OATH_OF_LIGHT", "Oath of Light"), status = "missing", icon = icon }
 		else
 			local remaining = Oath:Remaining()
-			local shown = { name = "Oath of Light on " .. st.name .. (st.source == "cast" and "*" or ""), icon = icon }
+			local shown = { name = L["%s on %s"]:format(spellName("OATH_OF_LIGHT", "Oath of Light"), st.name)
+				.. (st.source == "cast" and "*" or ""), icon = icon }
 			if #tanks > 0 and not Oath:IsOnTank() then
 				results[#results + 1] = {
 					id = "oath",
-					label = "Oath of Light",
+					label = spellName("OATH_OF_LIGHT", "Oath of Light"),
 					status = "wrong",
 					aura = shown,
 					icon = icon,
 					remaining = remaining,
-					detail = "Oath of Light is on " .. st.name .. ", tank: " .. tanks[1].name,
+					detail = L["%s is on %s, tank: %s"]:format(spellName("OATH_OF_LIGHT", "Oath of Light"), st.name, tanks[1].name),
 				}
 			else
 				results[#results + 1] = {
 					id = "oath",
-					label = "Oath of Light",
+					label = spellName("OATH_OF_LIGHT", "Oath of Light"),
 					-- A 5-minute buff: warn in the last minute, not the Blessing threshold.
 					status = remaining < math.min(threshold, 60) and "expiring" or "ok",
 					aura = shown,
@@ -198,14 +206,14 @@ function M:Evaluate()
 			local remaining = Vigil:Remaining()
 			results[#results + 1] = {
 				id = "vigil",
-				label = "Light's Vigil",
+				label = spellName("LIGHTS_VIGIL", "Light's Vigil"),
 				status = remaining <= 5 and "expiring" or "active",
-				aura = { name = "Light's Vigil on " .. st.name .. "*", icon = icon },
+				aura = { name = L["%s on %s"]:format(spellName("LIGHTS_VIGIL", "Light's Vigil"), st.name) .. "*", icon = icon },
 				icon = icon,
 				remaining = remaining,
 			}
 		else
-			results[#results + 1] = { id = "vigil", label = "Light's Vigil",
+			results[#results + 1] = { id = "vigil", label = spellName("LIGHTS_VIGIL", "Light's Vigil"),
 				status = inCombat and "missing" or "idle", icon = icon }
 		end
 	end
@@ -309,26 +317,26 @@ function M:PrintCheck(reason)
 			text = "|cff40ff40" .. (r.aura and r.aura.name or "ok") .. " (" .. formatTime(r.remaining) .. " left)|r"
 		elseif r.status == "expiring" then
 			problems = problems + 1
-			text = "|cffffd040" .. (r.aura and r.aura.name or "?") .. " (" .. formatTime(r.remaining) .. " left)|r"
+			text = "|cffffd040" .. L["%s (%s left)"]:format(r.aura and r.aura.name or "?", formatTime(r.remaining)) .. "|r"
 		elseif r.status == "idle" then
-			text = "|cff909090checked in combat|r"
+			text = "|cff909090" .. L["checked in combat"] .. "|r"
 		elseif r.status == "wrong" then
 			problems = problems + 1
 			text = "|cffffd940" .. tostring(r.detail) .. "|r"
 		elseif r.status == "duplicate" then
 			problems = problems + 1
-			text = "|cffffd040" .. (r.aura and r.aura.name or "?") .. " is also running from " .. tostring(r.other)
-				.. " (they don't stack)|r"
+			text = "|cffffd040" .. L["%s is also running from %s (they don't stack)"]:format(r.aura and r.aura.name or "?",
+				tostring(r.other)) .. "|r"
 		else
 			problems = problems + 1
-			text = "|cffff4040missing|r"
+			text = "|cffff4040" .. L["missing"] .. "|r"
 		end
 		parts[#parts + 1] = r.label .. ": " .. text
 	end
 	if #parts == 0 then
-		PK:Print((reason or "check") .. ": nothing to check yet (no Seals, Auras or Blessings learned).")
+		PK:Print((reason or L["check"]) .. ": " .. L["nothing to check yet (no Seals, Auras or Blessings learned)."])
 	else
-		PK:Print((reason or "check") .. ": " .. table.concat(parts, ", "))
+		PK:Print((reason or L["check"]) .. ": " .. table.concat(parts, ", "))
 	end
 	return problems
 end
@@ -346,7 +354,7 @@ function M:OnEnable()
 	PK:RegisterEvent("PLAYER_REGEN_DISABLED", self, render)
 	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, render)
 	PK:RegisterEvent("READY_CHECK", self, function()
-		if M:PrintCheck("ready check") > 0 and PK.profile.alerts.sound then
+		if M:PrintCheck(L["ready check"]) > 0 and PK.profile.alerts.sound then
 			PK.Compat.PlaySound("RAID_WARNING", 8959)
 		end
 	end)
@@ -383,5 +391,5 @@ function M:OnSpecChanged()
 end
 
 PK:RegisterCommand("check", function()
-	M:PrintCheck("check")
-end, "check your Seal, Aura, Blessing and Righteous Fury now")
+	M:PrintCheck(L["check"])
+end, L["check your Seal, Aura, Blessing and Righteous Fury now"])

@@ -7,6 +7,7 @@ local _, PK = ...
 --  * ShowInput(title, hint, onAccept): editable, for pasting an import
 --    string; the accept button calls onAccept(text).
 
+local L = PK.L
 local CopyWindow = {}
 PK.CopyWindow = CopyWindow
 
@@ -48,7 +49,7 @@ local function Build()
 	selectAll = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 	selectAll:SetSize(120, 24)
 	selectAll:SetPoint("BOTTOMLEFT", 16, 14)
-	selectAll:SetText("Select all")
+	selectAll:SetText(L["Select all"])
 	selectAll:SetScript("OnClick", function()
 		editBox:SetFocus()
 		editBox:HighlightText()
@@ -57,7 +58,7 @@ local function Build()
 	accept = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 	accept:SetSize(120, 24)
 	accept:SetPoint("BOTTOMLEFT", 16, 14)
-	accept:SetText("Import")
+	accept:SetText(L["Import"])
 	accept:SetScript("OnClick", function()
 		if onAcceptFn and onAcceptFn(editBox:GetText()) then
 			frame:Hide()
@@ -70,7 +71,7 @@ local function Build()
 	local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 	close:SetSize(90, 24)
 	close:SetPoint("BOTTOMRIGHT", -16, 14)
-	close:SetText("Close")
+	close:SetText(L["Close"])
 	close:SetScript("OnClick", function()
 		frame:Hide()
 	end)
@@ -83,7 +84,7 @@ function CopyWindow:Show(title, text)
 	mode = "read"
 	selectAll:Show()
 	accept:Hide()
-	hint:SetText("then Ctrl+C to copy. Esc closes.")
+	hint:SetText(L["then Ctrl+C to copy. Esc closes."])
 	titleText:SetText(title or PK.displayName)
 	editBox.original = text or ""
 	editBox:SetText(editBox.original)
@@ -101,7 +102,7 @@ function CopyWindow:ShowInput(title, hintText, onAccept)
 	onAcceptFn = onAccept
 	selectAll:Hide()
 	accept:Show()
-	hint:SetText(hintText or "Paste with Ctrl+V.")
+	hint:SetText(hintText or L["Paste with Ctrl+V."])
 	titleText:SetText(title or PK.displayName)
 	editBox.original = nil
 	editBox:SetText("")

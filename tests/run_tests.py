@@ -228,6 +228,13 @@ def main():
         except Exception as e:  # Lua error surfaced to Python
             failed += 1
             print(f"[FAIL] {name}: {e}")
+    # Every L["..."] key must be in the translators' template.
+    import subprocess
+    check = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "locale_keys.py"), "--check"],
+                           capture_output=True, text=True)
+    print(("[PASS] " if check.returncode == 0 else "[FAIL] ") + check.stdout.strip())
+    if check.returncode != 0:
+        failed += 1
     if failed:
         sys.exit(1)
 

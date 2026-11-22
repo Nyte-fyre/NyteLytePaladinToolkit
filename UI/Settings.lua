@@ -7,6 +7,7 @@ local _, PK = ...
 
 local Presets = PK.Presets
 local SP = PK.SpecProfile
+local L = PK.L
 local S = {}
 PK.Settings = S
 
@@ -22,108 +23,108 @@ end
 
 -- Module options shown as checkboxes: { label, get(), set(value) }.
 local OPTIONS = {
-	{ "Sound alerts", function()
+	{ L["Sound alerts"], function()
 		return PK.profile.alerts.sound
 	end, function(v)
 		PK.profile.alerts.sound = v
 	end },
-	{ "Buff Sentinel: also show buffs that are fine", function()
+	{ L["Buff Sentinel: also show buffs that are fine"], function()
 		return ms("BuffSentinel").showAll
 	end, function(v)
 		ms("BuffSentinel").showAll = v
 	end },
-	{ "Buff Sentinel: warn about a duplicate Aura", function()
+	{ L["Buff Sentinel: warn about a duplicate Aura"], function()
 		return ms("BuffSentinel").checkDuplicateAura
 	end, function(v)
 		ms("BuffSentinel").checkDuplicateAura = v
 	end },
-	{ "Buff Sentinel: Oath of Light on the tank (Holy)", function()
+	{ L["Buff Sentinel: Oath of Light on the tank (Holy)"], function()
 		return ms("BuffSentinel").checkOath
 	end, function(v)
 		ms("BuffSentinel").checkOath = v
 	end },
-	{ "Buff Sentinel: Light's Vigil timer (Holy)", function()
+	{ L["Buff Sentinel: Light's Vigil timer (Holy)"], function()
 		return ms("BuffSentinel").checkVigil
 	end, function(v)
 		ms("BuffSentinel").checkVigil = v
 	end },
-	{ "Righteous Fury warning as Protection", function()
+	{ L["Righteous Fury warning as Protection"], function()
 		return ms("BuffSentinel").rfSpecs.prot
 	end, function(v)
 		ms("BuffSentinel").rfSpecs.prot = v
 	end },
-	{ "Righteous Fury warning as Holy/Retribution", function()
+	{ L["Righteous Fury warning as Holy/Retribution"], function()
 		return ms("BuffSentinel").rfSpecs.holy
 	end, function(v)
 		ms("BuffSentinel").rfSpecs.holy = v
 		ms("BuffSentinel").rfSpecs.ret = v
 	end },
-	{ "Seal Tracker: time bar", function()
+	{ L["Seal Tracker: time bar"], function()
 		return ms("SealTracker").showBar
 	end, function(v)
 		ms("SealTracker").showBar = v
 	end },
-	{ "Seal Tracker: Twist of Light Echo (Ret)", function()
+	{ L["Seal Tracker: Twist of Light Echo (Ret)"], function()
 		return ms("SealTracker").showEcho
 	end, function(v)
 		ms("SealTracker").showEcho = v
 	end },
-	{ "Tank Kit: big Righteous Fury warning", function()
+	{ L["Tank Kit: big Righteous Fury warning"], function()
 		return ms("TankKit").rfWarning
 	end, function(v)
 		ms("TankKit").rfWarning = v
 	end },
-	{ "Tank Kit: Righteous Fury sound (zone-in, ready check)", function()
+	{ L["Tank Kit: Righteous Fury sound (zone-in, ready check)"], function()
 		return ms("TankKit").rfSound
 	end, function(v)
 		ms("TankKit").rfSound = v
 	end },
-	{ "Blessing buff button when solo", function()
+	{ L["Blessing buff button when solo"], function()
 		return ms("BlessingManager").showWhenSolo
 	end, function(v)
 		ms("BlessingManager").showWhenSolo = v
 	end },
-	{ "Buff button: refresh the lowest timer when nobody needs it", function()
+	{ L["Buff button: refresh the lowest timer when nobody needs it"], function()
 		return ms("BlessingManager").refreshLowest
 	end, function(v)
 		ms("BlessingManager").refreshLowest = v
 	end },
-	{ "Buff button: move on to the next person in combat", function()
+	{ L["Buff button: move on to the next person in combat"], function()
 		return ms("BlessingManager").combatCycle
 	end, function(v)
 		ms("BlessingManager").combatCycle = v
 	end },
-	{ "Buff button: alert after combat when someone needs a rebuff", function()
+	{ L["Buff button: alert after combat when someone needs a rebuff"], function()
 		return ms("BlessingManager").postCombatAlert
 	end, function(v)
 		ms("BlessingManager").postCombatAlert = v
 	end },
-	{ "Seal Tracker: warn in the last 5 seconds (combat)", function()
+	{ L["Seal Tracker: warn in the last 5 seconds (combat)"], function()
 		return (ms("SealTracker").warnSeconds or 0) > 0
 	end, function(v)
 		ms("SealTracker").warnSeconds = v and 5 or 0
 	end },
-	{ "Holy: Seal reminders (Light on bosses, Wisdom at low mana)", function()
+	{ L["Holy: Seal reminders (Light on bosses, Wisdom at low mana)"], function()
 		return ms("SealTracker").holySealReminders
 	end, function(v)
 		ms("SealTracker").holySealReminders = v
 	end },
-	{ "Seal Tracker: warning sound", function()
+	{ L["Seal Tracker: warning sound"], function()
 		return ms("SealTracker").warnSound
 	end, function(v)
 		ms("SealTracker").warnSound = v
 	end },
-	{ "Cooldown HUD: show unlearned spells", function()
+	{ L["Cooldown HUD: show unlearned spells"], function()
 		return ms("CooldownHUD").showUnknown
 	end, function(v)
 		ms("CooldownHUD").showUnknown = v
 	end },
-	{ "Cooldown HUD: vertical", function()
+	{ L["Cooldown HUD: vertical"], function()
 		return ms("CooldownHUD").direction == "DOWN"
 	end, function(v)
 		ms("CooldownHUD").direction = v and "DOWN" or "RIGHT"
 	end },
-	{ "Cooldown HUD: two rows at 8+ spells", function()
+	{ L["Cooldown HUD: two rows at 8+ spells"], function()
 		return ms("CooldownHUD").twoRows
 	end, function(v)
 		ms("CooldownHUD").twoRows = v
@@ -147,21 +148,21 @@ end
 local function exportProfile()
 	local str, err = PK.Config:ExportProfile()
 	if not str then
-		PK:Print("export failed: " .. tostring(err))
+		PK:Print(L["export failed: %s"]:format(L[tostring(err)]))
 		return
 	end
-	PK.CopyWindow:Show(PK.displayName .. " - export profile \"" .. PK.Config:GetProfileName() .. "\"", str)
+	PK.CopyWindow:Show(PK.displayName .. " - " .. L["export profile \"%s\""]:format(PK.Config:GetProfileName()), str)
 end
 
 local function importProfile()
-	PK.CopyWindow:ShowInput(PK.displayName .. " - import profile",
-		"Paste an export string (Ctrl+V), then click Import. This replaces your current profile.",
+	PK.CopyWindow:ShowInput(PK.displayName .. " - " .. L["import profile"],
+		L["Paste an export string (Ctrl+V), then click Import. This replaces your current profile."],
 		function(text)
 			local ok, err = PK.Config:ImportProfile(text)
 			if ok then
-				PK:Print("profile imported into \"" .. PK.Config:GetProfileName() .. "\".")
+				PK:Print(L["profile imported into \"%s\"."]:format(PK.Config:GetProfileName()))
 			else
-				PK:Print("import failed: " .. tostring(err))
+				PK:Print(L["import failed: %s"]:format(L[tostring(err)]))
 			end
 			return ok
 		end)
@@ -169,12 +170,12 @@ end
 
 -- Adding a key is fine; never reassign the StaticPopupDialogs global itself (taint).
 local resetDialog = {
-	text = "Reset all Paladin Toolkit settings in this profile to defaults?",
-	button1 = "Reset",
-	button2 = "Cancel",
+	text = L["Reset all Paladin Toolkit settings in this profile to defaults?"],
+	button1 = L["Reset"],
+	button2 = L["Cancel"],
 	OnAccept = function()
 		PK.Config:ResetProfile()
-		PK:Print("profile reset to defaults.")
+		PK:Print(L["profile reset to defaults."])
 	end,
 	timeout = 0,
 	whileDead = true,
@@ -205,7 +206,7 @@ local function Build()
 	version:SetText("v" .. PK.version)
 
 	-- Spec mode
-	header(content, "Spec", -52)
+	header(content, L["Spec"], -52)
 	for i, mode in ipairs(MODE_BUTTONS) do
 		local b = button(content, SP.LABELS[mode], 110, function()
 			SP:SetMode(mode)
@@ -219,7 +220,7 @@ local function Build()
 	statusText:SetJustifyH("LEFT")
 
 	-- Module matrix
-	header(content, "Modules per spec", -132, 16, 590)
+	header(content, L["Modules per spec"], -132, 16, 590)
 	for i, spec in ipairs(SPECS) do
 		local fs = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		fs:SetPoint("TOPLEFT", 300 + (i - 1) * 90, -152)
@@ -244,19 +245,19 @@ local function Build()
 
 	-- Frames
 	local framesY = -170 - #Presets.MODULES * 28 - 16
-	header(content, "Frames", framesY)
-	lockButton = button(content, "Unlock frames", 150, function()
+	header(content, L["Frames"], framesY)
+	lockButton = button(content, L["Unlock frames"], 150, function()
 		PK.Frames:ToggleLock()
 	end)
 	lockButton:SetPoint("TOPLEFT", 16, framesY - 20)
-	local reset = button(content, "Reset layout", 150, function()
+	local reset = button(content, L["Reset layout"], 150, function()
 		PK.Frames:ResetPositions()
 	end)
 	reset:SetPoint("LEFT", lockButton, "RIGHT", 8, 0)
 
 	-- Module options (right column)
 	local optX = 340
-	header(content, "Options", framesY, optX, 270)
+	header(content, L["Options"], framesY, optX, 270)
 	for i, opt in ipairs(OPTIONS) do
 		local cb = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
 		cb:SetPoint("TOPLEFT", optX - 4, framesY - 16 - (i - 1) * 22)
@@ -274,11 +275,11 @@ local function Build()
 	cdNote:SetPoint("TOPLEFT", 16, framesY - 64 - 146)
 	cdNote:SetWidth(310)
 	cdNote:SetJustifyH("LEFT")
-	cdNote:SetText("Edit this spec's cooldown bar with /ptk cd (list, add, remove, reset).")
+	cdNote:SetText(L["Edit this spec's cooldown bar with /ptk cd (list, add, remove, reset)."])
 
 	-- Frame sizes for the active spec (saved per spec, like positions).
 	local sizeY = framesY - 244
-	scaleHeader = header(content, "Frame size", sizeY)
+	scaleHeader = header(content, L["Frame size"], sizeY)
 	for row, module in ipairs(Presets.MODULES) do
 		local y = sizeY - 22 - (row - 1) * 28
 		local label = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -301,19 +302,18 @@ local function Build()
 	sizeNote:SetPoint("TOPLEFT", 16, sizeY - 22 - #Presets.MODULES * 28 - 4)
 	sizeNote:SetWidth(310)
 	sizeNote:SetJustifyH("LEFT")
-	sizeNote:SetText("5% per click, 25% with Shift (50% to 200%). Or unlock frames and scroll the mouse "
-		.. "wheel over a gold box.")
+	sizeNote:SetText(L["5% per click, 25% with Shift (50% to 200%). Or unlock frames and scroll the mouse wheel over a gold box."])
 
 	-- Profile
 	local profileY = framesY - 64
-	header(content, "Profile", profileY)
+	header(content, L["Profile"], profileY)
 	profileText = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	profileText:SetPoint("TOPLEFT", 16, profileY - 20)
-	local export = button(content, "Export", 100, exportProfile)
+	local export = button(content, L["Export"], 100, exportProfile)
 	export:SetPoint("TOPLEFT", 16, profileY - 40)
-	local import = button(content, "Import", 100, importProfile)
+	local import = button(content, L["Import"], 100, importProfile)
 	import:SetPoint("LEFT", export, "RIGHT", 8, 0)
-	local resetProfile = button(content, "Reset profile", 208, function()
+	local resetProfile = button(content, L["Reset profile"], 208, function()
 		if StaticPopup_Show then
 			StaticPopup_Show("NLPT_RESET_PROFILE")
 		end
@@ -323,8 +323,7 @@ local function Build()
 	note:SetPoint("TOPLEFT", 16, profileY - 104)
 	note:SetWidth(310)
 	note:SetJustifyH("LEFT")
-	note:SetText("Export your profile now and then: the Forever beta has a reported bug where saved settings "
-		.. "can reset on a fresh client start. Type /ptk help for all commands.")
+	note:SetText(L["Export your profile now and then: the Forever beta has a reported bug where saved settings can reset on a fresh client start. Type /ptk help for all commands."])
 
 	panel:SetScript("OnShow", function()
 		S:Refresh()
@@ -354,7 +353,7 @@ function S:Refresh()
 		end
 	end
 	if d then
-		statusText:SetText(string.format("Active: |cffffffff%s|r   (Auto %s)", SP.LABELS[d.spec],
+		statusText:SetText(L["Active: |cffffffff%s|r   (Auto %s)"]:format(SP.LABELS[d.spec],
 			SP:DescribeDetection(d.detected)))
 	else
 		statusText:SetText("")
@@ -362,7 +361,7 @@ function S:Refresh()
 	for _, module in ipairs(Presets.MODULES) do
 		local row = checkboxes[module]
 		local built = PK.modules[module] ~= nil
-		row.label:SetText((Presets.MODULE_LABELS[module] or module) .. (built and "" or " |cff808080(coming soon)|r"))
+		row.label:SetText((Presets.MODULE_LABELS[module] or module) .. (built and "" or " |cff808080" .. L["(coming soon)"] .. "|r"))
 		for _, spec in ipairs(SPECS) do
 			row[spec]:SetChecked(PK.Config:IsModuleEnabled(module, spec))
 		end
@@ -370,14 +369,14 @@ function S:Refresh()
 	for i, opt in ipairs(OPTIONS) do
 		optionBoxes[i]:SetChecked(opt[2]() and true or false)
 	end
-	lockButton:SetText(PK.profile.locked and "Unlock frames" or "Lock frames")
+	lockButton:SetText(PK.profile.locked and L["Unlock frames"] or L["Lock frames"])
 	for module, value in pairs(scaleRows) do
 		value:SetText(math.floor(PK.Frames:GetScale(module) * 100 + 0.5) .. "%")
 	end
 	if scaleHeader and scaleHeader.SetText and d then
-		scaleHeader:SetText("Frame size (" .. SP.LABELS[d.spec] .. ")")
+		scaleHeader:SetText(L["Frame size (%s)"]:format(SP.LABELS[d.spec]))
 	end
-	profileText:SetText("Current profile: |cffffffff" .. tostring(PK.Config:GetProfileName()) .. "|r")
+	profileText:SetText(L["Current profile: |cffffffff%s|r"]:format(tostring(PK.Config:GetProfileName())))
 end
 
 local function register()
@@ -403,7 +402,7 @@ function S:Open()
 		return
 	end
 	if PK.Compat.InCombat() then
-		PK:Print("settings will open when combat ends.")
+		PK:Print(L["settings will open when combat ends."])
 		PK.CombatQueue:Run("openSettings", function()
 			S:Open()
 		end)
@@ -413,7 +412,7 @@ function S:Open()
 		local id = category.GetID and category:GetID() or category.ID
 		local ok = pcall(Settings.OpenToCategory, id)
 		if not ok then
-			PK:Print("couldn't open the settings window; use Options > AddOns > " .. PK.displayName .. ".")
+			PK:Print(L["couldn't open the settings window; use Options > AddOns > %s."]:format(PK.displayName))
 		end
 	elseif fallbackWindow then
 		fallbackWindow:Show()
@@ -435,6 +434,6 @@ PK:On("PK_SPEC_CHANGED", S, refresh)
 
 PK:RegisterCommand("config", function()
 	S:Open()
-end, "open settings (same as /ptk)")
-PK:RegisterCommand("export", exportProfile, "export your profile as a text string")
-PK:RegisterCommand("import", importProfile, "import a profile string")
+end, L["open settings (same as /ptk)"])
+PK:RegisterCommand("export", exportProfile, L["export your profile as a text string"])
+PK:RegisterCommand("import", importProfile, L["import a profile string"])

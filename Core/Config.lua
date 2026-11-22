@@ -372,7 +372,7 @@ function Config:ImportProfile(str)
 	local defaults = Config.BuildDefaults()
 	local clean = sanitize(tbl, defaults)
 	if next(clean) == nil then
-		return false, "the string didn't contain any Paladin Toolkit settings"
+		return false, PK.L["the string didn't contain any Paladin Toolkit settings"]
 	end
 	if not PK.SpecDecision.IsSpec(clean.specMode) and clean.specMode ~= "auto" then
 		clean.specMode = nil

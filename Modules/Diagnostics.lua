@@ -8,6 +8,7 @@ local _, PK = ...
 -- going through Compat.Describe / Compat.IsSecret first.
 
 local Compat = PK.Compat
+local L = PK.L
 local Describe = Compat.Describe
 local D = PK:RegisterModule("Diagnostics", { alwaysOn = true })
 
@@ -1049,7 +1050,7 @@ end
 
 local function arm()
 	if Compat.InCombat() then
-		PK:Print("leave combat first, then run /ptk probe combat again.")
+		PK:Print(L["leave combat first, then run /ptk probe combat again."])
 		return
 	end
 	lastResolved = buildResolved()
@@ -1073,9 +1074,9 @@ local function arm()
 		combatSample("after")
 		disarm()
 		PK.db.probeCombat.finishedAt = time()
-		PK:Print("combat probe captured " .. #PK.db.probeCombat.samples .. " samples. Type /reload to save it.")
+		PK:Print(L["combat probe captured %d samples. Type /reload to save it."]:format(#PK.db.probeCombat.samples))
 	end)
-	PK:Print("combat probe armed. Fight a target dummy for about 15 seconds: cast your Seal, Judgement and Holy Strike, then leave combat.")
+	PK:Print(L["combat probe armed. Fight a target dummy for about 15 seconds: cast your Seal, Judgement and Holy Strike, then leave combat."])
 end
 
 -- Output --------------------------------------------------------------------------
@@ -1129,7 +1130,7 @@ PK:RegisterCommand("probe", function(args)
 		return
 	end
 	if Compat.InCombat() then
-		PK:Print("run /ptk probe out of combat (use /ptk probe combat for in-combat data).")
+		PK:Print(L["run /ptk probe out of combat (use /ptk probe combat for in-combat data)."])
 		return
 	end
 	local p = runProbe()
@@ -1137,28 +1138,28 @@ PK:RegisterCommand("probe", function(args)
 	for _ in pairs(p.stepErrors) do
 		nErr = nErr + 1
 	end
-	PK:Print(string.format("probe done: interface %s, %d spells in spellbook, %d registry names unresolved, %d step errors.",
+	PK:Print(L["probe done: interface %s, %d spells in spellbook, %d registry names unresolved, %d step errors."]:format(
 		tostring(p.client and p.client.interface), p.spellbook and p.spellbook.count or 0,
 		p.registry and #p.registry.unresolved or 0, nErr))
-	PK:Print("type /reload to save it to disk (wait a second first so the addon-message test can arrive).")
+	PK:Print(L["type /reload to save it to disk (wait a second first so the addon-message test can arrive)."])
 	PK.CopyWindow:Show(PK.displayName .. " - probe", probeText())
-end, "run the compatibility probe (\"/ptk probe combat\" to capture during combat)")
+end, L["run the compatibility probe (\"/ptk probe combat\" to capture during combat)"])
 
 PK:RegisterCommand("show", function()
 	PK.CopyWindow:Show(PK.displayName .. " - probe", probeText())
-end, "show the last probe results")
+end, L["show the last probe results"])
 
 PK:RegisterCommand("debug", function(args)
 	local sub = args[1]
 	if sub == "on" or sub == "off" then
 		PK.db.debug = sub == "on"
-		PK:Print("debug logging " .. sub)
+		PK:Print(L["debug logging %s"]:format(sub))
 	elseif sub == "clear" then
 		for i = #PK.debugLog, 1, -1 do
 			PK.debugLog[i] = nil
 		end
-		PK:Print("debug log cleared")
+		PK:Print(L["debug log cleared"])
 	else
 		PK.CopyWindow:Show(PK.displayName .. " - debug log", table.concat(PK.debugLog, "\n"))
 	end
-end, "on | off | show | clear - verbose logging")
+end, L["on | off | show | clear - verbose logging"])

@@ -11,6 +11,7 @@ local _, PK = ...
 -- No threat display: threat is restricted on Forever.
 
 local AS = PK.AuraService
+local L = PK.L
 local Frames = PK.Frames
 local M = PK:RegisterModule("TankKit", {})
 
@@ -42,7 +43,7 @@ local function buildWarning(anchor)
 	local text = warning:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
 	text:SetPoint("LEFT", icon, "RIGHT", 8, 0)
 	text:SetTextColor(1, 0.2, 0.2)
-	text:SetText("RIGHTEOUS FURY MISSING")
+	text:SetText(L["RIGHTEOUS FURY MISSING"])
 	if warning.CreateAnimationGroup then
 		local ag = warning:CreateAnimationGroup()
 		if ag then
@@ -113,7 +114,7 @@ function M:Update()
 	for _, icon in ipairs(icons) do
 		icon:RefreshCooldown(true)
 		if icon.key == "JUDGEMENT" then
-			tauntLabel(icon):SetText(taunt and "TAUNT" or "")
+			tauntLabel(icon):SetText(taunt and L["TAUNT"] or "")
 		end
 	end
 	self:UpdateAuras(s)
@@ -157,7 +158,7 @@ local function rfReminder(reason)
 	if not (M.enabled and settings().rfSound and rfMissing()) then
 		return
 	end
-	PK:Print(reason .. ": |cffff4040Righteous Fury is not active.|r")
+	PK:Print(reason .. ": |cffff4040" .. L["Righteous Fury is not active."] .. "|r")
 	PK.Compat.PlaySound("RAID_WARNING", 8959)
 end
 
@@ -177,12 +178,12 @@ function M:OnEnable()
 		PK:RegisterEvent(ev, self, update)
 	end
 	PK:RegisterEvent("READY_CHECK", self, function()
-		rfReminder("Ready check")
+		rfReminder(L["Ready check"])
 	end)
 	PK:RegisterEvent("PLAYER_ENTERING_WORLD", self, function()
 		-- Give auras a moment to load after a zone change.
 		C_Timer.After(3, function()
-			rfReminder("Zoned in")
+			rfReminder(L["Zoned in"])
 		end)
 	end)
 	if C_Timer.NewTicker then

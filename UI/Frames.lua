@@ -10,6 +10,7 @@ local _, PK = ...
 --    checked to be non-secret.
 
 local Compat = PK.Compat
+local L = PK.L
 local Secrets = PK.Secrets
 local Presets = PK.Presets
 local Frames = { anchors = {} }
@@ -177,9 +178,8 @@ function Frames:SetLocked(locked)
 	PK.profile.locked = locked and true or false
 	self:Refresh()
 	PK:Fire("PK_LOCK_CHANGED", PK.profile.locked)
-	PK:Print(locked and "frames locked."
-		or "frames unlocked: drag the gold boxes, scroll the mouse wheel over one to resize it, click two "
-			.. "cooldown icons to reorder them, then /ptk lock.")
+	PK:Print(locked and L["frames locked."]
+		or L["frames unlocked: drag the gold boxes, scroll the mouse wheel over one to resize it, click two cooldown icons to reorder them, then /ptk lock."])
 end
 
 function Frames:ToggleLock()
@@ -189,7 +189,7 @@ end
 function Frames:ResetPositions()
 	PK.Config:ResetLayout(currentSpec())
 	self:Refresh()
-	PK:Print("frame positions and sizes reset for " .. PK.SpecProfile.LABELS[currentSpec()] .. ".")
+	PK:Print(L["frame positions and sizes reset for %s."]:format(PK.SpecProfile.LABELS[currentSpec()]))
 end
 
 -- Alignment grid ----------------------------------------------------------------------------
@@ -403,13 +403,13 @@ end)
 
 PK:RegisterCommand("unlock", function()
 	Frames:SetLocked(false)
-end, "unlock frames so you can drag them")
+end, L["unlock frames so you can drag them"])
 PK:RegisterCommand("lock", function()
 	Frames:SetLocked(true)
-end, "lock frames in place")
+end, L["lock frames in place"])
 PK:RegisterCommand("reset", function()
 	Frames:ResetPositions()
-end, "reset frame positions and sizes for the current spec")
+end, L["reset frame positions and sizes for the current spec"])
 
 -- Names accepted by /ptk scale.
 local SCALE_ALIASES = {
@@ -422,13 +422,13 @@ local SCALE_ALIASES = {
 }
 
 local function listScales()
-	PK:Print("frame sizes for " .. PK.SpecProfile.LABELS[currentSpec()] .. ":")
+	PK:Print(L["frame sizes for %s:"]:format(PK.SpecProfile.LABELS[currentSpec()]))
 	for _, module in ipairs(Presets.MODULES) do
 		print(string.format("  %s: %d%%", Presets.MODULE_LABELS[module] or module,
 			math.floor(Frames:GetScale(module) * 100 + 0.5)))
 	end
-	print("  /ptk scale <sentinel|seal|cd|button|tank|all> <50-200>, or /ptk scale reset")
-	print("  Or /ptk unlock and scroll the mouse wheel over a gold box.")
+	print("  " .. L["/ptk scale <sentinel|seal|cd|button|tank|all> <50-200>, or /ptk scale reset"])
+	print("  " .. L["Or /ptk unlock and scroll the mouse wheel over a gold box."])
 end
 
 PK:RegisterCommand("scale", function(args)
@@ -437,7 +437,7 @@ PK:RegisterCommand("scale", function(args)
 		for _, module in ipairs(Presets.MODULES) do
 			Frames:SetScale(module, Frames:DefaultScale(module))
 		end
-		PK:Print("frame sizes reset for " .. PK.SpecProfile.LABELS[currentSpec()] .. ".")
+		PK:Print(L["frame sizes reset for %s."]:format(PK.SpecProfile.LABELS[currentSpec()]))
 		return
 	end
 	local modules
@@ -456,6 +456,6 @@ PK:RegisterCommand("scale", function(args)
 		PK:Print(string.format("%s: %d%%", Presets.MODULE_LABELS[module] or module, math.floor(s * 100 + 0.5)))
 	end
 	if PK.Compat.InCombat() then
-		PK:Print("the buff button resizes when combat ends.")
+		PK:Print(L["the buff button resizes when combat ends."])
 	end
-end, "resize frames (e.g. /ptk scale button 150)")
+end, L["resize frames (e.g. /ptk scale button 150)"])
