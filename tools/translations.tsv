@@ -170,7 +170,7 @@ none set (roles not assigned)	keiner festgelegt (keine Rollen zugewiesen)	aucun 
 Oath of Light is on %s%s, %s left. Tank: %s.	Schwur des Lichts liegt auf %s%s, noch %s. Tank: %s.	Serment de lumière est sur %s%s, %s restant. Tank : %s.	Juramento de Luz está en %s%s, quedan %s. Tanque: %s.	Juramento da Luz está em %s%s, restam %s. Tanque: %s.	Клятва Света на %s%s, осталось %s. Танк: %s.
 Oath of Light isn't learned on this character (it's a Holy talent).	Schwur des Lichts ist auf diesem Charakter nicht erlernt (ein Heilig-Talent).	Serment de lumière n'est pas appris sur ce personnage (talent Sacré).	este personaje no tiene Juramento de Luz (es un talento de Sagrado).	este personagem não aprendeu Juramento da Luz (é um talento de Sagrado).	Клятва Света не изучена на этом персонаже (это талант Света).
 show who has your Oath of Light	anzeigen, wer deinen Schwur des Lichts hat	afficher qui a votre Serment de lumière	mostrar quién tiene tu Juramento de Luz	mostrar quem tem seu Juramento da Luz	показать, на ком ваша Клятва Света
-%d other paladin(s) syncing	%d andere(r) Paladin(e) synchronisiert	%d autre(s) paladin(s) synchronisé(s)	%d paladín(es) más sincronizando	%d outro(s) paladino(s) sincronizando	синхронизируется других паладинов: %d
+%d other paladin(s) syncing	%d andere(r) Paladin(e) synchronisieren	%d autre(s) paladin(s) synchronisé(s)	%d paladín(es) más sincronizando	%d outro(s) paladino(s) sincronizando	синхронизируется других паладинов: %d
 (no addon)	(kein Addon)	(pas d'addon)	(sin addon)	(sem addon)	(нет аддона)
 (showing %d of %d)	(%d von %d angezeigt)	(%d affichés sur %d)	(se muestran %d de %d)	(mostrando %d de %d)	(показано %d из %d)
 Announce	Ankündigen	Annoncer	Anunciar	Anunciar	Объявить
@@ -185,7 +185,7 @@ Exception for %s	Ausnahme für %s	Exception pour %s	Excepción para %s	Exceção
 Exceptions	Ausnahmen	Exceptions	Excepciones	Exceções	Исключения
 In a raid, only this paladin or the raid leader/assistants can change it.	Im Schlachtzug können das nur dieser Paladin oder Schlachtzugsleiter/Assistenten ändern.	En raid, seuls ce paladin ou le chef de raid et ses assistants peuvent le modifier.	En una banda, solo este paladín o el líder y sus ayudantes pueden cambiarlo.	Em uma raide, só este paladino ou o líder e os assistentes podem mudar isso.	В рейде это может изменить только этот паладин или лидер/помощники.
 Missing:	Fehlt:	Manquant :	Falta:	Faltando:	Не хватает:
-Nobody assigned for:	Niemand zugeteilt für:	Personne d'attribué pour :	Nadie asignado para:	Ninguém atribuído para:	Никто не назначен для:
+Nobody assigned for:	Niemand zugeteilt für:	Aucune attribution pour :	Nadie asignado para:	Ninguém atribuído para:	Никто не назначен для:
 Nobody of this class is in your group.	Niemand dieser Klasse ist in deiner Gruppe.	Personne de cette classe n'est dans votre groupe.	No hay nadie de esta clase en tu grupo.	Ninguém desta classe está no seu grupo.	В группе нет никого из этого класса.
 sending after combat	wird nach dem Kampf gesendet	envoi après le combat	se envía tras el combate	envio após o combate	отправка после боя
 suggested layout applied to %d row(s). Change any cell by clicking it.	Vorschlag auf %d Zeile(n) angewendet. Klicke auf eine Zelle, um sie zu ändern.	suggestion appliquée à %d ligne(s). Cliquez une case pour la modifier.	sugerencia aplicada a %d fila(s). Haz clic en una casilla para cambiarla.	sugestão aplicada a %d linha(s). Clique em uma célula para mudá-la.	подбор применён к строкам: %d. Нажмите на ячейку, чтобы её изменить.
