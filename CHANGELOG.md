@@ -15,7 +15,8 @@
 - Non-English clients: spells are now also found by spell ID, so the addon
   recognises them on German, French, Spanish, ... clients (IDs confirmed so
   far; the rest still need the English name until they're added).
-- Blessings you cast in combat count as 60 minutes on that person (the
+- Blessings you cast in combat (Kings, Might, Wisdom, Salvation, Light)
+  count as 60 minutes on that person (the
   "need it" count drops right away). The first check after combat reads
   everyone's real buffs and corrects anything that didn't land.
 

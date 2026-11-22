@@ -775,12 +775,19 @@ end
 
 -- Casts in combat ---------------------------------------------------------------------------------
 
--- Registry Blessing key for one of your spell IDs, or nil.
+-- Registry key for one of your hour-long Blessing spell IDs (the ones the
+-- grid assigns), or nil. Protection, Freedom and Sacrifice are short
+-- emergency spells, not Blessings to keep up.
+local HOUR_LONG = {}
+for _, key in ipairs(B.ASSIGNABLE) do
+	HOUR_LONG[key] = true
+end
 function M.BlessingKeyFor(spellID)
 	for key, r in pairs(PK.SpellRegistry.byKey) do
 		if (r.category == "blessing" or r.category == "greaterBlessing")
 			and (r.spellID == spellID or (r.ids and r.ids[spellID])) then
-			return B.GREATER[key] or key
+			local k = B.GREATER[key] or key
+			return HOUR_LONG[k] and k or nil
 		end
 	end
 	return nil
