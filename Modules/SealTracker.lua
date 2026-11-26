@@ -16,6 +16,8 @@ local M = PK:RegisterModule("SealTracker", {})
 
 local BAR_WIDTH = 130
 local container, icon, bar, nameText, timeText, echoIcon, echoLabel, adviceIcon, adviceLabel
+local procIcons = {}
+local PROC_SIZE = 24
 local current
 
 local function settings()
@@ -116,19 +118,80 @@ local function build()
 	end)
 end
 
+-- Stack count for a corner label: "3", "" for a single stack, "*" added
+-- when it's a guess (predicted, or a pre-combat snapshot in combat).
+local function stackText(aura, source)
+	local n = aura.stacks
+	local text = (n and n > 1) and tostring(n) or ""
+	if source == "predicted" or source == "snapshot" then
+		text = text .. "*"
+	end
+	return text
+end
+
+-- Timer as a cooldown swipe with the game's countdown numbers. Plain
+-- numbers only (read out of combat or predicted), so it keeps running in
+-- combat without any aura reads.
+local function showTimer(f, aura)
+	local d = aura.duration
+	if d and d > 0 and aura.expirationTime and aura.expirationTime > 0 then
+		local start = aura.expirationTime - d
+		if f.timerStart ~= start then
+			f.timerStart = start
+			f:SetCooldownNumbers(start, d)
+		end
+	else
+		f.timerStart = nil
+		f.cooldown:Clear()
+	end
+end
+
 function M:UpdateEcho()
 	if not echoIcon then
 		return
 	end
 	local echo, source = PK.AuraService:GetEcho()
 	if settings().showEcho and echo then
-		local left = AS:Remaining(echo)
 		echoIcon.icon:SetTexture(echo.icon or 134400)
-		echoIcon:SetText(((left and left ~= math.huge) and string.format("%.0f", left) or "")
-			.. (source == "predicted" and "*" or ""))
+		showTimer(echoIcon, echo)
+		echoIcon:SetText(stackText(echo, source))
 		echoIcon:Show()
 	else
 		echoIcon:Hide()
+	end
+	self:UpdateProcs()
+end
+
+-- Spec procs (Ret: Vengeance, Holy: Infusion of Light, Prot: Holy Shield)
+-- to the right of the Echo / reminder slot.
+function M:UpdateProcs()
+	if not echoIcon then
+		return
+	end
+	local keys = (settings().showProcs ~= false) and AS.PROCS[PK.SpecProfile:GetSpec()] or {}
+	local slot = 0
+	for i, key in ipairs(keys) do
+		local f = procIcons[i]
+		local aura, source = AS:GetProc(key)
+		if aura then
+			if not f then
+				f = Frames:AcquireIcon(container, PROC_SIZE)
+				procIcons[i] = f
+			end
+			slot = slot + 1
+			f:ClearAllPoints()
+			f:SetPoint("LEFT", echoIcon, "LEFT", slot * (PROC_SIZE + 6), 0)
+			f.icon:SetTexture(aura.icon or 134400)
+			showTimer(f, aura)
+			f:SetText(stackText(aura, source))
+			f:Show()
+		elseif f then
+			f.timerStart = nil
+			f:Hide()
+		end
+	end
+	for i = #keys + 1, #procIcons do
+		procIcons[i]:Hide()
 	end
 end
 

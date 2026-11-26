@@ -118,6 +118,7 @@ Presets.moduleSettings = {
 		showBar = true,
 		iconSize = 30,
 		showEcho = true, -- Twist of Light Echo (Ret talent) next to the Seal
+		showProcs = true, -- proc stacks next to the Seal: Vengeance, Infusion of Light, Holy Shield
 		warnSeconds = 5, -- in combat, warn this long before the Seal runs out (0 = off)
 		warnSound = false,
 		holySealReminders = false, -- Holy (opt-in): Seal of Light on bosses, Seal of Wisdom at low mana

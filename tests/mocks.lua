@@ -576,6 +576,7 @@ if not MOCK_NO_AURAS then
 			return {
 				name = MOCK.maybeSecret(a.name), spellId = MOCK.maybeSecret(a.spellId),
 				duration = MOCK.maybeSecret(a.duration), expirationTime = MOCK.maybeSecret(a.expirationTime),
+				applications = a.applications and MOCK.maybeSecret(a.applications) or nil,
 				auraInstanceID = i,
 				-- Real client: the caster is only revealed when it's you, and
 				-- isFromPlayerOrPlayerPet is true for ANY player caster (false for

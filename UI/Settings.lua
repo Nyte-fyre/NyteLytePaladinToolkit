@@ -64,6 +64,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("SealTracker").showBar = v
 	end },
+	{ L["Seal Tracker: proc stacks (Vengeance, Infusion of Light, Holy Shield)"], function()
+		return ms("SealTracker").showProcs ~= false
+	end, function(v)
+		ms("SealTracker").showProcs = v
+	end },
 	{ L["Seal Tracker: Twist of Light Echo (Ret)"], function()
 		return ms("SealTracker").showEcho
 	end, function(v)
@@ -196,7 +201,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 1050)
+	content:SetSize(600, 1080)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)

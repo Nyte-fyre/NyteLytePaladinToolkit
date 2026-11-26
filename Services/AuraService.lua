@@ -37,6 +37,7 @@ local function readAura(a)
 		icon = Secrets.SafeNumber(select(2, Secrets.Field(a, "icon"))),
 		duration = duration,
 		expirationTime = expiration, -- 0 = no expiry
+		stacks = Secrets.SafeNumber(select(2, Secrets.Field(a, "applications"))),
 		instanceID = Secrets.SafeNumber(select(2, Secrets.Field(a, "auraInstanceID"))),
 		-- "Cast by any player character" (not NPC), NOT "cast by you".
 		fromPlayer = Secrets.SafeBool(select(2, Secrets.Field(a, "isFromPlayerOrPlayerPet"))),
@@ -267,18 +268,23 @@ function AS:GetBlessing()
 end
 
 function AS:GetByKey(key)
-	local r = PK.SpellRegistry:Get(key)
-	if not r or not r.spellID then
-		return nil
-	end
-	-- Every confirmed ID counts (e.g. one Echo per Seal), not just the resolved one.
+	local r = PK.SpellRegistry:Get(key) or {}
 	local entry = PK.Spells.byKey[key]
-	local known = {}
+	-- Every confirmed ID and name counts (e.g. one Echo per Seal), so buffs
+	-- that aren't in your spellbook (procs like Vengeance) still match.
+	local known, names = {}, {}
 	for _, id in ipairs(entry and entry.ids or {}) do
 		known[id] = true
 	end
+	for _, n in ipairs(entry and entry.names or {}) do
+		names[n] = true
+	end
+	if not (r.spellID or next(known) or next(names)) then
+		return nil
+	end
 	return self:Find(function(a)
-		return a.spellID == r.spellID or (r.ids and r.ids[a.spellID]) or known[a.spellID] or a.name == r.name
+		return (r.spellID and a.spellID == r.spellID) or (r.ids and r.ids[a.spellID]) or known[a.spellID]
+			or (r.name and a.name == r.name) or names[a.name]
 	end)
 end
 
@@ -393,11 +399,26 @@ end
 -- The returned aura has replacedSeal when predicted.
 function AS:GetEcho()
 	local aura = self:GetByKey("TWIST_ECHO")
-	if aura then
-		return aura, "aura"
+	local predicted = self.echo and self:Remaining(self.echo) and self.echo
+	if predicted and (not aura or (predicted.expirationTime or 0) > (aura.expirationTime or 0)) then
+		return predicted, "predicted"
 	end
-	if self.echo and self:Remaining(self.echo) then
-		return self.echo, "predicted"
+	if aura then
+		return aura, self.frozen and "snapshot" or "aura"
+	end
+	return nil
+end
+
+-- Procs worth watching per spec (registry keys). Forever blocks every aura
+-- read in combat (proc test 2026-11-26), so in combat these come from the
+-- last out-of-combat look: the timer keeps running, the stacks are as of
+-- the pull, and a proc gained or refreshed mid-fight isn't seen until
+-- combat ends. Returns aura, "aura" | "snapshot".
+AS.PROCS = { ret = { "VENGEANCE" }, holy = { "INFUSION_OF_LIGHT" }, prot = { "HOLY_SHIELD" } }
+function AS:GetProc(key)
+	local aura = self:GetByKey(key)
+	if aura then
+		return aura, self.frozen and "snapshot" or "aura"
 	end
 	return nil
 end

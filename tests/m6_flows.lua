@@ -517,6 +517,26 @@ do
 	MOCK.book = savedBook
 end
 
+-- Proc stacks next to the Seal: read out of combat, kept (timer running,
+-- stacks marked *) in combat, where Forever blocks aura reads.
+if not MOCK_NO_AURAS then
+	local AS = P.AuraService
+	table.insert(MOCK.auras, { name = "Vengeance", spellId = 20050, applications = 3, duration = 30,
+		expirationTime = GetTime() + 20 })
+	AS:Scan()
+	local v, src = AS:GetProc("VENGEANCE")
+	assert(v and v.stacks == 3 and src == "aura", "Vengeance found by ID with its stacks")
+	P.modules.SealTracker:UpdateProcs()
+	MOCK.combat = true
+	AS:Scan()
+	v, src = AS:GetProc("VENGEANCE")
+	assert(v and v.stacks == 3, "kept through combat")
+	MOCK.combat = false
+	table.remove(MOCK.auras)
+	AS:Scan()
+	assert(AS:GetProc("VENGEANCE") == nil, "gone after combat when it's gone")
+end
+
 -- DB v5: Buff Sentinel moves up only where it was never moved.
 local oldDb = { version = 4, profiles = { P1 = { layout = {
 	holy = { BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 } },
