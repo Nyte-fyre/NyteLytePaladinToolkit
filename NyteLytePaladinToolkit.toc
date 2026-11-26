@@ -36,6 +36,7 @@ Services\Roster.lua
 Services\Oath.lua
 Services\Vigil.lua
 Services\HolySeals.lua
+Services\ProcWatch.lua
 Core\SpecProfile.lua
 UI\Theme.lua
 UI\CopyWindow.lua
