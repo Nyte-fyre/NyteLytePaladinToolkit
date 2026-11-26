@@ -93,6 +93,22 @@ if not MOCK_NO_AURAS then
 	hit()
 	echo = AS:GetEcho()
 	assert(echo.sealName == AS:GetSeal().name and echo.stacks == 1, "consumed, new Seal stored")
+	-- Twisting: the swing lands between pressing the Seal and the cast's
+	-- success. It already uses the new Seal.
+	local crusader = AS:GetSeal().name
+	MOCK.fire("UNIT_SPELLCAST_SENT", "player", "", "Cast-5", 900011) -- back to Seal of Command
+	hit()
+	echo = AS:GetEcho()
+	assert(echo.sealName == "Seal of Command" and echo.stacks == 1, "the swing after the press uses the new Seal")
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-5", 900011)
+	hit()
+	assert(AS:GetEcho().stacks == 2 and AS.pendingSeal == nil, "confirmed cast keeps counting")
+	-- A press that fails doesn't switch.
+	MOCK.fire("UNIT_SPELLCAST_SENT", "player", "", "Cast-6", 21082)
+	MOCK.fire("UNIT_SPELLCAST_FAILED", "player", "Cast-6", 21082)
+	hit()
+	assert(AS:GetEcho().sealName == "Seal of Command" and AS:GetEcho().stacks == 3, "failed press ignored")
+	assert(crusader ~= "Seal of Command")
 
 	-- Predictions expire on their own.
 	MOCK.advance(11)

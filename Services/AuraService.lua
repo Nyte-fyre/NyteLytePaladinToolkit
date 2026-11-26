@@ -94,6 +94,7 @@ function AS:Scan()
 		self.predictedSeal = nil
 		self.echo = nil
 		self.vengeance = nil
+		self.pendingSeal = nil
 		self.ironCreed = nil
 	end
 	self.stanceSpellID = Compat.GetActiveStanceSpell()
@@ -129,6 +130,7 @@ function AS:CheckPredictions(real)
 		t = time(), hits = self.hitStats.hits, crits = self.hitStats.crits,
 		echoGuess = e and (tostring(e.sealName) .. " x" .. stacksOf(e)) or nil,
 		echoReal = realEcho and (realEcho.name .. " x" .. stacksOf(realEcho)) or nil,
+		trail = self.hitStats.trail and table.concat(self.hitStats.trail, ", ") or nil,
 		vengGuess = v and stacksOf(v) or nil,
 		vengReal = realVeng and stacksOf(realVeng) or nil,
 		group = (IsInGroup and IsInGroup()) or nil,
@@ -466,12 +468,42 @@ function AS:HasUnsealedWrath()
 	return reg:IsKnown("UNSEALED_WRATH") or reg:IsKnown("TWIST_OF_LIGHT") or self:GetByKey("TWIST_ECHO") ~= nil
 end
 
+-- A short trail of what happened in this fight (Seal presses, hits, crits),
+-- saved with the after-fight check so the order of events can be read back.
+local TRAIL_MAX = 40
+function AS:Trail(entry)
+	local t = self.hitStats.trail
+	if not t then
+		t = {}
+		self.hitStats.trail = t
+		self.hitStats.start = GetTime()
+	end
+	if #t < TRAIL_MAX then
+		t[#t + 1] = string.format("%.1f %s", GetTime() - self.hitStats.start, entry)
+	end
+end
+
+-- The Seal your swings use right now. Twisting means pressing the new Seal
+-- just before a swing lands: the game uses the new Seal for that swing, but
+-- the cast's success reaches the addon after the hit. So a Seal you've
+-- pressed (UNIT_SPELLCAST_SENT) counts from that moment, unless the cast
+-- fails or 1 second passes without it going through.
+function AS:SwingSeal()
+	local p = self.pendingSeal
+	if p and GetTime() - p.at < 1 then
+		return p
+	end
+	self.pendingSeal = nil
+	return self:GetSeal()
+end
+
 function AS:OnTargetHit(physical, crit)
 	local now = GetTime()
 	self.hitStats.hits = self.hitStats.hits + 1
+	self:Trail((physical and "hit" or "holy") .. (crit and " CRIT" or ""))
 	local changed = false
 	if physical and self:HasUnsealedWrath() then
-		local seal = self:GetSeal()
+		local seal = self:SwingSeal()
 		if seal then
 			local echo = self:GetEcho()
 			local stacks = 1
@@ -548,9 +580,46 @@ PK:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", AS, function(_, _, unit, _, spellID
 	end
 	local id = Secrets.SafeNumber(spellID)
 	if id and AS:PredictCast(id) then
+		if AS.pendingSeal and AS.IsSealCast(unit, id) then
+			AS.pendingSeal = nil
+			AS:Trail("seal ok")
+		end
 		PK:Fire("PK_AURAS_UPDATED")
 	end
 end)
+
+-- Seal presses in combat (see AS:SwingSeal).
+local function sealCastKey(unit, spellID)
+	if not AS.frozen or Compat.IsSecret(unit) or unit ~= "player" then
+		return nil
+	end
+	local id = Secrets.SafeNumber(spellID)
+	if not id then
+		return nil
+	end
+	local key, r = registryKeyFor(id)
+	if key and r.category == "seal" then
+		return key, r, id
+	end
+	return nil
+end
+AS.IsSealCast = sealCastKey
+PK:RegisterEvent("UNIT_SPELLCAST_SENT", AS, function(_, _, unit, _, _, spellID)
+	local key, r, id = sealCastKey(unit, spellID)
+	if key then
+		local info = Compat.GetSpellInfo(id)
+		AS.pendingSeal = { name = (info and info.name) or r.name, icon = (info and info.iconID) or r.icon, at = GetTime() }
+		AS:Trail("press " .. tostring(AS.pendingSeal.name))
+	end
+end)
+for _, ev in ipairs({ "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_FAILED_QUIET", "UNIT_SPELLCAST_INTERRUPTED" }) do
+	PK:RegisterEvent(ev, AS, function(_, _, unit, _, spellID)
+		if sealCastKey(unit, spellID) then
+			AS.pendingSeal = nil
+			AS:Trail("seal failed")
+		end
+	end)
+end
 
 PK:RegisterEvent("UNIT_COMBAT", AS, function(_, _, unit, action, descriptor, _, school)
 	-- "target" only: the same hit also arrives as nameplateN / softenemy.
