@@ -24,6 +24,7 @@ local ICON_SIZE = 28
 local WATCH = { "vengeance", "unsealed", "wrath", "echo", "infusion", "holy shield", "twist" }
 local logged = {}
 local icons = {}
+local combatTicker
 
 local function log(event, fields, onceKey)
 	local db = PK.db
@@ -116,6 +117,20 @@ local function draw(t)
 		name = t.name, count = Describe(count), countShown = okText, duration = Describe(duration),
 		timerShown = okCd and true or false,
 	}, "draw:" .. tostring(t.name) .. ":" .. tostring(Compat.InCombat()))
+	-- In combat: does the count for a known aura instance still come back,
+	-- and does it change (stacks gained mid-fight)? Logged each time it
+	-- changes, a few times per fight.
+	if Compat.InCombat() then
+		local shown = Compat.IsSecret(count) and "<secret>" or tostring(count)
+		if t.lastShown ~= shown then
+			t.lastShown = shown
+			t.combatChanges = (t.combatChanges or 0) + 1
+			if t.combatChanges <= 6 then
+				log("combatCount", { name = t.name, count = Describe(count), duration = Describe(duration),
+					countShown = okText, timerShown = okCd and true or false })
+			end
+		end
+	end
 	icon:Show()
 	layout()
 end
@@ -259,6 +274,10 @@ end
 
 PK:RegisterEvent("UNIT_AURA", W, onAura)
 PK:RegisterEvent("PLAYER_REGEN_ENABLED", W, function()
+	if combatTicker then
+		combatTicker:Cancel()
+		combatTicker = nil
+	end
 	-- Log the next fight again (buffs already seen stay logged once).
 	for k in pairs(logged) do
 		if k:sub(1, 5) ~= "seen:" then
@@ -270,7 +289,25 @@ end)
 PK:RegisterEvent("PLAYER_REGEN_DISABLED", W, function()
 	log("combatStart", { aurasSecret = Describe(Compat.AurasAreSecret()) })
 	C_Timer.After(3, probeKnown)
+	-- Is there any way to list your buffs' instance IDs in combat?
+	C_Timer.After(4, function()
+		local ids = call("C_UnitAuras.GetUnitAuraInstanceIDs", "player", "HELPFUL")
+		log("instanceIDs", { result = Describe(ids),
+			count = type(ids) == "table" and not Compat.IsSecret(ids) and #ids or nil }, "ids")
+	end)
+	-- Redraw known procs during the fight (display-only reads).
+	for _, t in pairs(W.tracked) do
+		t.lastShown, t.combatChanges = nil, 0
+	end
+	if C_Timer.NewTicker then
+		combatTicker = C_Timer.NewTicker(0.5, function()
+			for _, t in pairs(W.tracked) do
+				draw(t)
+			end
+		end)
+	end
 end)
+
 PK:On("PK_READY", W, function()
 	C_Timer.After(2, scan)
 end)
