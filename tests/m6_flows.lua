@@ -531,10 +531,26 @@ if not MOCK_NO_AURAS then
 	AS:Scan()
 	v, src = AS:GetProc("VENGEANCE")
 	assert(v and v.stacks == 3, "kept through combat")
+	-- Crits on your target add Vengeance stacks (Ret), up to 5.
+	local realSpec = P.SpecProfile.GetSpec
+	P.SpecProfile.GetSpec = function()
+		return "ret"
+	end
+	MOCK.fire("UNIT_COMBAT", "target", "WOUND", "", 100, 1)
+	assert(AS:GetProc("VENGEANCE").stacks == 3, "a normal hit doesn't add Vengeance")
+	MOCK.fire("UNIT_COMBAT", "target", "WOUND", "CRITICAL", 100, 1)
+	v, src = AS:GetProc("VENGEANCE")
+	assert(v.stacks == 4 and src == "predicted" and math.abs(AS:Remaining(v) - 30) < 1, "crit: +1 stack, 30 s")
+	MOCK.fire("UNIT_COMBAT", "target", "WOUND", "CRITICAL", 100, 2)
+	MOCK.fire("UNIT_COMBAT", "target", "WOUND", "CRITICAL", 100, 1)
+	assert(AS:GetProc("VENGEANCE").stacks == 5, "capped at 5")
+	P.SpecProfile.GetSpec = realSpec
 	MOCK.combat = false
 	table.remove(MOCK.auras)
 	AS:Scan()
 	assert(AS:GetProc("VENGEANCE") == nil, "gone after combat when it's gone")
+	local check = P.db.procLog and P.db.procLog[#P.db.procLog]
+	assert(check and check.vengGuess == 5 and check.vengReal == nil and check.crits == 3, "guess vs real logged")
 end
 
 -- DB v5: Buff Sentinel moves up only where it was never moved.

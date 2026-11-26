@@ -86,15 +86,59 @@ function AS:Scan()
 			PK:Debug("AuraService: frozen (%d readable, %d unreadable)", #auras, unreadable)
 		end
 	else
+		if self.frozen then
+			self:CheckPredictions(auras)
+		end
 		self.auras = auras
 		self.frozen = false
 		self.predictedSeal = nil
 		self.echo = nil
+		self.vengeance = nil
 		self.ironCreed = nil
 	end
 	self.stanceSpellID = Compat.GetActiveStanceSpell()
 	PK:Fire("PK_AURAS_UPDATED")
 	return not self.frozen
+end
+
+-- First readable scan after combat: how close were the guesses? Saved to
+-- NyteLytePaladinToolkitDB.procLog so in-game runs can be checked.
+function AS:CheckPredictions(real)
+	local db = PK.db
+	if not db then
+		return
+	end
+	local function stacksOf(aura)
+		return (aura and aura.stacks and aura.stacks > 0) and aura.stacks or 1
+	end
+	local function find(pred)
+		for _, a in ipairs(real) do
+			if pred(a) then
+				return a
+			end
+		end
+	end
+	local realEcho = find(function(a)
+		return type(a.name) == "string" and a.name:find("^Echo") ~= nil
+	end)
+	local realVeng = find(function(a)
+		return a.spellID == 20050 or a.name == "Vengeance"
+	end)
+	local e, v = self.echo, self.vengeance
+	local row = {
+		t = time(), hits = self.hitStats.hits, crits = self.hitStats.crits,
+		echoGuess = e and (tostring(e.sealName) .. " x" .. stacksOf(e)) or nil,
+		echoReal = realEcho and (realEcho.name .. " x" .. stacksOf(realEcho)) or nil,
+		vengGuess = v and stacksOf(v) or nil,
+		vengReal = realVeng and stacksOf(realVeng) or nil,
+		group = (IsInGroup and IsInGroup()) or nil,
+	}
+	db.procLog = db.procLog or {}
+	table.insert(db.procLog, row)
+	while #db.procLog > 40 do
+		table.remove(db.procLog, 1)
+	end
+	self.hitStats = { hits = 0, crits = 0 }
 end
 
 -- Seconds left on an aura, math.huge for no expiry, or nil if expired.
@@ -312,8 +356,6 @@ end)
 -- Unverified Forever durations; replaced by the real ones once seen out of combat.
 local DEFAULT_DURATION = { TWIST_ECHO = 15, IRON_CREED = 6 } -- Echo: 15 s seen 2026-11-26
 
--- Seals whose replacement grants Twist of Light's Echo (Ret talent).
-local TWISTABLE = { SEAL_COMMAND = true, SEAL_RIGHTEOUSNESS = true, SEAL_FURY = true, SEAL_JUSTICE = true }
 
 -- Registry entry for a cast: any learned rank's ID matches, and if the ID is
 -- new (e.g. a rank learned since the last spellbook scan) the name decides.
@@ -370,15 +412,8 @@ function AS:PredictCast(spellID)
 			return seals[a.spellID] or a.name:sub(1, 8) == "Seal of "
 		end)
 		self.predictedSeal = predictedAura(spellID, name, icon)
-		-- Twist of Light: swapping away from a twistable Seal grants Echo.
-		if previous and previous.spellID ~= spellID and registry:IsKnown("TWIST_OF_LIGHT") then
-			local prevKey = registryKeyFor(previous.spellID)
-			if prevKey and TWISTABLE[prevKey] then
-				local echo = registry:Get("TWIST_ECHO")
-				self.echo = predictedAura(echo and echo.spellID or 0, "Echo", previous.icon, "TWIST_ECHO")
-				self.echo.replacedSeal = previous.name
-			end
-		end
+		-- Echo (Unsealed Wrath) changes on your next landed hit, not here:
+		-- see AS:OnTargetHit.
 		return true
 	elseif key == "RIGHTEOUS_FURY" then
 		removeWhere(function(a)
@@ -395,8 +430,77 @@ function AS:PredictCast(spellID)
 	return false
 end
 
+-- Hits on your target in combat (UNIT_COMBAT, readable on Forever: the
+-- action and "CRITICAL" are plain, only the amount is secret; checked
+-- 2026-11-26). They drive two Ret procs while buffs are hidden:
+--  * Unsealed Wrath (Echo): each landed melee hit stores a copy of your
+--    active Seal for 15 s, up to 3 stacks; a hit with a different Seal
+--    consumes them all, and that hit starts storing the new Seal.
+--  * Vengeance: each critical hit adds a stack (up to 5) and restarts its
+--    30 s timer.
+-- Solo these are your hits. In a group other players' hits on the same
+-- target count too, so it runs a little ahead; the * says it's a guess.
+local ECHO_MAX, ECHO_DURATION = 3, 15
+local VENGEANCE_MAX, VENGEANCE_DURATION = 5, 30
+AS.hitStats = { hits = 0, crits = 0 }
+
+-- The Seal an Echo stores: predicted ones carry it, a real "Echo of
+-- Command" buff names it (English clients; otherwise treated as unknown).
+local function echoSeal(echo)
+	if not echo then
+		return nil
+	end
+	if echo.sealName then
+		return echo.sealName
+	end
+	local suffix = type(echo.name) == "string" and echo.name:match("^Echo of (.+)$")
+	return suffix and ("Seal of " .. suffix) or nil
+end
+
+local function stacksOf(aura)
+	return (aura and aura.stacks and aura.stacks > 0) and aura.stacks or 1
+end
+
+function AS:HasUnsealedWrath()
+	local reg = PK.SpellRegistry
+	return reg:IsKnown("UNSEALED_WRATH") or reg:IsKnown("TWIST_OF_LIGHT") or self:GetByKey("TWIST_ECHO") ~= nil
+end
+
+function AS:OnTargetHit(physical, crit)
+	local now = GetTime()
+	self.hitStats.hits = self.hitStats.hits + 1
+	local changed = false
+	if physical and self:HasUnsealedWrath() then
+		local seal = self:GetSeal()
+		if seal then
+			local echo = self:GetEcho()
+			local stacks = 1
+			if echo and echoSeal(echo) == seal.name then
+				stacks = math.min(ECHO_MAX, stacksOf(echo) + 1)
+			end
+			self.echo = {
+				name = "Echo", sealName = seal.name, icon = seal.icon, stacks = stacks,
+				duration = ECHO_DURATION, expirationTime = now + ECHO_DURATION, predicted = true,
+			}
+			changed = true
+		end
+	end
+	if crit and PK.SpecProfile:GetSpec() == "ret" then
+		self.hitStats.crits = self.hitStats.crits + 1
+		local v = self:GetProc("VENGEANCE")
+		local r = PK.SpellRegistry:Get("VENGEANCE")
+		self.vengeance = {
+			name = (v and v.name) or (r and r.name) or "Vengeance",
+			icon = (v and v.icon) or (r and r.icon) or Compat.GetSpellTexture(20050),
+			stacks = v and math.min(VENGEANCE_MAX, stacksOf(v) + 1) or 1,
+			duration = VENGEANCE_DURATION, expirationTime = now + VENGEANCE_DURATION, predicted = true,
+		}
+		changed = true
+	end
+	return changed
+end
+
 -- Twist of Light's Echo: the real buff when readable, else the prediction.
--- The returned aura has replacedSeal when predicted.
 function AS:GetEcho()
 	local aura = self:GetByKey("TWIST_ECHO")
 	local predicted = self.echo and self:Remaining(self.echo) and self.echo
@@ -417,6 +521,10 @@ end
 AS.PROCS = { ret = { "VENGEANCE" }, holy = { "INFUSION_OF_LIGHT" }, prot = { "HOLY_SHIELD" } }
 function AS:GetProc(key)
 	local aura = self:GetByKey(key)
+	local predicted = key == "VENGEANCE" and self.vengeance and self:Remaining(self.vengeance) and self.vengeance
+	if predicted and (not aura or (predicted.expirationTime or 0) > (aura.expirationTime or 0)) then
+		return predicted, "predicted"
+	end
 	if aura then
 		return aura, self.frozen and "snapshot" or "aura"
 	end
@@ -440,6 +548,20 @@ PK:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", AS, function(_, _, unit, _, spellID
 	end
 	local id = Secrets.SafeNumber(spellID)
 	if id and AS:PredictCast(id) then
+		PK:Fire("PK_AURAS_UPDATED")
+	end
+end)
+
+PK:RegisterEvent("UNIT_COMBAT", AS, function(_, _, unit, action, descriptor, _, school)
+	-- "target" only: the same hit also arrives as nameplateN / softenemy.
+	if not AS.frozen or Compat.IsSecret(unit) or unit ~= "target" or Compat.IsSecret(action)
+		or action ~= "WOUND" then
+		return
+	end
+	local crit = not Compat.IsSecret(descriptor) and type(descriptor) == "string"
+		and descriptor:find("CRITICAL", 1, true) ~= nil
+	local physical = not Compat.IsSecret(school) and school == 1
+	if AS:OnTargetHit(physical, crit) then
 		PK:Fire("PK_AURAS_UPDATED")
 	end
 end)

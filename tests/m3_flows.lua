@@ -64,21 +64,35 @@ if not MOCK_NO_AURAS then
 	assert(TK:State().ironCreed, "Iron Creed predicted from Holy Strike with RF")
 	assert(select(2, AS:GetIronCreed()) == "predicted", "Iron Creed marked predicted")
 
-	-- Twist of Light: Seal of Fury -> Seal of Command grants Echo of Seal of Fury.
+	-- Unsealed Wrath (Echo): landed melee hits store the active Seal, up to 3.
 	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-2", 900011)
-	local echo, source = AS:GetEcho()
-	assert(echo and source == "predicted" and echo.replacedSeal == "Seal of Fury", "Echo predicted")
 	assert(AS:GetSeal().name == "Seal of Command", "new Seal predicted")
 	assert(not TK:State().taunt, "no taunt label once Seal of Fury is gone")
+	assert(AS:GetEcho() == nil, "a Seal cast alone stores nothing")
+	local function hit(unit, action, descriptor, school)
+		MOCK.fire("UNIT_COMBAT", unit or "target", action or "WOUND", descriptor or "", 100, school or 1)
+	end
+	hit()
+	local echo, source = AS:GetEcho()
+	assert(echo and source == "predicted" and echo.sealName == "Seal of Command" and echo.stacks == 1,
+		"first hit stores Seal of Command")
+	hit()
+	hit()
+	hit()
+	assert(AS:GetEcho().stacks == 3, "capped at 3 stacks")
+	hit("target", "WOUND", "", 2) -- Holy damage (Seal proc, Judgement) isn't a melee hit
+	hit("nameplate1") -- the same hit again under another unit
+	hit("target", "PARRY") -- not landed
+	assert(AS:GetEcho().stacks == 3 and AS.hitStats.hits == 5, "only landed hits on the target count")
 	ST:Render()
 	ST:UpdateEcho()
-	-- Swapping away from Command (twistable) to any Seal also grants Echo.
+	-- A new Seal: the stacks stay until the next hit, which consumes them and
+	-- starts storing the new Seal.
 	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-3", 21082) -- Seal of the Crusader
-	assert(AS:GetEcho().replacedSeal == "Seal of Command", "Echo of Seal of Command")
-	-- Crusader isn't twistable: swapping away from it gives no new Echo.
-	AS.echo = nil
-	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-4", 21084)
-	assert(AS:GetEcho() == nil, "no Echo from replacing Seal of the Crusader")
+	assert(AS:GetEcho().sealName == "Seal of Command" and AS:GetEcho().stacks == 3, "kept until the next hit")
+	hit()
+	echo = AS:GetEcho()
+	assert(echo.sealName == AS:GetSeal().name and echo.stacks == 1, "consumed, new Seal stored")
 
 	-- Predictions expire on their own.
 	MOCK.advance(11)

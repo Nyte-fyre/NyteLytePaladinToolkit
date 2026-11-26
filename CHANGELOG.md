@@ -4,10 +4,15 @@
 
 - Proc stacks next to the Seal Tracker: Vengeance (Ret), Infusion of Light
   (Holy) and Holy Shield charges (Prot), with stacks and a countdown, plus
-  stacks on Twist of Light's Echo. Forever hides your buffs from addons in
-  combat, so during a fight these show what you had at the pull: the
-  timer keeps counting and the stacks are marked `*`. Echo follows your
-  Seal twists in combat. Everything is exact again as soon as combat ends.
+  stacks on Unsealed Wrath's Echo. Forever hides your buffs from addons in
+  combat, so during a fight:
+  - Vengeance follows your critical hits on your target (+1 stack, up to 5,
+    30 s);
+  - Echo follows your landed melee hits (stores your Seal, up to 3; a hit
+    with a different Seal uses them up and starts the new one);
+  - Infusion of Light and Holy Shield keep what you had at the pull.
+  In-combat values are marked `*` (in a group, other players' hits on your
+  target count too). Everything is exact again as soon as combat ends.
   Option: Settings > "Seal Tracker: proc stacks".
 - Twist of Light: the Seal Tracker now recognises the real Echo buff
   ("Echo of Command", "Echo of Righteousness", ...) out of combat, and the

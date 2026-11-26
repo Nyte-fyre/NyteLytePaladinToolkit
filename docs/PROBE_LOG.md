@@ -37,6 +37,14 @@ Goal: show stacks/timers of Vengeance and Echo. Results:
   tainted". `C_Secrets.ShouldAurasBeSecret()` still returned false.
 - Conclusion: no in-combat proc display from an addon. Blizzard's own
   Cooldown Manager (tracked buffs) is untainted and can show them.
+- But UNIT_COMBAT (floating combat text, not the combat log) is readable in
+  combat: unit, action ("WOUND", "PARRY", "DODGE", "MISS", "HEAL"),
+  descriptor ("CRITICAL") and school are plain; only the amount is secret.
+  Each hit arrives for "target" and again for "nameplateN" / "softenemy".
+  So Vengeance (crits) and Unsealed Wrath's Echo (landed melee hits store
+  the active Seal, up to 3; a hit with a different Seal consumes them) are
+  followed from hits on your target. Guess vs. real is logged after each
+  fight to NyteLytePaladinToolkitDB.procLog.
 
 ## Launch-day checklist (Nov 4 2026)
 

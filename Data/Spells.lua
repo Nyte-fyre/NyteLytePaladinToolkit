@@ -59,6 +59,8 @@ S.list = {
 	-- Ret proc (seen 2026-11-26): spell 20050, 30 s, up to 5 stacks. Not shown yet:
 	-- Forever blocks every aura read in combat.
 	{ key = "VENGEANCE", names = { "Vengeance" }, category = "proc", spec = "ret", ids = { 20050 } },
+	-- Ret talent that creates the Echo buffs (tooltip seen 2026-11-26).
+	{ key = "UNSEALED_WRATH", names = { "Unsealed Wrath" }, category = "talent", spec = "ret", verify = true },
 	-- Iron Creed is a 5-rank Protection talent; its buff name/duration are unverified.
 	{ key = "IRON_CREED", names = { "Iron Creed" }, category = "proc", spec = "prot", verify = true },
 
