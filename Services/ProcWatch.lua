@@ -145,7 +145,7 @@ local function consider(aura, source)
 	local name = plainString(aura.name)
 	local spellId = plainNumber(aura.spellId)
 	local watched = isWatchedName(name) or (spellId and W.known[spellId])
-	if not Compat.InCombat() and aura.isHelpful ~= false and name then
+	if not Compat.InCombat() and Compat.IsSecret(aura.isHelpful) == false and aura.isHelpful ~= false and name then
 		log("seen", {
 			name = name, spellId = spellId, stacks = Describe(aura.applications),
 			duration = Describe(aura.duration), watched = watched or nil, via = source,
@@ -169,11 +169,24 @@ local function onAura(_, _, unit, info)
 		log("auraEvent", { info = Describe(info) }, "info:" .. tostring(inCombat))
 		return
 	end
-	local added = info.addedAuras
-	local updated = info.updatedAuraInstanceIDs
-	local removed = info.removedAuraInstanceIDs
+	-- In combat Forever hands these over as secret tables (seen 2026-11-26:
+	-- addedAuras and isFullUpdate secret): they can't even be indexed.
+	local function plainTable(v)
+		return type(v) == "table" and not Compat.IsSecret(v) and v or nil
+	end
+	local added = plainTable(info.addedAuras)
+	local updated = plainTable(info.updatedAuraInstanceIDs)
+	local removed = plainTable(info.removedAuraInstanceIDs)
+	log("auraEventShape", {
+		addedSecret = Compat.IsSecret(info.addedAuras) or nil,
+		updatedSecret = Compat.IsSecret(info.updatedAuraInstanceIDs) or nil,
+		removedSecret = Compat.IsSecret(info.removedAuraInstanceIDs) or nil,
+		hasAdded = info.addedAuras ~= nil, hasUpdated = info.updatedAuraInstanceIDs ~= nil,
+		hasRemoved = info.removedAuraInstanceIDs ~= nil,
+	}, "shape:" .. tostring(inCombat) .. ":" .. tostring(info.addedAuras ~= nil) .. tostring(info.updatedAuraInstanceIDs ~= nil)
+		.. tostring(info.removedAuraInstanceIDs ~= nil))
 	-- What the event carries, once per combat state.
-	local first = type(added) == "table" and added[1]
+	local first = added and added[1]
 	log("auraEvent", {
 		isFullUpdate = Describe(info.isFullUpdate),
 		added = type(added) == "table" and #added or Describe(added),
