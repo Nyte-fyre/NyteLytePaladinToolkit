@@ -21,6 +21,23 @@
 | Party members' auras | **readable** | assumed secret | Roster (unreadable = unknown) |
 | Talent trees (`C_Traits`) | readable: **one tree, three columns** | - | Compat.GetTalentPointsByTree |
 
+## Proc tracking test (2026-11-26, live client, Ret)
+
+Goal: show stacks/timers of Vengeance and Echo. Results:
+
+- Out of combat everything works: Vengeance (20050, 30 s, up to 5 stacks),
+  Echo of Command (1311703) / Echo of Righteousness (1311704) (15 s, up to 3
+  stacks). `C_UnitAuras.GetAuraApplicationDisplayCount` and
+  `GetAuraDuration` + `SetCooldownFromDurationObject` draw them fine.
+- In combat it's all blocked for addon code: UNIT_AURA's addedAuras,
+  updatedAuraInstanceIDs and removedAuraInstanceIDs are secret tables (can't
+  be indexed or measured), isFullUpdate is secret, GetPlayerAuraBySpellID
+  returns nil, and GetAuraApplicationDisplayCount, GetAuraDuration and
+  GetUnitAuraInstanceIDs error: "Auras cannot be accessed when secret while
+  tainted". `C_Secrets.ShouldAurasBeSecret()` still returned false.
+- Conclusion: no in-combat proc display from an addon. Blizzard's own
+  Cooldown Manager (tracked buffs) is untainted and can show them.
+
 ## Launch-day checklist (Nov 4 2026)
 
 1. Install, log in, `/console scriptErrors 1`, `/reload`. Any errors?

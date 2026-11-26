@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Twist of Light: the Seal Tracker now recognises the real Echo buff
+  ("Echo of Command", "Echo of Righteousness", ...) out of combat, and the
+  predicted Echo lasts 15 seconds (was a 10-second guess).
+
 ## 0.11.0
 
 - Buff button in combat: before the pull it lines up everyone who needs

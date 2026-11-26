@@ -52,7 +52,13 @@ S.list = {
 
 	-- Self buffs and procs
 	{ key = "RIGHTEOUS_FURY", names = { "Righteous Fury" }, category = "selfBuff" },
-	{ key = "TWIST_ECHO", names = { "Echo", "Twist of Light" }, category = "proc", spec = "ret", verify = true },
+	-- Twist of Light's buff is "Echo of <Seal>" (seen 2026-11-26: Echo of Command
+	-- 1311703, Echo of Righteousness 1311704; 15 s, up to 3 stacks).
+	{ key = "TWIST_ECHO", names = { "Echo of Command", "Echo of Righteousness", "Echo of Justice", "Echo of Fury", "Echo" },
+		category = "proc", spec = "ret", ids = { 1311703, 1311704 } },
+	-- Ret proc (seen 2026-11-26): spell 20050, 30 s, up to 5 stacks. Not shown yet:
+	-- Forever blocks every aura read in combat.
+	{ key = "VENGEANCE", names = { "Vengeance" }, category = "proc", spec = "ret", ids = { 20050 } },
 	-- Iron Creed is a 5-rank Protection talent; its buff name/duration are unverified.
 	{ key = "IRON_CREED", names = { "Iron Creed" }, category = "proc", spec = "prot", verify = true },
 

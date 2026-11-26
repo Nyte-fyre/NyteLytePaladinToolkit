@@ -271,8 +271,14 @@ function AS:GetByKey(key)
 	if not r or not r.spellID then
 		return nil
 	end
+	-- Every confirmed ID counts (e.g. one Echo per Seal), not just the resolved one.
+	local entry = PK.Spells.byKey[key]
+	local known = {}
+	for _, id in ipairs(entry and entry.ids or {}) do
+		known[id] = true
+	end
 	return self:Find(function(a)
-		return a.spellID == r.spellID or (r.ids and r.ids[a.spellID]) or a.name == r.name
+		return a.spellID == r.spellID or (r.ids and r.ids[a.spellID]) or known[a.spellID] or a.name == r.name
 	end)
 end
 
@@ -298,7 +304,7 @@ end)
 -- predicted = true and are shown with a * by the modules.
 
 -- Unverified Forever durations; replaced by the real ones once seen out of combat.
-local DEFAULT_DURATION = { TWIST_ECHO = 10, IRON_CREED = 6 }
+local DEFAULT_DURATION = { TWIST_ECHO = 15, IRON_CREED = 6 } -- Echo: 15 s seen 2026-11-26
 
 -- Seals whose replacement grants Twist of Light's Echo (Ret talent).
 local TWISTABLE = { SEAL_COMMAND = true, SEAL_RIGHTEOUSNESS = true, SEAL_FURY = true, SEAL_JUSTICE = true }
