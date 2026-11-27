@@ -544,13 +544,19 @@ if not MOCK_NO_AURAS then
 	MOCK.fire("UNIT_COMBAT", "target", "WOUND", "CRITICAL", 100, 2)
 	MOCK.fire("UNIT_COMBAT", "target", "WOUND", "CRITICAL", 100, 1)
 	assert(AS:GetProc("VENGEANCE").stacks == 5, "capped at 5")
+	MOCK.advance(25)
+	MOCK.fire("UNIT_COMBAT", "target", "WOUND", "CRITICAL", 100, 1)
+	MOCK.advance(10)
+	v = AS:GetProc("VENGEANCE")
+	assert(v and v.stacks == 1, "older stacks ran out one by one, the newest is left")
+	MOCK.advance(-35)
 	P.SpecProfile.GetSpec = realSpec
 	MOCK.combat = false
 	table.remove(MOCK.auras)
 	AS:Scan()
 	assert(AS:GetProc("VENGEANCE") == nil, "gone after combat when it's gone")
 	local check = P.db.procLog and P.db.procLog[#P.db.procLog]
-	assert(check and check.vengGuess == 5 and check.vengReal == nil and check.crits == 3, "guess vs real logged")
+	assert(check and check.vengGuess == 1 and check.vengReal == nil and check.crits == 4, "guess vs real logged")
 end
 
 -- Warning sounds: picked per warning; "None" is silent; custom files exist.

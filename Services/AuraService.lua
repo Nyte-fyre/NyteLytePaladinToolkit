@@ -124,9 +124,12 @@ function AS:CheckPredictions(real)
 	local realVeng = find(function(a)
 		return a.spellID == 20050 or a.name == "Vengeance"
 	end)
-	-- Copies that already ran out don't count (GetEcho drops them).
+	-- Copies that already ran out don't count (GetEcho / GetProc drop them).
 	if self.echo then
 		self:GetEcho()
+	end
+	if self.vengeance then
+		self:GetProc("VENGEANCE")
 	end
 	local e, v = self.echo, self.vengeance
 	local row = {
@@ -541,12 +544,28 @@ function AS:OnTargetHit(physical, crit)
 	self:Trail((physical and "hit" or "holy") .. (crit and " CRIT" or "") .. result)
 	if crit and PK.SpecProfile:GetSpec() == "ret" then
 		self.hitStats.crits = self.hitStats.crits + 1
+		-- Like Echo, each crit's stack runs out on its own 30 s (seen
+		-- 2026-11-27: real stacks well below an all-refresh guess).
 		local v = self:GetProc("VENGEANCE")
 		local r = PK.SpellRegistry:Get("VENGEANCE")
+		local copies = {}
+		if v and v.copies then
+			for _, t in ipairs(v.copies) do
+				copies[#copies + 1] = t
+			end
+		elseif v then
+			for _ = 1, stacksOf(v) do
+				copies[#copies + 1] = (v.expirationTime and v.expirationTime > 0) and v.expirationTime or now
+			end
+		end
+		copies[#copies + 1] = now + VENGEANCE_DURATION
+		while #copies > VENGEANCE_MAX do
+			table.remove(copies, 1)
+		end
 		self.vengeance = {
 			name = (v and v.name) or (r and r.name) or "Vengeance",
 			icon = (v and v.icon) or (r and r.icon) or Compat.GetSpellTexture(20050),
-			stacks = v and math.min(VENGEANCE_MAX, stacksOf(v) + 1) or 1,
+			copies = copies, stacks = #copies,
 			duration = VENGEANCE_DURATION, expirationTime = now + VENGEANCE_DURATION, predicted = true,
 		}
 		changed = true
@@ -589,6 +608,20 @@ end
 AS.PROCS = { ret = { "VENGEANCE" }, holy = { "INFUSION_OF_LIGHT" }, prot = { "HOLY_SHIELD" } }
 function AS:GetProc(key)
 	local aura = self:GetByKey(key)
+	-- Drop predicted Vengeance stacks that have run out.
+	local pv = key == "VENGEANCE" and self.vengeance
+	if pv and pv.copies then
+		local now = GetTime()
+		for i = #pv.copies, 1, -1 do
+			if pv.copies[i] <= now then
+				table.remove(pv.copies, i)
+			end
+		end
+		pv.stacks = #pv.copies
+		if #pv.copies == 0 then
+			self.vengeance = nil
+		end
+	end
 	local predicted = key == "VENGEANCE" and self.vengeance and self:Remaining(self.vengeance) and self.vengeance
 	if predicted and (not aura or (predicted.expirationTime or 0) > (aura.expirationTime or 0)) then
 		return predicted, "predicted"
