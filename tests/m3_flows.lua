@@ -130,6 +130,22 @@ if not MOCK_NO_AURAS then
 	assert(AS:GetEcho().stacks == 2, "too soon for a swing")
 	hit(nil, nil, nil, nil, 2.5)
 	assert(AS:GetEcho().stacks == 3, "next real swing stores")
+	-- The buff update for a new stack arrives before the hit report: the
+	-- stack counts then, and the hit right after doesn't count again.
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-8", 900011) -- fresh Seal of Command
+	MOCK.advance(5)
+	local before = AS:GetEcho() and AS:GetEcho().stacks or 0
+	local realSpec = P.SpecProfile.GetSpec
+	P.SpecProfile.GetSpec = function()
+		return "ret"
+	end
+	MOCK.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = {} })
+	assert(AS:GetEcho().stacks == math.min(3, before + 1), "stack on the buff update")
+	hit(nil, nil, nil, nil, 0.4)
+	assert(AS:GetEcho().stacks == math.min(3, before + 1), "the hit report after it doesn't count twice")
+	MOCK.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = {} }) -- another buff, mid-swing
+	assert(AS:GetEcho().stacks == math.min(3, before + 1), "updates between swings don't add stacks")
+	P.SpecProfile.GetSpec = realSpec
 	AS.swingSpeed = nil
 
 	local usedLogged = false

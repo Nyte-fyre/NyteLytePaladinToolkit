@@ -362,23 +362,43 @@ end
 -- Echo swap (see AS:OnTargetHit).
 local CAST_AURA_WINDOW = 0.3
 
+-- Your buffs changing in combat: the game still sends UNIT_AURA, only
+-- its contents are hidden, but whether something was added, removed or
+-- updated is readable. Echo uses it (it arrives up to ~0.6 s before the hit
+-- report, seen 2026-11-27):
+--  * twist pending + a buff swapped in and out = the Echo changing Seal;
+--  * otherwise a buff updated (no add/remove) on a swing's schedule = a
+--    new Echo copy of your Seal. The swing-timer check keeps other buffs'
+--    updates from adding extra stacks, and the hit report that follows is
+--    then "too soon" and doesn't count twice.
 PK:RegisterEvent("UNIT_AURA", AS, function(_, _, unit, info)
 	if not Compat.IsSecret(unit) and unit == "player" then
-		if AS.frozen and AS.lastSealCast and GetTime() - AS.lastSealCast < 5 and type(info) == "table"
-			and not Compat.IsSecret(info) then
+		if AS.frozen and type(info) == "table" and not Compat.IsSecret(info) then
+			local now = GetTime()
 			local added, removed = info.addedAuras ~= nil, info.removedAuraInstanceIDs ~= nil
-			local note = "buffs" .. (added and " +" or "") .. (removed and " -" or "")
-				.. (info.updatedAuraInstanceIDs ~= nil and " ~" or "")
-			-- While a twist is pending, a buff swapped in and out (after the
-			-- Seal cast's own change) is the Echo changing Seal.
+			local updated = info.updatedAuraInstanceIDs ~= nil
+			local note
 			local tw = AS.twist
-			if tw and added and removed and GetTime() - tw.at >= CAST_AURA_WINDOW then
+			local afterCast = not (AS.lastSealCast and now - AS.lastSealCast < CAST_AURA_WINDOW)
+			if tw and added and removed and now - tw.at >= CAST_AURA_WINDOW then
 				AS.twist = nil
-				note = note .. " = Echo swap" .. AS:StoreEcho(tw.seal, GetTime())
-				AS.lastStoreAt = GetTime()
+				note = " = Echo swap" .. AS:StoreEcho(tw.seal, now)
+				AS.lastStoreAt = now
+			elseif updated and not added and not removed and not tw and afterCast and AS:HasUnsealedWrath()
+				and PK.SpecProfile:GetSpec() == "ret" and not AS:TooSoonForSwing(now) then
+				local seal = AS:GetSeal()
+				if seal then
+					note = " = Echo stack" .. AS:StoreEcho(seal, now)
+					AS.lastStoreAt = now
+				end
+			end
+			if note then
 				PK:Fire("PK_AURAS_UPDATED")
 			end
-			AS:Trail(note)
+			if note or (AS.lastSealCast and now - AS.lastSealCast < 5) then
+				AS:Trail("buffs" .. (added and " +" or "") .. (removed and " -" or "") .. (updated and " ~" or "")
+					.. (note or ""))
+			end
 		end
 		queueScan()
 	end
@@ -572,7 +592,7 @@ function AS:OnTargetHit(physical, crit)
 		end
 		if not seal then
 			result = " (no Seal known)"
-		elseif self.lastStoreAt and now - self.lastStoreAt < math.max(SAME_SWING, SWING_FRACTION * (self.swingSpeed or 0)) then
+		elseif self:TooSoonForSwing(now) then
 			-- Too soon after the last stored swing to be another auto-attack
 			-- (seen 2026-11-27: a physical "hit" 1.3 s after a swap with a
 			-- 3.4 s weapon, and the game's buffs didn't change for it).
@@ -585,6 +605,12 @@ function AS:OnTargetHit(physical, crit)
 	end
 	self:Trail((physical and "hit" or "holy") .. (crit and " CRIT" or "") .. result)
 	return self:OnCrit(crit, now) or changed
+end
+
+-- Is `now` too soon after the last stored copy to be another swing?
+function AS:TooSoonForSwing(now)
+	return self.lastStoreAt ~= nil
+		and now - self.lastStoreAt < math.max(SAME_SWING, SWING_FRACTION * (self.swingSpeed or 0))
 end
 
 -- Stores one copy of `seal` (Unsealed Wrath). Copies of another Seal are
