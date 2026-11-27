@@ -124,6 +124,10 @@ function AS:CheckPredictions(real)
 	local realVeng = find(function(a)
 		return a.spellID == 20050 or a.name == "Vengeance"
 	end)
+	-- Copies that already ran out don't count (GetEcho drops them).
+	if self.echo then
+		self:GetEcho()
+	end
 	local e, v = self.echo, self.vengeance
 	local row = {
 		t = time(), hits = self.hitStats.hits, crits = self.hitStats.crits,
