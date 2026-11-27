@@ -82,7 +82,13 @@ function Config.BuildDefaults()
 		modules = deepCopy(Presets.modules),
 		layout = layout,
 		cooldownLists = deepCopy(Presets.cooldownLists),
-		alerts = { sound = true, expiringThresholdSec = 120 },
+		alerts = {
+			sound = true,
+			expiringThresholdSec = 120,
+			-- Which sound each warning plays (Core/Sounds.lua).
+			sounds = { missing = "RAID_WARNING", readyCheck = "RAID_WARNING", seal = "RAID_WARNING",
+				rf = "RAID_WARNING", rebuff = "RAID_WARNING" },
+		},
 		moduleSettings = deepCopy(Presets.moduleSettings),
 		-- assignments: { [paladin] = row } (see Logic/Blessings.lua)
 		blessing = { assignments = {}, autoSuggest = true, refreshMinutes = 5 },

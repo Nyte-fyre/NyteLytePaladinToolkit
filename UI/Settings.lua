@@ -142,6 +142,7 @@ local OPTIONS = {
 }
 local statusText, lockButton, profileText, scaleHeader
 local scaleRows = {}
+local soundButtons = {}
 
 local function header(parent, text, y, x, width)
 	return PK.Theme.Header(parent, text, x or 16, y, width or 290)
@@ -206,7 +207,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 1110)
+	content:SetSize(600, 1230)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)
@@ -314,6 +315,36 @@ local function Build()
 	sizeNote:SetJustifyH("LEFT")
 	sizeNote:SetText(L["5% per click, 25% with Shift (50% to 200%). Or unlock frames and scroll the mouse wheel over a gold box."])
 
+	-- Sounds: which sound each warning plays.
+	local soundY = sizeY - 22 - #Presets.MODULES * 28 - 56
+	header(content, L["Sounds"], soundY)
+	for row, ev in ipairs(PK.Sounds.EVENTS) do
+		local y = soundY - 22 - (row - 1) * 28
+		local label = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		label:SetPoint("TOPLEFT", 24, y - 6)
+		label:SetWidth(130)
+		label:SetJustifyH("LEFT")
+		label:SetText(ev.label)
+		local pick = button(content, "", 110, nil)
+		pick:SetPoint("TOPLEFT", 158, y)
+		pick:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+		pick:SetScript("OnClick", function(_, mouseButton)
+			PK.Sounds:Preview(PK.Sounds:Cycle(ev.key, mouseButton == "RightButton" and -1 or 1))
+			S:Refresh()
+		end)
+		soundButtons[ev.key] = pick
+		local test = button(content, L["Test"], 48, function()
+			PK.Sounds:Preview(PK.Sounds:Get(ev.key))
+		end)
+		test:SetPoint("LEFT", pick, "RIGHT", 4, 0)
+	end
+	local soundNote = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	soundNote:SetPoint("TOPLEFT", 16, soundY - 22 - #PK.Sounds.EVENTS * 28 - 4)
+	soundNote:SetWidth(310)
+	soundNote:SetJustifyH("LEFT")
+	soundNote:SetText(L["Click a sound to change it (right-click goes back). Whether each warning plays a sound at all is set in Options."]
+		.. " " .. L["Own sounds: put custom1 ... custom5 (.ogg or .mp3) in Interface\\AddOns\\NyteLytePaladinToolkit_Sounds, then restart the game."])
+
 	-- Profile
 	local profileY = framesY - 64
 	header(content, L["Profile"], profileY)
@@ -387,6 +418,9 @@ function S:Refresh()
 		scaleHeader:SetText(L["Frame size (%s)"]:format(SP.LABELS[d.spec]))
 	end
 	profileText:SetText(L["Current profile: |cffffffff%s|r"]:format(tostring(PK.Config:GetProfileName())))
+	for event, b in pairs(soundButtons) do
+		b:SetText(PK.Sounds:Get(event).label)
+	end
 end
 
 local function register()

@@ -159,7 +159,7 @@ local function rfReminder(reason)
 		return
 	end
 	PK:Print(reason .. ": |cffff4040" .. L["Righteous Fury is not active."] .. "|r")
-	PK.Compat.PlaySound("RAID_WARNING", 8959)
+	PK.Sounds:Play("rf")
 end
 
 function M:OnEnable()

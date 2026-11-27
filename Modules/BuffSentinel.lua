@@ -300,7 +300,7 @@ function M:Render()
 	end
 	if newlyMissing and PK.profile.alerts.sound and not PK.Compat.InCombat() and GetTime() - lastSound > SOUND_THROTTLE then
 		lastSound = GetTime()
-		PK.Compat.PlaySound("RAID_WARNING", 8959)
+		PK.Sounds:Play("missing")
 	end
 end
 
@@ -355,7 +355,7 @@ function M:OnEnable()
 	PK:RegisterEvent("PLAYER_REGEN_ENABLED", self, render)
 	PK:RegisterEvent("READY_CHECK", self, function()
 		if M:PrintCheck(L["ready check"]) > 0 and PK.profile.alerts.sound then
-			PK.Compat.PlaySound("RAID_WARNING", 8959)
+			PK.Sounds:Play("readyCheck")
 		end
 	end)
 	if C_Timer.NewTicker then

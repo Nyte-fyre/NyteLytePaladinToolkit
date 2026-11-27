@@ -498,21 +498,39 @@ function AS:OnTargetHit(physical, crit)
 	self.hitStats.hits = self.hitStats.hits + 1
 	local changed = false
 	local result = ""
-	if physical and self:HasUnsealedWrath() then
+	if physical and not self:HasUnsealedWrath() then
+		result = " (no Unsealed Wrath)"
+	elseif physical then
 		local seal = self:GetSeal()
-		if seal then
+		if not seal then
+			result = " (no Seal known)"
+		else
+			-- Each stored copy lasts its own 15 s (stacks fall off one by one:
+			-- seen 2026-11-27, real stacks lower than all-at-once predicted).
 			local echo = self:GetEcho()
-			local stacks = 1
+			local copies = {}
 			if echo and echoSeal(echo) == seal.name then
-				stacks = math.min(ECHO_MAX, stacksOf(echo) + 1)
+				if echo.copies then
+					for _, t in ipairs(echo.copies) do
+						copies[#copies + 1] = t
+					end
+				else
+					for _ = 1, stacksOf(echo) do
+						copies[#copies + 1] = echo.expirationTime or now
+					end
+				end
 			elseif echo then
 				result = " (used " .. shortSeal(echoSeal(echo)) .. " x" .. stacksOf(echo) .. ")"
 			end
+			copies[#copies + 1] = now + ECHO_DURATION
+			while #copies > ECHO_MAX do
+				table.remove(copies, 1)
+			end
 			self.echo = {
-				name = "Echo", sealName = seal.name, icon = seal.icon, stacks = stacks,
+				name = "Echo", sealName = seal.name, icon = seal.icon, copies = copies, stacks = #copies,
 				duration = ECHO_DURATION, expirationTime = now + ECHO_DURATION, predicted = true,
 			}
-			result = result .. " -> " .. shortSeal(seal.name) .. " x" .. stacks
+			result = result .. " -> " .. shortSeal(seal.name) .. " x" .. #copies
 			changed = true
 		end
 	end
@@ -535,6 +553,20 @@ end
 -- Twist of Light's Echo: the real buff when readable, else the prediction.
 function AS:GetEcho()
 	local aura = self:GetByKey("TWIST_ECHO")
+	-- Drop predicted copies that have run out; the stack count follows.
+	local e = self.echo
+	if e and e.copies then
+		local now = GetTime()
+		for i = #e.copies, 1, -1 do
+			if e.copies[i] <= now then
+				table.remove(e.copies, i)
+			end
+		end
+		e.stacks = #e.copies
+		if #e.copies == 0 then
+			self.echo = nil
+		end
+	end
 	local predicted = self.echo and self:Remaining(self.echo) and self.echo
 	if predicted and (not aura or (predicted.expirationTime or 0) > (aura.expirationTime or 0)) then
 		return predicted, "predicted"

@@ -939,7 +939,7 @@ function M:OnEnable()
 				PK:Print(PK.Theme.Color("gold", L["After combat:"] .. " ")
 					.. L["%d need your Blessing: %s"]:format(now, table.concat(M.missingNames or {}, ", ")))
 				if PK.profile.alerts.sound then
-					PK.Compat.PlaySound("RAID_WARNING", 8959)
+					PK.Sounds:Play("rebuff")
 				end
 			end
 		end

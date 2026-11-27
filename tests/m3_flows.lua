@@ -93,7 +93,21 @@ if not MOCK_NO_AURAS then
 	hit()
 	echo = AS:GetEcho()
 	assert(echo.sealName == AS:GetSeal().name and echo.stacks == 1, "consumed, new Seal stored")
-	assert(AS.hitStats.trail and AS.hitStats.trail[#AS.hitStats.trail]:find("used", 1, true), "trail shows the used stacks")
+	-- Each copy lasts its own 15 s: stacks fall off one at a time.
+	hit()
+	MOCK.advance(10)
+	hit()
+	assert(AS:GetEcho().stacks == 3, "three copies")
+	MOCK.advance(6)
+	assert(AS:GetEcho().stacks == 1, "the two older copies ran out")
+	MOCK.advance(10)
+	assert(AS:GetEcho() == nil, "last copy ran out")
+	MOCK.advance(-26)
+	local usedLogged = false
+	for _, line in ipairs(AS.hitStats.trail or {}) do
+		usedLogged = usedLogged or line:find("used", 1, true) ~= nil
+	end
+	assert(usedLogged, "trail shows the used stacks")
 
 	-- Predictions expire on their own.
 	MOCK.advance(11)

@@ -270,7 +270,7 @@ function M:UpdateWarning(remaining)
 		local id = current and current.expirationTime
 		if s.warnSound and id and self.warnedFor ~= id then
 			self.warnedFor = id
-			PK.Compat.PlaySound("RAID_WARNING", 8959)
+			PK.Sounds:Play("seal")
 		end
 	else
 		bar:SetStatusBarColor(0.95, 0.75, 0.25)

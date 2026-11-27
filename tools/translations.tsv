@@ -267,3 +267,23 @@ In a party or raid, the buff button casts the Greater version (one cast covers t
 Greater: on	Große: an	Supérieures : oui	Superiores: sí	Maiores: sim	Великие: вкл
 Greater: off	Große: aus	Supérieures : non	Superiores: no	Maiores: não	Великие: выкл
 Buff button: Greater Blessings in a party or raid	Segen-Knopf: große Segen in Gruppe oder Schlachtzug	Bouton : bénédictions supérieures en groupe ou en raid	Botón: bendiciones superiores en grupo o banda	Botão: bênçãos maiores em grupo ou raide	Кнопка: великие благословения в группе или рейде
+None	Keiner	Aucun	Ninguno	Nenhum	Нет
+Raid warning	Schlachtzugswarnung	Avertissement de raid	Aviso de banda	Aviso de raide	Объявление рейду
+Alarm clock	Wecker	Réveil	Despertador	Despertador	Будильник
+Boss warning	Bosswarnung	Alerte de boss	Aviso de jefe	Aviso de chefe	Предупреждение босса
+Whisper	Flüstern	Chuchotement	Susurro	Sussurro	Шёпот
+Level up	Stufenaufstieg	Niveau supérieur	Subida de nivel	Subir de nível	Новый уровень
+Map ping	Kartenmarkierung	Signal sur la carte	Señal en el mapa	Sinal no mapa	Метка на карте
+Invite	Einladung	Invitation	Invitación	Convite	Приглашение
+Queue pop	Warteschlange bereit	File prête	Cola lista	Fila pronta	Очередь готова
+Missing buff	Fehlender Buff	Buff manquant	Falta un beneficio	Bônus faltando	Нет баффа
+Ready check problem	Problem beim Bereitschaftscheck	Problème à l'appel	Problema en la comprobación	Problema na verificação	Проблема при проверке готовности
+Seal running out	Siegel läuft aus	Sceau qui expire	Sello a punto de acabar	Selo acabando	Печать заканчивается
+Righteous Fury missing	Zorn der Gerechtigkeit fehlt	Fureur vertueuse manquante	Falta Furia recta	Fúria Justa faltando	Нет Праведного неистовства
+After-combat rebuff	Neuer Segen nach dem Kampf	Rebuff après le combat	Rebufo tras el combate	Rebuff após o combate	Ребафф после боя
+Sounds	Töne	Sons	Sonidos	Sons	Звуки
+Test	Test	Tester	Probar	Testar	Тест
+Click a sound to change it (right-click goes back). Whether each warning plays a sound at all is set in Options.	Klicke auf einen Ton, um ihn zu ändern (Rechtsklick geht zurück). Ob eine Warnung überhaupt einen Ton spielt, stellst du unter Optionen ein.	Cliquez sur un son pour le changer (clic droit pour revenir). Le fait qu'une alerte joue un son se règle dans Options.	Haz clic en un sonido para cambiarlo (clic derecho para volver). Si cada aviso suena o no se elige en Opciones.	Clique em um som para trocá-lo (clique direito volta). Se cada aviso toca um som ou não é definido em Opções.	Нажмите на звук, чтобы сменить его (правый клик — назад). Включение звука для каждого предупреждения — в разделе «Параметры».
+Custom %d	Eigener %d	Perso %d	Propio %d	Próprio %d	Свой %d
+%s: no file found. Put %s.ogg or %s.mp3 in Interface\\AddOns\\NyteLytePaladinToolkit_Sounds and restart the game.	%s: keine Datei gefunden. Lege %s.ogg oder %s.mp3 in Interface\\AddOns\\NyteLytePaladinToolkit_Sounds und starte das Spiel neu.	%s : aucun fichier trouvé. Placez %s.ogg ou %s.mp3 dans Interface\\AddOns\\NyteLytePaladinToolkit_Sounds et redémarrez le jeu.	%s: no se encontró el archivo. Pon %s.ogg o %s.mp3 en Interface\\AddOns\\NyteLytePaladinToolkit_Sounds y reinicia el juego.	%s: arquivo não encontrado. Coloque %s.ogg ou %s.mp3 em Interface\\AddOns\\NyteLytePaladinToolkit_Sounds e reinicie o jogo.	%s: файл не найден. Положите %s.ogg или %s.mp3 в Interface\\AddOns\\NyteLytePaladinToolkit_Sounds и перезапустите игру.
+Own sounds: put custom1 ... custom5 (.ogg or .mp3) in Interface\\AddOns\\NyteLytePaladinToolkit_Sounds, then restart the game.	Eigene Töne: lege custom1 ... custom5 (.ogg oder .mp3) in Interface\\AddOns\\NyteLytePaladinToolkit_Sounds und starte das Spiel neu.	Sons perso : placez custom1 ... custom5 (.ogg ou .mp3) dans Interface\\AddOns\\NyteLytePaladinToolkit_Sounds, puis redémarrez le jeu.	Sonidos propios: pon custom1 ... custom5 (.ogg o .mp3) en Interface\\AddOns\\NyteLytePaladinToolkit_Sounds y reinicia el juego.	Sons próprios: coloque custom1 ... custom5 (.ogg ou .mp3) em Interface\\AddOns\\NyteLytePaladinToolkit_Sounds e reinicie o jogo.	Свои звуки: положите custom1 ... custom5 (.ogg или .mp3) в Interface\\AddOns\\NyteLytePaladinToolkit_Sounds и перезапустите игру.

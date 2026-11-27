@@ -23,6 +23,7 @@ Locales\ruRU.lua
 Core\Compat.lua
 Core\Secrets.lua
 Core\CombatQueue.lua
+Core\Sounds.lua
 Logic\Serializer.lua
 Logic\SpecDecision.lua
 Logic\Blessings.lua

@@ -553,6 +553,19 @@ if not MOCK_NO_AURAS then
 	assert(check and check.vengGuess == 5 and check.vengReal == nil and check.crits == 3, "guess vs real logged")
 end
 
+-- Warning sounds: picked per warning; "None" is silent; custom files exist.
+do
+	local S = P.Sounds
+	assert(S:Get("missing").key == "RAID_WARNING", "raid warning by default")
+	assert(S:Cycle("missing").key == "READY_CHECK", "cycles to the next sound")
+	assert(S:Cycle("missing", -1).key == "RAID_WARNING", "right-click goes back")
+	S:Set("seal", "NONE")
+	S:Play("seal")
+	assert(S.byKey.CUSTOM1 and S.byKey.CUSTOM5.file == "custom5", "custom file slots")
+	S:Preview(S.byKey.CUSTOM1)
+	S:Set("seal", "RAID_WARNING")
+end
+
 -- DB v5: Buff Sentinel moves up only where it was never moved.
 local oldDb = { version = 4, profiles = { P1 = { layout = {
 	holy = { BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 } },

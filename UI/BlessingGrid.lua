@@ -155,7 +155,7 @@ local function makeCell(parent, row, class)
 			return
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:AddLine(Theme.Color("gold", (self.row.paladin and manager():NameOf(self.row.paladin) or "?") .. " > "
+		GameTooltip:AddLine(Theme.Color("gold", (self.row.paladin and manager():NameOf(self.row.paladin) or "?") .. " -> "
 			.. (self.class and CLASS_NAMES[self.class] or L["Aura"])))
 		GameTooltip:AddLine(spellName(self.key), 1, 1, 1)
 		for _, line in ipairs(self.exceptions or {}) do
@@ -493,7 +493,7 @@ function Grid_OpenExceptions(paladin, class, anchorCell)
 		buildPopup()
 	end
 	popup.paladin, popup.class = paladin, class
-	popup.titleText:SetText((manager():NameOf(paladin)) .. " > " .. (CLASS_NAMES[class] or class))
+	popup.titleText:SetText((manager():NameOf(paladin)) .. " -> " .. (CLASS_NAMES[class] or class))
 	popup:ClearAllPoints()
 	if anchorCell then
 		popup:SetPoint("TOPLEFT", anchorCell, "BOTTOMLEFT", 0, -4)
