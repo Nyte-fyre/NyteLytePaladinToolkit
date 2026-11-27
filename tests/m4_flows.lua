@@ -237,6 +237,28 @@ if not MOCK_NO_AURAS then
 	P.Roster:Scan()
 end
 
+-- Greater Blessings toggle: in a group the button casts the Greater version
+-- when it's known; off, or not known, it stays on the normal one.
+if not MOCK_NO_AURAS then
+	MOCK.auras[#MOCK.auras + 1] = { name = "Blessing of Might", spellId = 19740, duration = 3600, expirationTime = GetTime() + 3000 }
+	P.Roster:Scan()
+	assert(button:GetAttribute("spell") == "Blessing of Might", "normal Blessing by default")
+	BM:SetUseGreater(true)
+	assert(button:GetAttribute("spell") == "Blessing of Might", "Greater not known: normal Blessing")
+	table.insert(MOCK.book, { name = "Greater Blessing of Might", spellID = 25782, itemType = 1 })
+	P.SpellRegistry:Refresh()
+	BM:UpdateButton()
+	assert(button:GetAttribute("spell") == "Greater Blessing of Might", "Greater Blessing in a group")
+	assert(BM.BlessingKeyFor(25782) == "BLESSING_MIGHT" and select(2, BM.BlessingKeyFor(25782)) == true,
+		"a Greater cast counts as the normal Blessing, class-wide")
+	BM:SetUseGreater(false)
+	assert(button:GetAttribute("spell") == "Blessing of Might", "toggle off")
+	table.remove(MOCK.book)
+	P.SpellRegistry:Refresh()
+	table.remove(MOCK.auras)
+	P.Roster:Scan()
+end
+
 -- Combat: no attribute changes, no sends; both happen after combat.
 MOCK.combat = true
 local unitBefore = button:GetAttribute("unit")

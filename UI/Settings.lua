@@ -94,6 +94,11 @@ local OPTIONS = {
 	end, function(v)
 		ms("BlessingManager").refreshLowest = v
 	end },
+	{ L["Buff button: Greater Blessings in a party or raid"], function()
+		return ms("BlessingManager").useGreater
+	end, function(v)
+		PK.modules.BlessingManager:SetUseGreater(v)
+	end },
 	{ L["Buff button: move on to the next person in combat"], function()
 		return ms("BlessingManager").combatCycle
 	end, function(v)
@@ -201,7 +206,7 @@ local function Build()
 	scroll:SetPoint("TOPLEFT", 0, 0)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 0)
 	local content = CreateFrame("Frame", nil, scroll)
-	content:SetSize(600, 1080)
+	content:SetSize(600, 1110)
 	scroll:SetScrollChild(content)
 
 	PK.Theme.AddGlow(content, 80)

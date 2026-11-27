@@ -155,7 +155,7 @@ local function makeCell(parent, row, class)
 			return
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:AddLine(Theme.Color("gold", (self.row.paladin and manager():NameOf(self.row.paladin) or "?") .. " → "
+		GameTooltip:AddLine(Theme.Color("gold", (self.row.paladin and manager():NameOf(self.row.paladin) or "?") .. " > "
 			.. (self.class and CLASS_NAMES[self.class] or L["Aura"])))
 		GameTooltip:AddLine(spellName(self.key), 1, 1, 1)
 		for _, line in ipairs(self.exceptions or {}) do
@@ -242,8 +242,30 @@ local function build()
 		manager():Announce()
 	end)
 	announce:SetPoint("LEFT", suggest, "RIGHT", 8, 0)
+	-- Greater Blessings on/off for the buff button (party and raid).
+	local greater
+	greater = Theme.Button(window, "", 150, function()
+		manager():SetUseGreater(not PK.Config:GetModuleSettings("BlessingManager").useGreater)
+		Grid:Refresh()
+	end)
+	greater:SetPoint("LEFT", announce, "RIGHT", 8, 0)
+	greater:SetScript("OnEnter", function(self)
+		if GameTooltip then
+			GameTooltip:SetOwner(self, "ANCHOR_TOP")
+			GameTooltip:AddLine(L["Greater Blessings"], 1, 0.82, 0.25)
+			GameTooltip:AddLine(L["In a party or raid, the buff button casts the Greater version (one cast covers the whole class) when you know it."],
+				1, 1, 1, true)
+			GameTooltip:Show()
+		end
+	end)
+	greater:SetScript("OnLeave", function()
+		if GameTooltip then
+			GameTooltip:Hide()
+		end
+	end)
+	Grid.greaterButton = greater
 	statusText = window:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	statusText:SetPoint("LEFT", announce, "RIGHT", 12, 0)
+	statusText:SetPoint("LEFT", greater, "RIGHT", 12, 0)
 	statusText:SetPoint("RIGHT", window, "RIGHT", -16, 0)
 	statusText:SetJustifyH("LEFT")
 
@@ -255,6 +277,10 @@ end
 function Grid:Refresh()
 	if not window or not window:IsShown() then
 		return
+	end
+	if Grid.greaterButton then
+		Grid.greaterButton:SetText(PK.Config:GetModuleSettings("BlessingManager").useGreater
+			and L["Greater: on"] or L["Greater: off"])
 	end
 	local m = manager()
 	local eff = m:Effective()
@@ -467,7 +493,7 @@ function Grid_OpenExceptions(paladin, class, anchorCell)
 		buildPopup()
 	end
 	popup.paladin, popup.class = paladin, class
-	popup.titleText:SetText((manager():NameOf(paladin)) .. " → " .. (CLASS_NAMES[class] or class))
+	popup.titleText:SetText((manager():NameOf(paladin)) .. " > " .. (CLASS_NAMES[class] or class))
 	popup:ClearAllPoints()
 	if anchorCell then
 		popup:SetPoint("TOPLEFT", anchorCell, "BOTTOMLEFT", 0, -4)

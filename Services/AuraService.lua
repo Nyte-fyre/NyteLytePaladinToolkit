@@ -462,9 +462,15 @@ local function stacksOf(aura)
 	return (aura and aura.stacks and aura.stacks > 0) and aura.stacks or 1
 end
 
+-- Talents aren't always findable by name (Unsealed Wrath wasn't, 2026-11-27),
+-- so any Echo buff seen this session, or playing Ret, counts too.
 function AS:HasUnsealedWrath()
 	local reg = PK.SpellRegistry
-	return reg:IsKnown("UNSEALED_WRATH") or reg:IsKnown("TWIST_OF_LIGHT") or self:GetByKey("TWIST_ECHO") ~= nil
+	if self:GetByKey("TWIST_ECHO") ~= nil then
+		self.sawEcho = true
+	end
+	return self.sawEcho or reg:IsKnown("UNSEALED_WRATH") or reg:IsKnown("TWIST_OF_LIGHT")
+		or PK.SpecProfile:GetSpec() == "ret"
 end
 
 -- A short trail of what happened in this fight (Seal presses, hits, crits),

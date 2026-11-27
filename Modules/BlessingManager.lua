@@ -441,12 +441,42 @@ end
 
 -- Buff button ------------------------------------------------------------------------------------
 
+-- Greater version of each Blessing ("BLESSING_KINGS" -> "GREATER_KINGS").
+local GREATER_OF = {}
+for greater, normal in pairs(B.GREATER) do
+	GREATER_OF[normal] = greater
+end
+
+-- With "Greater Blessings in groups" on, in a party or raid the button casts
+-- the Greater version (it covers the whole class) when you know it.
+function M:UseGreater()
+	return settings().useGreater == true and inGroup()
+end
+
 local function blessingSpell(key)
+	if M:UseGreater() then
+		local g = GREATER_OF[key] and PK.SpellRegistry:Get(GREATER_OF[key])
+		if g and g.known then
+			return g.name, g.icon
+		end
+	end
 	local r = PK.SpellRegistry:Get(key)
 	if r and r.known then
 		return r.name, r.icon
 	end
 	return nil
+end
+
+function M:SetUseGreater(on)
+	settings().useGreater = on and true or false
+	PK:Fire("PK_SETTINGS_CHANGED")
+	local known = false
+	for greater in pairs(B.GREATER) do
+		known = known or PK.SpellRegistry:IsKnown(greater)
+	end
+	if on and not known then
+		PK:Print(L["Greater Blessings on, but you don't know any yet; the button keeps using normal Blessings."])
+	end
 end
 
 -- Picks the next target out of combat and sets the secure attributes.
@@ -782,12 +812,16 @@ local HOUR_LONG = {}
 for _, key in ipairs(B.ASSIGNABLE) do
 	HOUR_LONG[key] = true
 end
+-- Second return: true for a Greater Blessing (covers the target's class).
 function M.BlessingKeyFor(spellID)
 	for key, r in pairs(PK.SpellRegistry.byKey) do
 		if (r.category == "blessing" or r.category == "greaterBlessing")
 			and (r.spellID == spellID or (r.ids and r.ids[spellID])) then
 			local k = B.GREATER[key] or key
-			return HOUR_LONG[k] and k or nil
+			if HOUR_LONG[k] then
+				return k, B.GREATER[key] ~= nil
+			end
+			return nil
 		end
 	end
 	return nil
@@ -809,7 +843,7 @@ end
 
 -- One of your Blessings landed. In combat the group's buffs can't be read,
 -- so assume it's on them for the full hour until the next scan says.
-function M:OnBlessingCast(key, target)
+function M:OnBlessingCast(key, target, greater)
 	if not PK.Compat.InCombat() then
 		return -- out of combat the next scan reads the real buff
 	end
@@ -821,11 +855,16 @@ function M:OnBlessingCast(key, target)
 	if not m then
 		return
 	end
-	m.buffs = m.buffs or {}
-	m.buffs[key] = GetTime() + BLESSING_DURATION
-	m.assumed = m.assumed or {}
-	m.assumed[key] = true
-	self.assumed[#self.assumed + 1] = { guid = m.guid, name = m.name, key = key, at = GetTime() }
+	-- A Greater Blessing lands on everyone of the target's class.
+	for _, other in ipairs(greater and Roster.members or { m }) do
+		if other == m or other.class == m.class then
+			other.buffs = other.buffs or {}
+			other.buffs[key] = GetTime() + BLESSING_DURATION
+			other.assumed = other.assumed or {}
+			other.assumed[key] = true
+			self.assumed[#self.assumed + 1] = { guid = other.guid, name = other.name, key = key, at = GetTime() }
+		end
+	end
 	self:RefreshCombatText()
 end
 
@@ -931,13 +970,16 @@ function M:OnEnable()
 			return
 		end
 		local id = PK.Secrets.SafeNumber(spellID)
-		local key = id and M.BlessingKeyFor(id)
+		local key, greater
+		if id then
+			key, greater = M.BlessingKeyFor(id)
+		end
 		if not key then
 			return
 		end
 		local target = pendingCast and GetTime() - pendingCast.at < 10 and pendingCast.target or nil
 		pendingCast = nil
-		M:OnBlessingCast(key, target)
+		M:OnBlessingCast(key, target, greater)
 	end)
 	PK:On("PK_BLESSINGS_CHANGED", self, update)
 	PK:On("PK_SPELLS_UPDATED", self, update)

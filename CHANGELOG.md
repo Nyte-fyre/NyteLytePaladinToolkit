@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Greater Blessings toggle: a "Greater: on/off" button in the Blessing grid
+  (and Settings > "Buff button: Greater Blessings in a party or raid"). In
+  a group the buff button then casts the Greater version, which covers the
+  whole class, whenever you know it. Off by default.
+- Fixed a symbol that didn't show in the Blessing grid tooltips.
 - Proc stacks next to the Seal Tracker: Vengeance (Ret), Infusion of Light
   (Holy) and Holy Shield charges (Prot), with stacks and a countdown, plus
   stacks on Unsealed Wrath's Echo. Forever hides your buffs from addons in

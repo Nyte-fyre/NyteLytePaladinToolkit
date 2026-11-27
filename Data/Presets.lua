@@ -129,6 +129,7 @@ Presets.moduleSettings = {
 		refreshLowest = true, -- when nobody needs a Blessing, target the lowest timer
 		postCombatAlert = true, -- after a fight, flag new Blessing needs (deaths, dispels)
 		combatCycle = true, -- in combat, each press moves on to the next person in the pre-pull queue
+		useGreater = false, -- in a party/raid, cast Greater Blessings (when known)
 		prepullMinutes = 10, -- ready check / "/ptk buffs": warn about Blessings ending this soon
 		buttonSize = 40,
 	},
