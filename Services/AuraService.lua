@@ -95,6 +95,7 @@ function AS:Scan()
 		self.echo = nil
 		self.vengeance = nil
 		self.twist = nil
+		self.lastStoreAt = nil
 		self.ironCreed = nil
 	end
 	self.stanceSpellID = Compat.GetActiveStanceSpell()
@@ -483,6 +484,8 @@ end
 local ECHO_MAX, ECHO_DURATION = 3, 15
 -- A swing landing this soon after a Seal cast still used the old Seal.
 local SWING_GRACE = 0.6
+-- Hits closer together than this are one swing as far as Echo goes.
+local SAME_SWING = 0.5
 
 local VENGEANCE_MAX, VENGEANCE_DURATION = 5, 30
 AS.hitStats = { hits = 0, crits = 0 }
@@ -557,7 +560,10 @@ function AS:OnTargetHit(physical, crit)
 		end
 		if not seal then
 			result = " (no Seal known)"
+		elseif self.lastStoreAt and now - self.lastStoreAt < SAME_SWING then
+			result = result .. " (same swing)"
 		else
+			self.lastStoreAt = now
 			result = result .. self:StoreEcho(seal, now)
 			changed = true
 		end

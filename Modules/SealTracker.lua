@@ -118,21 +118,40 @@ local function build()
 	end)
 end
 
--- Stack count for a corner label: "3", "" for a single stack, "*" added
--- when it's a guess (predicted, or a pre-combat snapshot in combat).
-local function stackText(aura, source)
-	local n = aura.stacks
-	local text = (n and n > 1) and tostring(n) or ""
-	if source == "predicted" or source == "snapshot" then
-		text = text .. "*"
+-- Proc icons draw their own numbers on a layer above the timer swipe: the
+-- stack count big in the middle, the seconds left small underneath. (The
+-- game's own countdown numbers sat on top of the stack count and hid it.)
+local function overlay(f)
+	if not f.overlay then
+		f.cooldown:SetHideCountdownNumbers(true)
+		f.overlay = CreateFrame("Frame", nil, f)
+		f.overlay:SetAllPoints()
+		f.overlay:SetFrameLevel((f.cooldown:GetFrameLevel() or 1) + 2)
+		f.stackText = f.overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormalLarge")
+		f.stackText:SetPoint("CENTER", 0, 1)
+		f.timeText = f.overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
+		f.timeText:SetPoint("TOP", f, "BOTTOM", 0, -1)
+		f.text:SetText("")
 	end
-	return text
+	return f
 end
 
--- Timer as a cooldown swipe with the game's countdown numbers. Plain
--- numbers only (read out of combat or predicted), so it keeps running in
--- combat without any aura reads.
+-- Stack count in the middle (gold at max), "*" when it's a guess.
+local function showStacks(f, aura, source, max)
+	overlay(f)
+	local n = (aura.stacks and aura.stacks > 0) and aura.stacks or 1
+	f.stackText:SetText(n .. ((source == "predicted" or source == "snapshot") and "*" or ""))
+	if max and n >= max then
+		f.stackText:SetTextColor(1, 0.82, 0.1)
+	else
+		f.stackText:SetTextColor(1, 1, 1)
+	end
+end
+
+-- Timer as a swipe plus seconds left. Plain numbers only (read out of
+-- combat or predicted), so it keeps running in combat without aura reads.
 local function showTimer(f, aura)
+	overlay(f)
 	local d = aura.duration
 	if d and d > 0 and aura.expirationTime and aura.expirationTime > 0 then
 		local start = aura.expirationTime - d
@@ -140,9 +159,12 @@ local function showTimer(f, aura)
 			f.timerStart = start
 			f:SetCooldownNumbers(start, d)
 		end
+		local left = aura.expirationTime - GetTime()
+		f.timeText:SetText(left > 0 and string.format("%.0f", left) or "")
 	else
 		f.timerStart = nil
 		f.cooldown:Clear()
+		f.timeText:SetText("")
 	end
 end
 
@@ -173,7 +195,7 @@ function M:UpdateEcho()
 	if settings().showEcho and echo then
 		echoIcon.icon:SetTexture(echo.icon or 134400)
 		showTimer(echoIcon, echo)
-		echoIcon:SetText(stackText(echo, source))
+		showStacks(echoIcon, echo, source, 3)
 		stackLook(echoIcon, echo.stacks, 2, 3)
 		echoIcon:Show()
 	else
@@ -204,8 +226,8 @@ function M:UpdateProcs()
 			f:SetPoint("LEFT", echoIcon, "LEFT", slot * (PROC_SIZE + 6), 0)
 			f.icon:SetTexture(aura.icon or 134400)
 			showTimer(f, aura)
-			f:SetText(stackText(aura, source))
 			local look = PROC_LOOK[key] or {}
+			showStacks(f, aura, source, look.glowAt)
 			stackLook(f, aura.stacks, look.borderAt, look.glowAt)
 			f:Show()
 		elseif f then
