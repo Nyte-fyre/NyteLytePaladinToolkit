@@ -90,9 +90,13 @@ if not MOCK_NO_AURAS then
 	-- starts storing the new Seal.
 	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-3", 21082) -- Seal of the Crusader
 	assert(AS:GetEcho().sealName == "Seal of Command" and AS:GetEcho().stacks == 3, "kept until the next hit")
+	assert(AS.twist, "twist pending")
+	hit() -- a swing right after the cast still uses the old Seal
+	assert(AS:GetEcho().sealName == "Seal of Command" and AS:GetEcho().stacks == 3, "swing in flight: old Seal")
+	MOCK.advance(1)
 	hit()
 	echo = AS:GetEcho()
-	assert(echo.sealName == AS:GetSeal().name and echo.stacks == 1, "consumed, new Seal stored")
+	assert(echo.sealName == AS:GetSeal().name and echo.stacks == 1 and AS.twist == nil, "consumed, new Seal stored")
 	-- Each copy lasts its own 15 s: stacks fall off one at a time.
 	hit()
 	MOCK.advance(10)
@@ -102,7 +106,21 @@ if not MOCK_NO_AURAS then
 	assert(AS:GetEcho().stacks == 1, "the two older copies ran out")
 	MOCK.advance(10)
 	assert(AS:GetEcho() == nil, "last copy ran out")
-	MOCK.advance(-26)
+	-- The game's buff change can come before the hit report: a buff swapped
+	-- in and out while a twist is pending is the Echo swap.
+	hit()
+	hit()
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-7", 900011) -- Seal of Command
+	MOCK.fire("UNIT_AURA", "player", { addedAuras = {}, removedAuraInstanceIDs = {} }) -- the cast's own change
+	assert(AS:GetEcho().sealName ~= "Seal of Command", "the cast's own buff change isn't the swap")
+	MOCK.advance(0.8)
+	MOCK.fire("UNIT_AURA", "player", { addedAuras = {}, removedAuraInstanceIDs = {} })
+	echo = AS:GetEcho()
+	assert(echo.sealName == "Seal of Command" and echo.stacks == 1 and AS.twist == nil, "swapped on the buff change")
+	MOCK.advance(0.5)
+	hit()
+	assert(AS:GetEcho().stacks == 2, "then hits stack as usual")
+	MOCK.advance(-27.3)
 	local usedLogged = false
 	for _, line in ipairs(AS.hitStats.trail or {}) do
 		usedLogged = usedLogged or line:find("used", 1, true) ~= nil

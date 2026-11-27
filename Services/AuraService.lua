@@ -94,6 +94,7 @@ function AS:Scan()
 		self.predictedSeal = nil
 		self.echo = nil
 		self.vengeance = nil
+		self.twist = nil
 		self.ironCreed = nil
 	end
 	self.stanceSpellID = Compat.GetActiveStanceSpell()
@@ -348,12 +349,26 @@ local function queueScan()
 	end)
 end
 
+-- The Seal cast's own buff change comes right with it; later ones are the
+-- Echo swap (see AS:OnTargetHit).
+local CAST_AURA_WINDOW = 0.3
+
 PK:RegisterEvent("UNIT_AURA", AS, function(_, _, unit, info)
 	if not Compat.IsSecret(unit) and unit == "player" then
 		if AS.frozen and AS.lastSealCast and GetTime() - AS.lastSealCast < 5 and type(info) == "table"
 			and not Compat.IsSecret(info) then
-			AS:Trail("buffs" .. (info.addedAuras ~= nil and " +" or "") .. (info.removedAuraInstanceIDs ~= nil and " -" or "")
-				.. (info.updatedAuraInstanceIDs ~= nil and " ~" or ""))
+			local added, removed = info.addedAuras ~= nil, info.removedAuraInstanceIDs ~= nil
+			local note = "buffs" .. (added and " +" or "") .. (removed and " -" or "")
+				.. (info.updatedAuraInstanceIDs ~= nil and " ~" or "")
+			-- While a twist is pending, a buff swapped in and out (after the
+			-- Seal cast's own change) is the Echo changing Seal.
+			local tw = AS.twist
+			if tw and added and removed and GetTime() - tw.at >= CAST_AURA_WINDOW then
+				AS.twist = nil
+				note = note .. " = Echo swap" .. AS:StoreEcho(tw.seal, GetTime())
+				PK:Fire("PK_AURAS_UPDATED")
+			end
+			AS:Trail(note)
 		end
 		queueScan()
 	end
@@ -426,6 +441,17 @@ function AS:PredictCast(spellID)
 		end)
 		self.predictedSeal = predictedAura(spellID, name, icon)
 		self.lastSealCast = GetTime()
+		-- A twist: a different Seal while an Echo is stored. The game swaps
+		-- the Echo on a later attack (see AS:OnTargetHit / UNIT_AURA below).
+		local echo = self:GetEcho()
+		if echo and AS.EchoSeal(echo) ~= self.predictedSeal.name then
+			self.twist = {
+				at = GetTime(), seal = self.predictedSeal,
+				oldSeal = previous or { name = AS.EchoSeal(echo), icon = echo.icon },
+			}
+		else
+			self.twist = nil
+		end
 		-- Echo (Unsealed Wrath) changes on your next landed hit, not here:
 		-- see AS:OnTargetHit.
 		return true
@@ -455,6 +481,9 @@ end
 -- Solo these are your hits. In a group other players' hits on the same
 -- target count too, so it runs a little ahead; the * says it's a guess.
 local ECHO_MAX, ECHO_DURATION = 3, 15
+-- A swing landing this soon after a Seal cast still used the old Seal.
+local SWING_GRACE = 0.6
+
 local VENGEANCE_MAX, VENGEANCE_DURATION = 5, 30
 AS.hitStats = { hits = 0, crits = 0 }
 
@@ -470,6 +499,7 @@ local function echoSeal(echo)
 	local suffix = type(echo.name) == "string" and echo.name:match("^Echo of (.+)$")
 	return suffix and ("Seal of " .. suffix) or nil
 end
+AS.EchoSeal = echoSeal
 
 local function stacksOf(aura)
 	return (aura and aura.stacks and aura.stacks > 0) and aura.stacks or 1
@@ -515,11 +545,35 @@ function AS:OnTargetHit(physical, crit)
 		result = " (no Unsealed Wrath)"
 	elseif physical then
 		local seal = self:GetSeal()
+		local tw = self.twist
+		if tw and now - tw.at < SWING_GRACE then
+			-- Already in flight when the Seal was cast: the game used the old
+			-- Seal for it (seen 2026-11-27: hits 0.1-0.2 s after a twist
+			-- never swapped the Echo).
+			seal = tw.oldSeal
+			result = " (old Seal, just cast)"
+		elseif tw then
+			self.twist = nil
+		end
 		if not seal then
 			result = " (no Seal known)"
 		else
-			-- Each stored copy lasts its own 15 s (stacks fall off one by one:
-			-- seen 2026-11-27, real stacks lower than all-at-once predicted).
+			result = result .. self:StoreEcho(seal, now)
+			changed = true
+		end
+	end
+	self:Trail((physical and "hit" or "holy") .. (crit and " CRIT" or "") .. result)
+	return self:OnCrit(crit, now) or changed
+end
+
+-- Stores one copy of `seal` (Unsealed Wrath). Copies of another Seal are
+-- used up first. Each copy lasts its own 15 s (stacks fall off one by one:
+-- seen 2026-11-27, real stacks lower than all-at-once predicted).
+-- Returns a short note for the trail.
+function AS:StoreEcho(seal, now)
+	local result = ""
+	do
+		do
 			local echo = self:GetEcho()
 			local copies = {}
 			if echo and echoSeal(echo) == seal.name then
@@ -544,10 +598,13 @@ function AS:OnTargetHit(physical, crit)
 				duration = ECHO_DURATION, expirationTime = now + ECHO_DURATION, predicted = true,
 			}
 			result = result .. " -> " .. shortSeal(seal.name) .. " x" .. #copies
-			changed = true
 		end
 	end
-	self:Trail((physical and "hit" or "holy") .. (crit and " CRIT" or "") .. result)
+	return result
+end
+
+function AS:OnCrit(crit, now)
+	local changed = false
 	if crit and PK.SpecProfile:GetSpec() == "ret" then
 		self.hitStats.crits = self.hitStats.crits + 1
 		-- Like Echo, each crit's stack runs out on its own 30 s (seen
