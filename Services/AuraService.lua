@@ -99,6 +99,13 @@ function AS:Scan()
 		self.ironCreed = nil
 	end
 	self.stanceSpellID = Compat.GetActiveStanceSpell()
+	if _G.UnitAttackSpeed then
+		local ok, speed = pcall(_G.UnitAttackSpeed, "player")
+		speed = ok and Secrets.SafeNumber(speed)
+		if speed and speed > 0.5 and speed < 6 then
+			self.swingSpeed = speed
+		end
+	end
 	PK:Fire("PK_AURAS_UPDATED")
 	return not self.frozen
 end
@@ -139,6 +146,7 @@ function AS:CheckPredictions(real)
 		echoGuess = e and (tostring(e.sealName) .. " x" .. stacksOf(e)) or nil,
 		echoReal = realEcho and (realEcho.name .. " x" .. stacksOf(realEcho)) or nil,
 		trail = self.hitStats.trail and table.concat(self.hitStats.trail, ", ") or nil,
+		swingSpeed = self.swingSpeed,
 		vengGuess = v and stacksOf(v) or nil,
 		vengReal = realVeng and stacksOf(realVeng) or nil,
 		group = (IsInGroup and IsInGroup()) or nil,
@@ -367,6 +375,7 @@ PK:RegisterEvent("UNIT_AURA", AS, function(_, _, unit, info)
 			if tw and added and removed and GetTime() - tw.at >= CAST_AURA_WINDOW then
 				AS.twist = nil
 				note = note .. " = Echo swap" .. AS:StoreEcho(tw.seal, GetTime())
+				AS.lastStoreAt = GetTime()
 				PK:Fire("PK_AURAS_UPDATED")
 			end
 			AS:Trail(note)
@@ -484,8 +493,11 @@ end
 local ECHO_MAX, ECHO_DURATION = 3, 15
 -- A swing landing this soon after a Seal cast still used the old Seal.
 local SWING_GRACE = 0.6
--- Hits closer together than this are one swing as far as Echo goes.
+-- Hits closer together than this are one swing as far as Echo goes...
 local SAME_SWING = 0.5
+-- ...and so are hits sooner than this share of your weapon speed after the
+-- last stored swing (haste and parries can shorten a swing a little).
+local SWING_FRACTION = 0.7
 
 local VENGEANCE_MAX, VENGEANCE_DURATION = 5, 30
 AS.hitStats = { hits = 0, crits = 0 }
@@ -560,8 +572,11 @@ function AS:OnTargetHit(physical, crit)
 		end
 		if not seal then
 			result = " (no Seal known)"
-		elseif self.lastStoreAt and now - self.lastStoreAt < SAME_SWING then
-			result = result .. " (same swing)"
+		elseif self.lastStoreAt and now - self.lastStoreAt < math.max(SAME_SWING, SWING_FRACTION * (self.swingSpeed or 0)) then
+			-- Too soon after the last stored swing to be another auto-attack
+			-- (seen 2026-11-27: a physical "hit" 1.3 s after a swap with a
+			-- 3.4 s weapon, and the game's buffs didn't change for it).
+			result = result .. " (too soon for a swing)"
 		else
 			self.lastStoreAt = now
 			result = result .. self:StoreEcho(seal, now)

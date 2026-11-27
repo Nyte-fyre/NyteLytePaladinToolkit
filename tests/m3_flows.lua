@@ -123,6 +123,14 @@ if not MOCK_NO_AURAS then
 	MOCK.advance(0.5)
 	hit()
 	assert(AS:GetEcho().stacks == 2, "then hits stack as usual")
+	-- With a 3.4 s weapon, a physical hit 1.3 s after a stored swing isn't a
+	-- swing; one 3.8 s after is.
+	AS.swingSpeed = 3.4
+	hit(nil, nil, nil, nil, 1.3)
+	assert(AS:GetEcho().stacks == 2, "too soon for a swing")
+	hit(nil, nil, nil, nil, 2.5)
+	assert(AS:GetEcho().stacks == 3, "next real swing stores")
+	AS.swingSpeed = nil
 
 	local usedLogged = false
 	for _, line in ipairs(AS.hitStats.trail or {}) do
