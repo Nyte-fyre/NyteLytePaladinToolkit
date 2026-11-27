@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Pick the sound for each warning (missing buff, ready check problem, Seal
+  running out, Righteous Fury missing, after-combat rebuff): Settings >
+  Sounds. Click a sound to change it (right-click goes back), "Test" plays
+  it. Choose from the game's own sounds, "None", or your own files: put
+  custom1 ... custom5 (.ogg or .mp3) in
+  `Interface/AddOns/NyteLytePaladinToolkit_Sounds` (a separate folder, so
+  addon updates don't delete them) and restart the game.
+- Echo: each stored copy now runs out on its own (stacks drop one at a
+  time), like the real buff.
 - Greater Blessings toggle: a "Greater: on/off" button in the Blessing grid
   (and Settings > "Buff button: Greater Blessings in a party or raid"). In
   a group the buff button then casts the Greater version, which covers the
