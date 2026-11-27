@@ -348,8 +348,13 @@ local function queueScan()
 	end)
 end
 
-PK:RegisterEvent("UNIT_AURA", AS, function(_, _, unit)
+PK:RegisterEvent("UNIT_AURA", AS, function(_, _, unit, info)
 	if not Compat.IsSecret(unit) and unit == "player" then
+		if AS.frozen and AS.lastSealCast and GetTime() - AS.lastSealCast < 5 and type(info) == "table"
+			and not Compat.IsSecret(info) then
+			AS:Trail("buffs" .. (info.addedAuras ~= nil and " +" or "") .. (info.removedAuraInstanceIDs ~= nil and " -" or "")
+				.. (info.updatedAuraInstanceIDs ~= nil and " ~" or ""))
+		end
 		queueScan()
 	end
 end)
@@ -420,6 +425,7 @@ function AS:PredictCast(spellID)
 			return seals[a.spellID] or a.name:sub(1, 8) == "Seal of "
 		end)
 		self.predictedSeal = predictedAura(spellID, name, icon)
+		self.lastSealCast = GetTime()
 		-- Echo (Unsealed Wrath) changes on your next landed hit, not here:
 		-- see AS:OnTargetHit.
 		return true

@@ -146,6 +146,25 @@ local function showTimer(f, aura)
 	end
 end
 
+-- Stack look: a thin gold border from `borderAt` stacks, the game's
+-- rotating gold glow at `glowAt` (the most stacks it can have).
+local function stackLook(f, stacks, borderAt, glowAt)
+	stacks = stacks or 1
+	local glow = glowAt and stacks >= glowAt
+	if not f.stackBorder then
+		f.stackBorder = PK.Theme.Edge(f, 1, 0.82, 0.1, 1, 2, "OVERLAY")
+	end
+	if borderAt and stacks >= borderAt and not glow then
+		f.stackBorder:Show()
+	else
+		f.stackBorder:Hide()
+	end
+	PK.Theme.SetGlow(f, glow)
+end
+
+-- Max stacks per proc: Echo 3 (border at 2), Vengeance 5.
+local PROC_LOOK = { VENGEANCE = { glowAt = 5 } }
+
 function M:UpdateEcho()
 	if not echoIcon then
 		return
@@ -155,8 +174,10 @@ function M:UpdateEcho()
 		echoIcon.icon:SetTexture(echo.icon or 134400)
 		showTimer(echoIcon, echo)
 		echoIcon:SetText(stackText(echo, source))
+		stackLook(echoIcon, echo.stacks, 2, 3)
 		echoIcon:Show()
 	else
+		stackLook(echoIcon, 0)
 		echoIcon:Hide()
 	end
 	self:UpdateProcs()
@@ -184,9 +205,12 @@ function M:UpdateProcs()
 			f.icon:SetTexture(aura.icon or 134400)
 			showTimer(f, aura)
 			f:SetText(stackText(aura, source))
+			local look = PROC_LOOK[key] or {}
+			stackLook(f, aura.stacks, look.borderAt, look.glowAt)
 			f:Show()
 		elseif f then
 			f.timerStart = nil
+			stackLook(f, 0)
 			f:Hide()
 		end
 	end

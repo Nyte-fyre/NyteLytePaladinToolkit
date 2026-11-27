@@ -246,6 +246,53 @@ function Theme.Edge(frame, r, g, b, a, size, layer)
 	return edge
 end
 
+-- The game's rotating gold "spell is ready" border on any frame. Uses the
+-- client's own spell-alert glow when it has one, else a pulsing gold edge.
+function Theme.SetGlow(frame, on)
+	on = on and true or false
+	if frame.glowOn == on then
+		return
+	end
+	frame.glowOn = on
+	local done = false
+	local mgr = _G.ActionButtonSpellAlertManager
+	if mgr and mgr.ShowAlert and mgr.HideAlert then
+		done = pcall(on and mgr.ShowAlert or mgr.HideAlert, mgr, frame)
+	end
+	if not done and _G.ActionButton_ShowOverlayGlow and _G.ActionButton_HideOverlayGlow then
+		done = pcall(on and _G.ActionButton_ShowOverlayGlow or _G.ActionButton_HideOverlayGlow, frame)
+	end
+	if not frame.glowEdge then
+		frame.glowEdge = Theme.Edge(frame, 1, 0.82, 0.1, 1, 3, "OVERLAY")
+		frame.glowEdge:Hide()
+		if frame.CreateAnimationGroup then
+			local ag = frame:CreateAnimationGroup()
+			if ag then
+				ag:SetLooping("BOUNCE")
+				local a = ag:CreateAnimation("Alpha")
+				a:SetFromAlpha(1)
+				a:SetToAlpha(0.45)
+				a:SetDuration(0.4)
+				frame.glowPulse = ag
+			end
+		end
+	end
+	if on and not done then
+		frame.glowEdge:Show()
+		if frame.glowPulse then
+			frame.glowPulse:Play()
+		end
+	else
+		frame.glowEdge:Hide()
+		if frame.glowPulse then
+			frame.glowPulse:Stop()
+		end
+		if frame.SetAlpha then
+			frame:SetAlpha(1)
+		end
+	end
+end
+
 -- Gold-tinted panel button.
 function Theme.Button(parent, text, width, onClick)
 	local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")

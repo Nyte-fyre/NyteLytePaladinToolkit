@@ -559,6 +559,15 @@ if not MOCK_NO_AURAS then
 	assert(check and check.vengGuess == 1 and check.vengReal == nil and check.crits == 4, "guess vs real logged")
 end
 
+-- Max-stacks glow: on and off without errors (fallback edge in the mocks).
+do
+	local f = CreateFrame("Frame")
+	P.Theme.SetGlow(f, true)
+	assert(f.glowOn == true, "glow on")
+	P.Theme.SetGlow(f, false)
+	assert(f.glowOn == false, "glow off")
+end
+
 -- Warning sounds: picked per warning; "None" is silent; custom files exist.
 do
 	local S = P.Sounds
