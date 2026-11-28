@@ -24,7 +24,10 @@
     30 s);
   - Echo follows your landed melee hits (stores your Seal, up to 3; a hit
     with a different Seal uses them up and starts the new one);
-  - Infusion of Light and Holy Shield keep what you had at the pull.
+  - Infusion of Light follows your crits: a Flash of Light or Holy Shock
+    crit (heal, or Holy Shock damage) right after your own cast gives it,
+    your next Holy Light uses it; it glows while it's up;
+  - Holy Shield keeps what you had at the pull.
   In-combat values are marked `*` (in a group, other players' hits on your
   target count too). Everything is exact again as soon as combat ends.
   Option: Settings > "Seal Tracker: proc stacks".

@@ -94,6 +94,8 @@ function AS:Scan()
 		self.predictedSeal = nil
 		self.echo = nil
 		self.vengeance = nil
+		self.infusion = nil
+		self.healCastAt = nil
 		self.twist = nil
 		self.lastStoreAt = nil
 		self.ironCreed = nil
@@ -133,6 +135,13 @@ function AS:CheckPredictions(real)
 	local realVeng = find(function(a)
 		return a.spellID == 20050 or a.name == "Vengeance"
 	end)
+	local infEntry = PK.SpellRegistry:Get("INFUSION_OF_LIGHT")
+	local realInf = find(function(a)
+		return a.name == "Infusion of Light" or (infEntry and infEntry.name and a.name == infEntry.name)
+	end)
+	if realInf and realInf.duration and realInf.duration > 0 then
+		self.infusionDuration = realInf.duration
+	end
 	-- Copies that already ran out don't count (GetEcho / GetProc drop them).
 	if self.echo then
 		self:GetEcho()
@@ -149,6 +158,8 @@ function AS:CheckPredictions(real)
 		swingSpeed = self.swingSpeed,
 		vengGuess = v and stacksOf(v) or nil,
 		vengReal = realVeng and stacksOf(realVeng) or nil,
+		infGuess = (self.infusion and self:Remaining(self.infusion)) and true or nil,
+		infReal = realInf and true or nil,
 		group = (IsInGroup and IsInGroup()) or nil,
 	}
 	db.procLog = db.procLog or {}
@@ -650,6 +661,37 @@ function AS:StoreEcho(seal, now)
 	return result
 end
 
+-- Infusion of Light (Holy talent): a Flash of Light or Holy Shock crit
+-- gives a buff that your next Holy Light uses. Your heals' crits are
+-- readable in combat (UNIT_COMBAT "HEAL" + "CRITICAL"), but not whose heal
+-- it was, so only a crit right after your own cast counts. Lasts 15 s
+-- unless the real buff was seen with another duration.
+local HEAL_CRIT_WINDOW = 0.6
+local INFUSION_DURATION = 15
+function AS:OnHealCrit(isHeal)
+	local now = GetTime()
+	if not (self.healCastAt and now - self.healCastAt < HEAL_CRIT_WINDOW) then
+		return false
+	end
+	if not isHeal and self.healCastKey ~= "HOLY_SHOCK" then
+		return false
+	end
+	if PK.SpecProfile:GetSpec() ~= "holy" then
+		return false
+	end
+	self.healCastAt = nil
+	local real = self:GetByKey("INFUSION_OF_LIGHT")
+	local r = PK.SpellRegistry:Get("INFUSION_OF_LIGHT")
+	local d = (real and real.duration and real.duration > 0 and real.duration) or self.infusionDuration or INFUSION_DURATION
+	self.infusion = {
+		name = (real and real.name) or (r and r.name) or "Infusion of Light",
+		icon = (real and real.icon) or (r and r.icon) or Compat.GetSpellTexture(426065),
+		stacks = 1, duration = d, expirationTime = now + d, predicted = true,
+	}
+	self:Trail((isHeal and "heal" or "Holy Shock") .. " CRIT after " .. tostring(self.healCastKey) .. " -> Infusion")
+	return true
+end
+
 function AS:OnCrit(crit, now)
 	local changed = false
 	if crit and PK.SpecProfile:GetSpec() == "ret" then
@@ -732,7 +774,8 @@ function AS:GetProc(key)
 			self.vengeance = nil
 		end
 	end
-	local predicted = key == "VENGEANCE" and self.vengeance and self:Remaining(self.vengeance) and self.vengeance
+	local p = (key == "VENGEANCE" and self.vengeance) or (key == "INFUSION_OF_LIGHT" and self.infusion) or nil
+	local predicted = p and self:Remaining(p) and p
 	if predicted and (not aura or (predicted.expirationTime or 0) > (aura.expirationTime or 0)) then
 		return predicted, "predicted"
 	end
@@ -762,6 +805,16 @@ PK:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", AS, function(_, _, unit, _, spellID
 		local n = Compat.GetSpellName(id)
 		AS:Trail("cast " .. ((type(n) == "string" and not Compat.IsSecret(n)) and n or tostring(id)))
 	end
+	if id then
+		local key = registryKeyFor(id)
+		if key == "FLASH_OF_LIGHT" or key == "HOLY_SHOCK" then
+			AS.healCastAt, AS.healCastKey = GetTime(), key
+		elseif key == "HOLY_LIGHT" and AS.infusion then
+			AS.infusion = nil
+			AS:Trail("Holy Light used Infusion")
+			PK:Fire("PK_AURAS_UPDATED")
+		end
+	end
 	if id and AS:PredictCast(id) then
 		PK:Fire("PK_AURAS_UPDATED")
 	end
@@ -769,14 +822,23 @@ end)
 
 
 PK:RegisterEvent("UNIT_COMBAT", AS, function(_, _, unit, action, descriptor, _, school)
-	-- "target" only: the same hit also arrives as nameplateN / softenemy.
-	if not AS.frozen or Compat.IsSecret(unit) or unit ~= "target" or Compat.IsSecret(action)
-		or action ~= "WOUND" then
+	if not AS.frozen or Compat.IsSecret(unit) or Compat.IsSecret(action) then
 		return
 	end
 	local crit = not Compat.IsSecret(descriptor) and type(descriptor) == "string"
 		and descriptor:find("CRITICAL", 1, true) ~= nil
 	local physical = not Compat.IsSecret(school) and school == 1
+	-- Infusion of Light: a critical heal (any unit) or a Holy Shock damage
+	-- crit on your target, right after your own Flash of Light / Holy Shock.
+	if crit and (action == "HEAL" or (action == "WOUND" and unit == "target" and not physical)) then
+		if AS:OnHealCrit(action == "HEAL") then
+			PK:Fire("PK_AURAS_UPDATED")
+		end
+	end
+	-- "target" only: the same hit also arrives as nameplateN / softenemy.
+	if unit ~= "target" or action ~= "WOUND" then
+		return
+	end
 	if AS:OnTargetHit(physical, crit) then
 		PK:Fire("PK_AURAS_UPDATED")
 	end

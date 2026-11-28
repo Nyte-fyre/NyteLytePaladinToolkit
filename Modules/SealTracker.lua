@@ -185,7 +185,7 @@ local function stackLook(f, stacks, borderAt, glowAt)
 end
 
 -- Max stacks per proc: Echo 3 (border at 2), Vengeance 5.
-local PROC_LOOK = { VENGEANCE = { glowAt = 5 } }
+local PROC_LOOK = { VENGEANCE = { glowAt = 5 }, INFUSION_OF_LIGHT = { glowAt = 1 } }
 
 function M:UpdateEcho()
 	if not echoIcon then

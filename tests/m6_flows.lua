@@ -581,6 +581,36 @@ do
 	S:Set("seal", "RAID_WARNING")
 end
 
+-- Infusion of Light (Holy): a heal crit right after your own Flash of
+-- Light / Holy Shock; your next Holy Light uses it.
+if not MOCK_NO_AURAS then
+	local AS = P.AuraService
+	table.insert(MOCK.book, { name = "Flash of Light", spellID = 19750, itemType = 1 })
+	table.insert(MOCK.book, { name = "Holy Light", spellID = 635, itemType = 1 })
+	P.SpellRegistry:Refresh()
+	assert(P.SpecProfile:GetSpec() == "holy", "holy for this test")
+	MOCK.combat = true
+	MOCK.fire("PLAYER_REGEN_DISABLED")
+	AS:Scan()
+	MOCK.fire("UNIT_COMBAT", "party1", "HEAL", "CRITICAL", 500, 2)
+	assert(AS:GetProc("INFUSION_OF_LIGHT") == nil, "someone else's crit heal doesn't count")
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "h1", 19750)
+	MOCK.fire("UNIT_COMBAT", "party1", "HEAL", "", 500, 2)
+	assert(AS:GetProc("INFUSION_OF_LIGHT") == nil, "no crit, no proc")
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "h2", 19750)
+	MOCK.fire("UNIT_COMBAT", "party1", "HEAL", "CRITICAL", 500, 2)
+	local inf, src = AS:GetProc("INFUSION_OF_LIGHT")
+	assert(inf and src == "predicted" and math.abs(AS:Remaining(inf) - 15) < 1, "crit Flash of Light: Infusion")
+	MOCK.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "h3", 635)
+	assert(AS:GetProc("INFUSION_OF_LIGHT") == nil, "Holy Light uses it")
+	MOCK.combat = false
+	MOCK.fire("PLAYER_REGEN_ENABLED")
+	AS:Scan()
+	table.remove(MOCK.book)
+	table.remove(MOCK.book)
+	P.SpellRegistry:Refresh()
+end
+
 -- DB v5: Buff Sentinel moves up only where it was never moved.
 local oldDb = { version = 4, profiles = { P1 = { layout = {
 	holy = { BuffSentinel = { point = "CENTER", x = 0, y = -120, scale = 1 } },
