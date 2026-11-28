@@ -1,39 +1,36 @@
 # Changelog
 
-## Unreleased
+## 0.12.0
 
-- Pick the sound for each warning (missing buff, ready check problem, Seal
-  running out, Righteous Fury missing, after-combat rebuff): Settings >
-  Sounds. Click a sound to change it (right-click goes back), "Test" plays
-  it. Choose from the game's own sounds, "None", or your own files: put
+- Proc tracking next to the Seal Tracker, with the stack count big in the
+  middle and the seconds left underneath:
+  - Ret: Unsealed Wrath's Echo (thin gold border at 2 stacks, the rotating
+    gold glow at 3) and Vengeance (glow at 5).
+  - Holy: Infusion of Light (glows while it's up).
+  - Prot: Holy Shield charges.
+  Forever hides your buffs from addons in combat, so during a fight these
+  are worked out from what the game still shows (marked `*`): Echo from
+  your Seal casts, your swings and your buffs changing; Vengeance from your
+  crits on your target; Infusion from crit heals right after your own
+  Flash of Light or Holy Shock (your next Holy Light uses it). Everything is
+  exact again as soon as combat ends. In a group other players' hits on
+  your target can make Echo and Vengeance run a little high.
+  Option: Settings > "Seal Tracker: proc stacks".
+- Warning sounds: pick the sound for each warning (missing buff, ready check
+  problem, Seal running out, Righteous Fury missing, after-combat rebuff) in
+  Settings > Sounds. Click a sound to change it (right-click goes back),
+  "Test" plays it. Choose a game sound, "None", or your own files: put
   custom1 ... custom5 (.ogg or .mp3) in
   `Interface/AddOns/NyteLytePaladinToolkit_Sounds` (a separate folder, so
-  addon updates don't delete them) and restart the game.
-- Echo: each stored copy now runs out on its own (stacks drop one at a
-  time), like the real buff.
+  addon updates never delete them) and restart the game.
 - Greater Blessings toggle: a "Greater: on/off" button in the Blessing grid
-  (and Settings > "Buff button: Greater Blessings in a party or raid"). In
-  a group the buff button then casts the Greater version, which covers the
+  (also Settings > "Buff button: Greater Blessings in a party or raid"). In
+  a group the buff button then casts the Greater version, covering the
   whole class, whenever you know it. Off by default.
+- The Seal Tracker recognises the real Echo buffs ("Echo of Command",
+  "Echo of Righteousness", ...) out of combat.
 - Fixed a symbol that didn't show in the Blessing grid tooltips.
-- Proc stacks next to the Seal Tracker: Vengeance (Ret), Infusion of Light
-  (Holy) and Holy Shield charges (Prot), with stacks and a countdown, plus
-  stacks on Unsealed Wrath's Echo. Forever hides your buffs from addons in
-  combat, so during a fight:
-  - Vengeance follows your critical hits on your target (+1 stack, up to 5,
-    30 s);
-  - Echo follows your landed melee hits (stores your Seal, up to 3; a hit
-    with a different Seal uses them up and starts the new one);
-  - Infusion of Light follows your crits: a Flash of Light or Holy Shock
-    crit (heal, or Holy Shock damage) right after your own cast gives it,
-    your next Holy Light uses it; it glows while it's up;
-  - Holy Shield keeps what you had at the pull.
-  In-combat values are marked `*` (in a group, other players' hits on your
-  target count too). Everything is exact again as soon as combat ends.
-  Option: Settings > "Seal Tracker: proc stacks".
-- Twist of Light: the Seal Tracker now recognises the real Echo buff
-  ("Echo of Command", "Echo of Righteousness", ...) out of combat, and the
-  predicted Echo lasts 15 seconds (was a 10-second guess).
+- Translations for all the new text.
 
 ## 0.11.0
 
